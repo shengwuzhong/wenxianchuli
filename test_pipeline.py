@@ -241,5 +241,32 @@ class UnifiedSafetyTest(unittest.TestCase):
         self.assertNotIn("<sub>", plain)
 
 
+class MergeReadingOrderTest(unittest.TestCase):
+    @staticmethod
+    def _b(x0, y0, x1, y1, cat="Text", text=""):
+        return {"ch": "mineru", "cat": cat, "box": [x0, y0, x1, y1], "text": text}
+
+    def test_two_column_reads_left_then_right(self):
+        blocks = [
+            self._b(100, 600, 550, 700, text="L1"),
+            self._b(650, 600, 1100, 700, text="R1"),
+            self._b(100, 760, 550, 860, text="L2"),
+            self._b(650, 760, 1100, 860, text="R2"),
+            self._b(200, 100, 1000, 150, "Section-header", "title"),
+            self._b(1000, 50, 1140, 80, "Page-header", "H"),
+            self._b(100, 1500, 550, 1560, "Footnote", "F"),
+        ]
+        ordered = [b["text"] for b in merge_out.order_blocks(blocks, 1200)]
+        self.assertEqual(ordered, ["H", "title", "L1", "L2", "R1", "R2", "F"])
+
+    def test_single_column_stays_y_then_x(self):
+        blocks = [
+            self._b(100, 300, 1000, 350, text="B"),
+            self._b(100, 200, 1000, 250, text="A"),
+        ]
+        ordered = [b["text"] for b in merge_out.order_blocks(blocks, 1200)]
+        self.assertEqual(ordered, ["A", "B"])
+
+
 if __name__ == "__main__":
     unittest.main()
