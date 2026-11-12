@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-TRAE-LAYOUT-FULL",
+ "title": "11 篇 layout/viewer 全量回归（99 页）+ viewer layout 叠加修复",
+ "branch": "agent/trae/T-20261112-TRAE-LAYOUT-FULL",
+ "commit": "7daf70f",
+ "code_commit": "7daf70f",
+ "merge_commit": "12e5c2a",
+ "tag": "merge-T-20261112-TRAE-LAYOUT-FULL",
+ "merged_at": "2026-11-12T17:12:00+08:00",
+ "integrator": "deepseek",
+ "tests": "12/12; compileall viewer.py OK; merge_check OK",
+ "review": "coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.json",
+ "handoff": "coordination/tasks/T-20261112-TRAE-LAYOUT-FULL/handoff.md",
+ "note": "实际 99 页（任务书 110 有误）；39 个双栏页反转 0；12 个单栏差异页逐页判定为 layout_ja 欠检（实为双栏但 detected=single），作为后续 WorkBuddy 任务。viewer.py 8570767 恢复 main 丢失的 layout 叠加；7daf70f 修正序号配色/跨栏块。正式 out/ 未写，哈希 09a8820b…。"
+}

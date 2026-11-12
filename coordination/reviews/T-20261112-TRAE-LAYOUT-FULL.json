@@ -1,0 +1,29 @@
+{
+ "task": "T-20261112-TRAE-LAYOUT-FULL",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_secrets": true,
+  "handoff_present": true,
+  "screenshots_present": true,
+  "out_hash_unchanged": true,
+  "all_pages_covered": true,
+  "double_column_zero_inversions": true,
+  "single_column_explained": true
+ },
+ "metrics": {
+  "pages": 99,
+  "docs": 11,
+  "double_column_pages": 39,
+  "double_column_inversions": 0,
+  "single_column_diff_pages": 12,
+  "screenshots": 12,
+  "tests": "12/12"
+ },
+ "notes": "Approved. 实际语料 99 页（不是任务书的 110）；39 个双栏页反转 0；12 个单栏差异页逐页判定为“实为双栏但 layout_ja 欠检”，不是映射误差。viewer.py 两个提交（8570767 恢复丢失的 layout 叠加；7daf70f 修正序号配色/跨栏块）是必要修复，main 上确实缺 overlay 代码。未写正式 out/，哈希仍 09a8820b…。后续：把 12 页欠检作为 WorkBuddy layout 检测修复任务，不阻塞本验证合并。",
+ "reviewed_at": "2026-11-12T17:10:00+08:00"
+}
