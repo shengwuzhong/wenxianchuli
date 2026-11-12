@@ -96,6 +96,107 @@ def _collect_abstract(pdata, pages, head_u, max_pages=3, skip_fold=None):
                 return "\n".join(out_lines).strip(), uids
     return "\n".join(out_lines).strip(), uids
 
+def _collect_jp_inline(pdata, pages, blk, li):
+    """日文内联摘要头「要旨：…」收集(2026-11-12 T-20261112-WB-ABS): 从定位到的
+    「要旨：」行起收集摘要正文, 至 Keywords/新节头/文献区/跨页续接外止。返回 (txt, uids)。
+
+    与 _collect_abstract 的差异: 内联头可出现在块内非首行(43_10814 作者行后空行接「要旨：…」),
+    也可能带「【目的】/【方法】/【結果】/【結論】」结构词(40_10569/43_10814 实证)。值来自原文切片。
+    """
+    lines = []
+    uids = [blk["uid"]]
+    # 头行本身: 「要旨：【目的】…」→ 取冒号后内容(含【目的】标签, 不剥离)
+    first = (blk["main_text"] or "").split("\n")[li]
+    first_rest = re.split(r"[:：]", first, maxsplit=1)
+    if len(first_rest) > 1 and first_rest[1].strip():
+        lines.append(first_rest[1].strip())
+    # 同块后续行: 至 Keywords/另一个摘要头/HTML 表格标签 止
+    for ln in (blk["main_text"] or "").split("\n")[li + 1:]:
+        s = ln.strip()
+        if not s:
+            continue
+        if KW_LINE.match(s) or JP_ABS_INLINE.match(s):
+            break
+        if s.startswith("<table") or s.startswith("<"):
+            break   # 表格 HTML 标签(OCR 把图表并入摘要块, 40_10569/42_93 实证), 不属摘要正文
+        lines.append(s)
+    # 日文「要旨」摘要恒在首页完整块内结束(结构词【結論】即末), 不做跨页续接——
+    # 跨页会把正文/表格卷进来(43_10814/40_10569 实证)。
+    return "\n".join(x for x in lines if x).strip(), uids
+
+
+def _collect_jp_headingless(pdata, pages, title_block):
+    """日文无头摘要(2026-11-12 T-20261112-WB-ABS): 无独立「要旨」头、无内联「要旨：」时,
+    在标题/作者/机构区之后取首页首个「日文正文长段」作为摘要(5_55 序言式摘要形态)。
+
+    判定信号: 块为 Text 型、日文比例高、折叠长度达标、位于标题块下方、且未到 Keywords/正文节头。
+    返回 (txt, uids, head_u)。无法判定返回 (None, [], None)。值来自原文切片, 不改写。
+    """
+    j0 = pdata[0]
+    H = j0["h"]
+    W = j0["w"]
+    title_bottom = title_block["box"][3] if title_block is not None else 0.0
+    # 下界: 首页 Keywords 行 / 英文摘要头 的位置。摘要恒在 Keywords 之前;
+    # 若首页已有英文摘要头(ABS_HEAD_EN)或 Keywords, 则该文为英文摘要文献, 无头日文摘要
+    # 候选块必须位于 keywords_y 上方(52_230725 实证: 英文摘要+Keywords 之后才是日文正文, 不应误判)。
+    kw_y = None
+    en_abs_present = False
+    for u in sorted(j0["unified"], key=lambda x: x["box"][1]):
+        t = (u["main_text"] or "").strip()
+        if u["type"] == "Section-header" and ABS_HEAD_EN.match(t):
+            en_abs_present = True
+        for ln in (u["main_text"] or "").split("\n"):
+            if KW_LINE.match(ln.strip()):
+                if kw_y is None or u["box"][1] < kw_y:
+                    kw_y = u["box"][1]
+    # 首页已有英文摘要头 → 该文以英文摘要为主, 不强行造日文无头摘要
+    if en_abs_present:
+        return None, [], None
+    # 首页正文流块候选(按 y 升序): Text 型, 位于标题区下方、Keywords 行上方
+    cands = []
+    for u in sorted(j0["unified"], key=lambda x: x["box"][1]):
+        if u.get("cross_page", {}).get("role"):
+            continue
+        if u["type"] != "Text":
+            continue
+        if u["box"][1] < title_bottom - 4:
+            continue
+        if kw_y is not None and u["box"][1] >= kw_y:
+            continue
+        cands.append(u)
+    # 逐块找首个「日文长段」: 跳过作者行(含上标 marker)、机构行、关键词行
+    for u in cands:
+        t = (u["main_text"] or "").strip()
+        if not t:
+            continue
+        first = t.split("\n")[0].strip()
+        # 跳过关键词/节头/文献区头
+        if KW_LINE.match(first) or JP_ABS_INLINE.match(first) or JP_KW_HEAD.match(first):
+            continue
+        if regress.REF_HEAD.search(first):
+            continue
+        # 跳过作者行(罗马锚/上标 marker/纯人名)与机构行
+        if _AUTHOR_ROW.search(first):
+            continue
+        if re.match(r"^\$\s*\^", first) or MARKER_LINE.match(first):
+            continue
+        # 日文比例高且长度达标 → 判为摘要首段
+        if _japanese_ratio(first) > 0.15 and len(_fold(first)) >= 40:
+            # 从该行起收集, 至该块末尾(同块后续行), 停于 Keywords
+            lines = []
+            for ln in t.split("\n"):
+                s = ln.strip()
+                if not s:
+                    continue
+                if KW_LINE.match(s) or JP_ABS_INLINE.match(s):
+                    break
+                lines.append(s)
+            txt = "\n".join(lines).strip()
+            if txt:
+                return txt, [u["uid"]], u
+    return None, [], None
+
+
 def abstract_doc(doc, out_root):
     """单篇③: 韩英双摘要定位(首页优先, 英文摘要缺则检索尾页文献区后残余区域——regress
     ref_region 遇 Abstract 截断已证明此形态存在)。尾页英文 matter 顺带供给 title_en 兜底与
@@ -142,7 +243,10 @@ def abstract_doc(doc, out_root):
                 "source": "regex", "uid_head": u and u["uid"]}
 
     res = {}
-    # —— 摘要(2026-11-11 扩展日文): 日文头词「要旨/概要/抄録/要约」与韩文 요약 同归 abstract 字段 ——
+    # —— 摘要(2026-11-11 扩展日文; 2026-11-12 T-20261112-WB-ABS 补内联/无头): ——
+    # 日文「要旨/概要/抄録/要約」与韩文 요약 同归 abstract 字段。三级查找:
+    #   ① 独立头(要旨 独行) ② 内联头(要旨：…) ③ 无头首段(序言式摘要)。
+    #   韩文路径(独立头 ABS_HEAD_KO / 内联 ABS_INLINE_KO)保持原语义不变。
     h_ko = _find_head(ABS_HEAD_KO, [0])
     h_jp = _find_head(JP_ABS_HEAD, [0]) if h_ko is None else None
     if h_ko is not None or h_jp is not None:
@@ -152,8 +256,9 @@ def abstract_doc(doc, out_root):
         res["abstract"] = {"value": txt or None, "page": 1, "box": head["box"],
                            "confidence": _conf(head, uids)}
     else:
-        # 内联头形态(895567 '요 앵 : …' 与 Key words 同块): 定位行后收集
+        # ② 内联头: 韩文(요약：) 或 日文(要旨：/【目的】), 遍历首页各块各行(含块内非首行)
         found = None
+        jp_found = None
         for u in pdata[0]["unified"]:
             if u.get("cross_page", {}).get("role"):
                 continue
@@ -161,12 +266,21 @@ def abstract_doc(doc, out_root):
                 continue
             lns = (u["main_text"] or "").split("\n")
             for i, ln in enumerate(lns):
-                if ABS_INLINE_KO.match(ln.strip()):
-                    found = (u, i)
+                if JP_ABS_INLINE.match(ln.strip()):
+                    jp_found = (u, i)
                     break
-            if found:
+                if found is None and ABS_INLINE_KO.match(ln.strip()):
+                    found = (u, i)
+            if jp_found or found:
                 break
-        if found:
+        if jp_found:
+            # 日文内联「要旨：…」(40_10569/43_10814/42_93 形态)
+            blk, li = jp_found
+            txt, uids = _collect_jp_inline(pdata, pages, blk, li)
+            res["abstract"] = {"value": txt or None, "page": 1, "box": blk["box"],
+                               "confidence": _conf(blk, uids)}
+        elif found:
+            # 韩文内联「요약：…」(895567 形态, 原逻辑)
             blk, li = found
             first_rest = re.split(r"[:：]", (blk["main_text"] or "").split("\n")[li], maxsplit=1)
             lines = [first_rest[1].strip()] if len(first_rest) > 1 and first_rest[1].strip() else []
@@ -203,7 +317,30 @@ def abstract_doc(doc, out_root):
                                "confidence": {"level": "mid", "basis": "内联 요약 头(与Key words同块)",
                                               "source": "regex", "uid_head": blk["uid"]}}
         else:
-            res["abstract"] = {"value": None, "confidence": _conf(None, [])}
+            # ③ 无头首段: 日文文献序言式摘要(5_55 形态, 无「要旨」头), 仅当首页确为日文时尝试
+            j0 = pdata[0]
+            jp_full = "".join((u["main_text"] or "") for u in j0["unified"])
+            title_block = _find_head(ABS_HEAD_EN, [0]) or _find_head(JP_ABS_HEAD, [0])
+            if _japanese_ratio(jp_full) > 0.05 and _hangul_ratio(jp_full) < 0.1:
+                # 用 layout_ja 的 front zone 或标题块定位: 优先取标题块(日文主标题 Section-header)
+                if title_block is None:
+                    # 日文主标题: 首页首个非栏目名的 Section-header
+                    for u in sorted(j0["unified"], key=lambda x: x["box"][1]):
+                        if u["type"] == "Section-header" and not JP_SECTION_TAG.match(
+                                (u["main_text"] or "").strip()) and not JP_ABS_HEAD.match(
+                                (u["main_text"] or "").strip()):
+                            title_block = u
+                            break
+                txt, uids, head_u = _collect_jp_headingless(pdata, pages, title_block)
+                if txt:
+                    res["abstract"] = {"value": txt, "page": 1, "box": head_u["box"],
+                                       "confidence": {"level": "mid",
+                                                      "basis": "无头首段(序言式摘要, 标题/作者后取至Keywords)",
+                                                      "source": "regex", "uid_head": head_u["uid"]}}
+                else:
+                    res["abstract"] = {"value": None, "confidence": _conf(None, [])}
+            else:
+                res["abstract"] = {"value": None, "confidence": _conf(None, [])}
     # —— 英摘要: 首页 → 全文档倒序检索(英文摘要可能位于文末参考文献区之后/之内——
     #    regress ref_region 遇 Abstract 截断已证明此形态; 1892171 '< ABSTRACT >' 在文献区尾) ——
     h_en = _find_head(ABS_HEAD_EN, [0])
