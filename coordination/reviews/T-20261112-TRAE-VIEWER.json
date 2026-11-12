@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-TRAE-VIEWER",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_secrets": true,
+  "handoff_present": true,
+  "preview_match": true
+ },
+ "notes": "Approved. Diff is viewer.py only (+144/-23); no metadata/schema/out writes. Generated viewer_compare.html from temp copies using the current frozen metadata: 52_230725 shows 日文标题/日文摘要 labels and 6 待复核 warnings (empty abstract, kana abstract_en, 0 authors); 42_103 shows 4 warnings including affiliation-like abstract_en; 43_10814 shows 4 warnings including Key words title_en. 40_10569 now has a real abstract after the WB merge, so its old empty-abstract warning correctly disappears. Branch tests 10/10; NER selfcheck OK; compileall OK. Non-blocking: _EN_AFFIL/dice heuristic can false-positive on a short real English abstract containing Center/Institute; warning rows have no uid by design; warnings appear in both overview and page-1 band (2x duplicate count). After merge run the 12-test main suite."
+}
