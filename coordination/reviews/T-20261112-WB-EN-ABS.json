@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-WB-EN-ABS",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_secrets": true,
+  "handoff_present": true,
+  "out_hash_unchanged": true
+ },
+ "notes": "Approved. Only metapy/abs.py changed (+31/-3). Re-ran on wb_en_abs_eval: 52_230725 abstract_en now 721 chars pure English (0 kana); 40_10569 now 995 chars English at p7/high (non-empty, so high is valid); 42_103 now 1062 chars English at p1/mid, no Japanese leakage. Tests 12/12; abs 3/3; common 8/8; NER OK; compileall OK; canonical out full hash remains 09a8820b6e21dbee. Non-blocking: 9_1/5_55 title_en idempotency caveat documented in handoff; _AUTHOR_ROW regex now requires a 2-word parenthetical romanization, add a regression case for one-word romanized author lines later. WorkBuddy updated the task JSON on its branch but not the main coordination copy; I set main to review before the gate."
+}
