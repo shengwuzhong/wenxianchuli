@@ -1,0 +1,16 @@
+{
+ "task": "T-20261112-TRAE-LAYOUT",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_secrets": true,
+  "handoff_present": true,
+  "screenshots_present": true,
+  "out_hash_unchanged": true
+ },
+ "notes": "Approved as a verification round. No new viewer.py code was needed; the T-VIEWER code is already in main. With the layoutfix merge, merge_out detects 7 double-column pages (52 p0 is correctly single; 40 p3 is double; 40 p6 is single). Independently re-ran the order check on trae_layout_eval2: 14/14 pages identical, 0 inversions; 7 double-column pages all left-before-right. Screenshots exist (40_10569_p1 576KB, 52_230725_p1 675KB). Tests 12/12; NER OK; compile OK; canonical out full hash remains 09a8820b6e21dbee. Note: acceptance text said 8/8; the actual layoutfix-consistent count is 7/7 double columns (14/14 all pages)."
+}

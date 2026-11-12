@@ -1,0 +1,19 @@
+{
+ "task": "T-20261112-TRAE-LAYOUT",
+ "title": "查看器叠加日文 layout 标注（复核轮）",
+ "type": "verification",
+ "branch": "agent/trae/T-20261112-TRAE-LAYOUT",
+ "viewer_commit": "dcc598e",
+ "merged_main_into_branch": "8a38d18",
+ "merge_commit": null,
+ "verified_on": "5b1f5a0",
+ "tag": "verify-T-20261112-TRAE-LAYOUT",
+ "tests": "12/12; ner_lite selfcheck OK; compileall OK",
+ "review": "coordination/reviews/T-20261112-TRAE-LAYOUT.json",
+ "handoff": "coordination/tasks/T-20261112-TRAE-LAYOUT/handoff.md",
+ "screenshots": [
+  "out_llm_trial/trae_layout_eval2/shots/40_10569_p1.png",
+  "out_llm_trial/trae_layout_eval2/shots/52_230725_p1.png"
+ ],
+ "note": "No new viewer code; T-VIEWER code already merged. With layoutfix, 7 double-column pages / 14 pages total all 0 inversions. Canonical out/ unchanged: 09a8820b6e21dbee3f34c3af19d428ac1672234a7b00c32dd7900a8e2b72b091."
+}
