@@ -1,7 +1,7 @@
-# 日文文献处理：进度与规划说明
+﻿# 日文文献处理：进度与规划说明
 
 - 版本：2026-11-12
-- 基线：`main` @ `21db8a8`（GT/评审/布局回归已提交；此前 `75a3da1` 为 7 个抽取任务 done）
+- 基线：`main` @ `c61a3fc`（GT/评审/布局回归已提交；此前 `75a3da1` 为 7 个抽取任务 done）
 - 适用范围：`out/` 下 11 篇日文文献（10 篇已有正式元数据，`2025_1` 只有 merged/unified/viewer，没有 `metadata.json`）。用户口径为“12 篇、2025_1 为第 12 篇”，但 `uploads/` 与 `out/` 实际只有 11 个 PDF，第 12 篇未找到；见 §6。
 - 当前策略：**A 方案冻结**。正式 `out/` 保持 2026-11-12T1413 预览，不重跑；所有验证在临时副本进行。新预览按用户决定放 `out_preview/`。
 - 完成度口径：**工程完成度**（已通过验收的子项 / 当前定义的子项），不是字段准确率。金标准已建 11 篇文档字段/摘要 + 3 篇 refs，refs 准确率仍以 `eval/ja_gold.json` 为准。
@@ -33,7 +33,7 @@
 | P0-2 | 日文作者切分 / 机构关联 | P0 | 已完成（核心） | 80% | `metapy/front.py:7` `_BARE_SUP`；`:64` `_parse_author_line`；`:180` `front_doc`；`metapy/common.py:425` `EN_AFFIL_STRONG`；merge `8d1ecd6` |
 | P0-3 | 英文摘要 / 英文标题残余修复 | P0 | 已完成（残余 1 篇） | 90% | `metapy/abs.py:12` `_AUTHOR_ROW`；`:17` `_is_en_abstract_start`；`:41` `_collect_abstract`；merge `45a4b0e` |
 | P0-4 | `layout_ja` 栏检测 / 前区 / 阅读序实现 | P0 | 已完成（12 页欠检） | 85% | `metapy/layout_ja.py:75` `_column_boundary_ja`；`:99` `_order_blocks_ja`；`:145` `layout_page`；对齐 `merge_out.py:62` `order_blocks`；merge `71c1d05` |
-| P0-5 | 查看器日文标签、字段警告、版面叠加 | P0 | 已完成 | 100% | `viewer.py:753` `_META_LABELS`；`:777` `_meta_is_ja`；`:796` `_meta_warnings`；`:1068` `_meta_overview`；merge `31e8098`；验证 tag `verify-T-20261112-TRAE-LAYOUT` |
+| P0-5 | 查看器日文标签、字段警告、版面叠加 | P0 | 已完成 | 100% | `viewer.py:782` `_META_LABELS`；`:806` `_meta_is_ja`；`:825` `_meta_warnings`；`:1097` `_meta_overview`；merge `31e8098`；验证 tag `verify-T-20261112-TRAE-LAYOUT` |
 | P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 进行中（review changes requested） | 70% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；WorkBuddy `810de5a`；review `coordination/reviews/T-20261112-WB-REFS-JA.md` |
 | P1-2 | 引文句（cspan）日文化：全角括号、日文作者-年份、回链 | P1 | 进行中 | 45% | `metapy/cspan.py:35` `NARR`（仅 ASCII 括号）；`:274` `_ref_pages`；`:288` `cspan_doc` |
 | P1-3 | 本篇来源（`issue`）日文刊名 / 关键词 | P1 | 进行中 | 60% | `metapy/issue.py:133` `_jname_from_line`；`:201` `extract`；`:385` `issue_doc` |
