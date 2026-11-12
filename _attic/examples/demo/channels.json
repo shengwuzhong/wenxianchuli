@@ -1,0 +1,49 @@
+{
+ "keep_api_zip": false,
+ "_note": "离线 demo 配置: MinerU 源尺寸=实际页图像素(521x688), 无 token, 三个 *_api.enabled=false。由 make_demo.py 生成, 请勿手改。",
+ "mineru": {
+  "src_w": 521,
+  "src_h": 688,
+  "x_off": 0,
+  "y_off": 0,
+  "_note": "显式源尺寸使 MinerU 页图像素坐标零缩放"
+ },
+ "mineru_api": {
+  "token": "",
+  "src_w": 521,
+  "src_h": 688,
+  "x_off": 0,
+  "y_off": 0,
+  "model_version": "vlm",
+  "language": "korean",
+  "is_ocr": false,
+  "timeout": 1800,
+  "enabled": false
+ },
+ "dots": {
+  "src_w": null,
+  "src_h": null,
+  "x_off": 0,
+  "y_off": 0
+ },
+ "paddle": {},
+ "dots_api": {
+  "base": "https://dotsocr.xiaohongshu.com",
+  "model": "dots.mocr",
+  "prompt": "prompt_layout_all_en",
+  "timeout": 1800,
+  "enabled": false
+ },
+ "paddle_api": {
+  "token": "",
+  "model": "PaddleOCR-VL",
+  "timeout": 900,
+  "enabled": false
+ },
+ "desktop": {
+  "exe": "",
+  "landing": "",
+  "port": 9223,
+  "kill_existing": false
+ }
+}

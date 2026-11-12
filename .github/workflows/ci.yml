@@ -1,0 +1,118 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compile:
+    name: compile + import (py ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install runtime deps
+        run: pip install -r requirements.txt
+      - name: Byte-compile every module (syntax gate)
+        run: python -m compileall -q .
+      - name: Import check (no service calls, no credentials)
+        run: |
+          python - <<PY
+          import pipeline, pipeline_io, viewer, unify, merge_out, regress, mineru_drive
+          import metadata, ner_lite
+          import metapy
+          from metapy import m3_doc, refs_doc, front_doc, abstract_doc, llm_apply, report_meta, rebuild_viewer
+          print("config layers:", sorted(pipeline.load_cfg()))
+          PY
+      - name: Unified data-safety regression
+        run: python -W error::ResourceWarning -m unittest -v test_pipeline.py
+      - name: Entity gate selfcheck (offline mock model, no network)
+        run: |
+          # 合成块 + MockModel: 锚定/外延/跨块/著录脚注/去重的契约, 不调用任何 API。
+          # 产物写进 out_llm_trial/, 与本 job 的其它步骤无关。
+          python ner_lite.py selfcheck
+
+  demo:
+    # 离线冒烟: 合成 PDF + 三家 mock 产物 -> 全链路(适配/标定/合并/归一化/查看器)。
+    # 不需要 token、不联网。渲染栈用 pypdfium2 + Pillow(已在 requirements.txt)。
+    name: offline demo (py ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -r requirements.txt
+      - name: Generate demo inputs (synthetic PDF + 3 mock channel outputs)
+        run: |
+          python _attic/examples/make_demo.py
+          mkdir -p _attic/examples/demo/samples
+          # make_demo 只在有源 PDF 时才拷贝样例; 这里补一份最小的源 PDF,
+          # 让 demo 真正走"渲染页图"这条链, 而不是靠本地遗留的演示文件。
+          python - <<PY
+          import pathlib
+          p = pathlib.Path("_attic/examples/demo/samples/demo_kr.pdf")
+          if not p.is_file():
+              p.write_bytes(b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+                            b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+                            b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>endobj\n"
+                            b"trailer<</Root 1 0 R>>\n%%EOF\n")
+              print("wrote placeholder source PDF")
+          else:
+              print("source PDF present:", p.stat().st_size, "bytes")
+          PY
+          ls -R _attic/examples/demo | head -40
+      - name: Run pipeline end to end (known pixel calibration, no network)
+        run: |
+          set -x
+          # 本地即调用的适配器逐个 import, 给后续 assert 的失败模式留可读的 Traceback
+          python - <<PY
+          import pipeline, unify
+          print("pipeline imports OK")
+          PY
+          python pipeline.py _attic/examples/demo/samples/demo_kr.pdf \
+            --mineru _attic/examples/demo/inbox/demo_kr__mineru \
+            --dots   _attic/examples/demo/inbox/demo_kr__dots \
+            --paddle _attic/examples/demo/inbox/demo_kr__paddle \
+            --channels _attic/examples/demo/channels.json \
+            --out _attic/examples/demo/out/demo_kr
+      - name: Assert artifacts exist
+        run: |
+          set -e
+          O=_attic/examples/demo/out/demo_kr
+          for f in index.html viewer_mineru.html viewer_dots.html viewer_paddle.html \
+                   viewer_compare.html merged.json merged.md merged/page_0.json \
+                   unified/page_0.json unified/_unified_summary.json pages/page_0.jpg; do
+            test -s "$O/$f" || { echo "MISSING $O/$f"; exit 1; }
+          done
+          echo "artifacts OK"
+      - name: Assert channel data survived (3 channels + per-channel blocks)
+        run: |
+          python - <<PY
+          import json
+          p = "_attic/examples/demo/out/demo_kr"
+          d = json.load(open(p + "/merged.json", encoding="utf-8"))
+          ch = d["channels"]
+          assert set(ch) == {"mineru", "dots", "paddle"}, ch
+          assert all(v["blocks"] > 0 for v in ch.values()), ch
+          u = json.load(open(p + "/unified/_unified_summary.json", encoding="utf-8"))
+          m = u["metrics"]
+          assert 0 < m["coverage"] < 1 and m["groups"] == 7, m
+          assert m["raw_blocks"] == 22 and len(u["orphans"]) == 1, u
+          print("channels:", ch, "| unified metrics:", m)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-out-py${{ matrix.python }}
+          path: _attic/examples/demo/out
