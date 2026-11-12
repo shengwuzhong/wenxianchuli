@@ -24,6 +24,22 @@
 > **共享文件**（`channels.json`、`AGENTS.md`、`coordination/**`）和“字面同一目录”模式最有用；
 > 分支内文件由 Git 隔离，跨 worktree 不共享 hash 语义。
 
+已创建（2026-11-12，基线 `4931d6c`）：
+
+| 工具 | 工作树 | 分支 |
+| --- | --- | --- |
+| DeepSeek | `.worktrees/deepseek` | `agent/deepseek/main` |
+| WorkBuddy | `.worktrees/workbuddy` | `agent/workbuddy/main` |
+| Trae CN | `.worktrees/trae` | `agent/trae/main` |
+
+每个工具只打开自己的工作树。PowerShell 示例：
+
+```powershell
+$main = 'D:\处理工具\2\multidoc-ocr-compare-main'
+$env:COORD_ROOT = Join-Path $main 'coordination'
+$env:REPO_ROOT  = Join-Path $main '.worktrees\deepseek'
+```
+
 ## 2. 所有权矩阵
 
 ### WorkBuddy（2026-11-12 已改，基线已收）
