@@ -56,7 +56,7 @@ def ensure_dir(path):
 
 def read_json(path, default=None):
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, "r", encoding="utf-8-sig") as fh:
             return json.load(fh)
     except (OSError, ValueError):
         return default
