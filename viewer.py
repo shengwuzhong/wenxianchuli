@@ -413,11 +413,11 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 .laychip:hover{box-shadow:0 0 0 2px rgba(37,99,235,.2)}
 .layg circle{fill:#fff;fill-opacity:.9;stroke-width:3}
 .layg text{font-size:30px;font-weight:bold;text-anchor:middle;dominant-baseline:central;pointer-events:none}
-.layg.front circle{stroke:#7c3aed}.layg.front text{fill:#6d28d9}
-.layg.c0 circle{stroke:#2563eb}.layg.c0 text{fill:#1d4ed8}
-.layg.c1 circle{stroke:#d97706}.layg.c1 text{fill:#b45309}
-.layg.sgl circle{stroke:#0f766e}.layg.sgl text{fill:#0f766e}
-.layg.fix circle{stroke:#9ca3af}.layg.fix text{fill:#6b7280}
+.layg .front circle{stroke:#7c3aed}.layg .front text{fill:#6d28d9}
+.layg .c0 circle{stroke:#2563eb}.layg .c0 text{fill:#1d4ed8}
+.layg .c1 circle{stroke:#d97706}.layg .c1 text{fill:#b45309}
+.layg .sgl circle{stroke:#0f766e}.layg .sgl text{fill:#0f766e}
+.layg .fix circle{stroke:#9ca3af}.layg .fix text{fill:#6b7280}
 .layb{stroke:#dc2626;stroke-width:3;stroke-dasharray:12 8;opacity:.6;pointer-events:none}
 body.layoff .layg,body.layoff .layb{display:none}
 .mf tr:hover{background:#fef9c3}
@@ -1264,8 +1264,11 @@ def _layout_overlay(u_list, W, H):
     def is_content(u):
         """参与栏流的块: Text/Footnote 且非前区, 且不是通栏(宽>65%页宽)。
         通栏判据只用宽度: layout_ja 的 boundary 是栏归属阈值而非几何中线(左栏块常越过它),
-        用「跨 boundary」判通栏会把整栏正文误判成通栏。摘要/脚注/跨栏图表本来就是宽块, 宽度即可识别。"""
+        用「跨 boundary」判通栏会把整栏正文误判成通栏。摘要/脚注/跨栏图表本来就是宽块, 宽度即可识别。
+        col 不在 0/1 的块(layout_ja 用 -1 标记 full 跨栏块)也不属于任何一栏, 不能按左栏画。"""
         if u.get("type") not in _LAY_CONTENT or u["layout"].get("zone") == "front":
+            return False
+        if u["layout"].get("col") not in (0, 1):
             return False
         box = u.get("box") or []
         if len(box) != 4:
