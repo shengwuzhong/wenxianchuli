@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-DS-READORDER",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_secrets": true,
+  "handoff_present": true,
+  "self_review": true
+ },
+ "notes": "Self-review by the author/Integrator. merge_out.order_blocks is covered by two new unit tests; test_pipeline.py is 12/12. Re-ran merge_doc on temp copies of 52_230725 and 40_10569: section headers now precede the right-column body, page headers precede the title, and footnotes follow both columns. unify metrics are unchanged vs the current-code baseline, because unify.intra_group re-sorts independently. No out/ writes, no unify.py/m3 changes. Follow-ups (non-blocking): (1) thresholds 0.60W/0.65W and the 4-block minimum are heuristics; tune with the broader corpus; (2) a full-width block in the middle of a page can still split the column flow; use layout_ja.reading_order later if needed; (3) add a regression case for a full-width table/figure page."
+}
