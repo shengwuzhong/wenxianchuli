@@ -1,0 +1,16 @@
+{
+ "task": "T-20261112-WB-EN-ABS",
+ "title": "日文文献英文摘要残余修复（52/40/42_103）",
+ "branch": "agent/workbuddy/T-20261112-WB-EN-ABS",
+ "commit": "352d48a",
+ "code_commit": "7fcee7d",
+ "merge_commit": "45a4b0e",
+ "tag": "merge-T-20261112-WB-EN-ABS",
+ "merged_at": "2026-11-12T15:51:09+08:00",
+ "integrator": "deepseek",
+ "tests": "12/12; abs 3/3; common 8/8; ner_lite selfcheck OK",
+ "review": "coordination/reviews/T-20261112-WB-EN-ABS.json",
+ "handoff": "coordination/tasks/T-20261112-WB-EN-ABS/handoff.md",
+ "preview": "coordination/previews/T-20261112-WB-ABS-preview.json",
+ "note": "52_230725 abstract_en now 721 chars pure English; 40_10569 now 995 chars English p7/high; 42_103 now 1062 chars English p1/mid. Task JSON conflicted because WorkBuddy updated the branch copy; resolved with main/review copy. Canonical out/ unchanged: full hash 09a8820b6e21dbee3f34c3af19d428ac1672234a7b00c32dd7900a8e2b72b091."
+}
