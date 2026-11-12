@@ -31,6 +31,14 @@ def _path(task_id):
     return os.path.join(TASKS, task_id + ".json")
 
 
+def _items(s):
+    return [x.strip() for x in (s or "").split(",") if x.strip()]
+
+
+def _acceptance(s):
+    return [x.strip() for x in (s or "").split(";") if x.strip()]
+
+
 def cmd_create(a):
     path = _path(a.task_id)
     task = {
@@ -39,13 +47,13 @@ def cmd_create(a):
         "priority": a.priority,
         "owner": a.owner,
         "status": "claimed",
-        "depends_on": [x for x in (a.depends_on or "").split(",") if x],
-        "allowed_files": [x for x in (a.files or "").split(",") if x],
-        "forbidden": list(DEFAULT_FORBIDDEN) + [x for x in (a.forbidden or "").split(",") if x],
-        "allow_frozen": [x for x in (a.allow_frozen or "").split(",") if x],
+        "depends_on": _items(a.depends_on),
+        "allowed_files": _items(a.files),
+        "forbidden": list(DEFAULT_FORBIDDEN) + _items(a.forbidden),
+        "allow_frozen": _items(a.allow_frozen),
         "branch": a.branch or ("agent/%s/%s" % (a.owner, a.task_id)),
         "base_commit": a.base,
-        "acceptance": [x for x in (a.acceptance or "").split(";") if x],
+        "acceptance": _acceptance(a.acceptance),
         "handoff_to": a.handoff_to or "",
         "created_at": iso(),
         "updated_at": iso(),

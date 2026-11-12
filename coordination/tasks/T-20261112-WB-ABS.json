@@ -1,0 +1,35 @@
+{
+ "id": "T-20261112-WB-ABS",
+ "title": "日文摘要抽取修复（inline 要旨 + 无头摘要）",
+ "priority": "P0",
+ "owner": "workbuddy",
+ "status": "claimed",
+ "depends_on": [],
+ "allowed_files": [
+  "metapy/abs.py",
+  "metapy/layout_ja.py"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/workbuddy/T-20261112-WB-ABS",
+ "base_commit": "main",
+ "acceptance": [
+  "40_10569/43_10814/42_93/5_55 temp copies: abstract non-null and contains Japanese abstract",
+  "no regression test_pipeline 10/10",
+  "no canonical out/ writes",
+  "handoff with before/after table"
+ ],
+ "handoff_to": "",
+ "created_at": "2026-11-12T05:56:49+00:00",
+ "updated_at": "2026-11-12T05:56:49+00:00"
+}
