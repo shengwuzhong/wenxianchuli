@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-TRAE-VIEWER",
+ "title": "查看器日文元数据面板与字段警告",
+ "branch": "agent/trae/T-20261112-TRAE-VIEWER",
+ "commit": "9aa5e95",
+ "merge_commit": "31e8098",
+ "tag": "merge-T-20261112-TRAE-VIEWER",
+ "merged_at": "2026-11-12T14:33:02+08:00",
+ "integrator": "deepseek",
+ "tests": "branch 10/10; main 12/12; ner_lite selfcheck OK; compileall OK",
+ "review": "coordination/reviews/T-20261112-TRAE-VIEWER.json",
+ "handoff": "coordination/tasks/T-20261112-TRAE-VIEWER/handoff.md",
+ "preview": "coordination/previews/T-20261112-WB-ABS-preview.json",
+ "note": "Viewer-only change. Generated viewer_compare.html from temp copies: 52_230725 labels/warnings, 42_103 affiliation abstract_en warning, 43_10814 Key words title_en warning; 40_10569 empty-abstract warning correctly disappears after WB abstract merge. Canonical out/ was not regenerated; full-out sha256 remains 09a8820b6e21dbee3f34c3af19d428ac1672234a7b00c32dd7900a8e2b72b091."
+}
