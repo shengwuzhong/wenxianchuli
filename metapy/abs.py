@@ -5,8 +5,13 @@ from .common import *
 
 
 # 作者行信号(英题下 front-matter 里需跳过的行): 罗马拼音锚「名 (Roman)」或上标 marker '^{*}'
+# (2026-11-12 T-20261112-WB-EN-ABS) 括号分支精确化为「罗马拼音姓名锚」: 括号内须含空格分隔的
+# ≥2 个纯字母词(如 '(Toshihiro KOGURE)'/'(KOGURE Toshihiro)'), 排除缩写 '(SEM)'/'(FIM)'/
+# '(ADL)' 单一全大写词——旧式 '[（(][A-Za-z .\-']+[)）]' 会误匹配缩写括号, 使英文摘要首句
+# 'Basis, conditions... (SEM) are described' 被判作者行而跳过(52_230725 实证)。
 _AUTHOR_ROW = re.compile(
-    r"[（(][A-Za-z .\-']+[)）]|\^\{[\*\d,，]+\}|\*\s*\{[^}]*\}|<sup>")
+    r"[（(][A-Za-z][A-Za-z .\-']*\s+[A-Za-z][A-Za-z .\-']+[)）]"
+    r"|\^\{[\*\d,，]+\}|\*\s*\{[^}]*\}|<sup>")
 
 
 def _is_en_abstract_start(s, u):
@@ -23,7 +28,10 @@ def _is_en_abstract_start(s, u):
     # (2026-11-12 T-20261112-WB-META2) 机构行不能当摘要开头: 'Asahi TelePathology Center,
     # Asahi General Hospital' / 'Division of Pathology, Department of Oral Diagnostic
     # Sciences...' 是机构/作者行(42_103/42_185/42_93 实证), 含强机构词即排除。
-    if EN_AFFIL_STRONG.search(s):
+    # (2026-11-12 T-20261112-WB-EN-ABS) 但机构行是名词短语(无句末标点), 摘要正文是完整句子
+    # (以 .!? 结尾)——摘要正文提及 'Hospital'/'hospitals'/'clinics' 时(42_103 英文摘要实证)
+    # 也会命中 EN_AFFIL_STRONG, 故只排除「无句末标点」的机构词行, 含句号的英文长句不误判。
+    if EN_AFFIL_STRONG.search(s) and not re.search(r"[.!?]\s*$", s):
         return False
     if _hangul_ratio(s) > 0.2 or _japanese_ratio(s) > 0.15:
         return False   # 非英文(含韩/日文)不出
@@ -50,7 +58,12 @@ def _collect_abstract(pdata, pages, head_u, max_pages=3, skip_fold=None):
                     and u["box"][1] >= head_u["box"][3] - 2 \
                     and not (skip_fold and _fold((u["main_text"] or "").split("\n")[0]) == skip_fold):
                 return "\n".join(out_lines).strip(), uids   # 区内新节头=界(先判停, 其行不入摘要)
-            if u["type"] == "Section-header" and regress.REF_HEAD.search(u["main_text"] or ""):
+            # (2026-11-12 T-20261112-WB-EN-ABS) 文献区头终止须限定在摘要头下方: 尾页「参考文献」
+            # 常位于 Abstract 头之上(40_10569 u6_3 在 u6_5 Abstract 上方), 旧判断无位置条件,
+            # 会把 head 上方的参考文献头误当摘要终止界, 导致 head 下方摘要正文(作者块内
+            # 'Background and purpose: …')漏收、abstract_en 落空。
+            if u["type"] == "Section-header" and regress.REF_HEAD.search(u["main_text"] or "") \
+                    and u["box"][1] >= head_u["box"][3] - 2:
                 return "\n".join(out_lines).strip(), uids
             y1, y3 = u["box"][1], u["box"][3]
             lines = (u["main_text"] or "").split("\n")
@@ -249,6 +262,11 @@ def abstract_doc(doc, out_root):
         if u is None and not us:
             lv = "empty"
             basis = basis or ["未定位摘要头"]
+        # (2026-11-12 T-20261112-WB-EN-ABS) 头定位到但无正文块, 值亦为空——'Abstract' 头后
+        # 无正文(40_10569 修复前: Abstract 头 u6_5 定位到但正文被误截, uids 空)时不得标 high。
+        elif u is not None and not us:
+            lv = "empty"
+            basis = basis or ["头定位但无正文块"]
         return {"level": lv, "basis": "; ".join(basis) or "界限干净",
                 "source": "regex", "uid_head": u and u["uid"]}
 
@@ -431,6 +449,16 @@ def abstract_doc(doc, out_root):
                             stop = True
                             break
                         if re.match(r"(?i)^abstract$", s):
+                            stop = True
+                            break
+                        # (2026-11-12 T-20261112-WB-EN-ABS) 英文摘要遇日文行即止: 英题下无头的
+                        # 英文摘要正文是纯英文, 之后接日文正文(42_103 '要旨：'/'はじめに' 实证)。
+                        # started 后遇到日文比例显著行(>0.15)即视为语言切换终止, 避免日文正文被卷入。
+                        # 纯汉字日文节头(如 '総 説')无仮名、_japanese_ratio=0, 另以日文节头/摘要头
+                        # 特征词兜底(JP_SECTION_TAG/JP_ABS_INLINE/JP_ABS_HEAD)。
+                        if started and (_japanese_ratio(s) > 0.15 or JP_SECTION_TAG.match(s)
+                                        or JP_ABS_INLINE.match(s) or JP_ABS_HEAD.match(s)) \
+                                and _hangul_ratio(s) < 0.1:
                             stop = True
                             break
                         if u["type"] != "Footnote":
