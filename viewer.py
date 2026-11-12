@@ -140,7 +140,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .lg{display:inline-block;margin-left:14px;font-size:12px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px;vertical-align:-1px}
 .fullmd{padding:14px 18px;font-size:14px;line-height:1.9;max-width:1100px;margin:0 auto;background:#fff;min-height:600px}
 </style></head><body>
-<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYBTN@@
+<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYBTN@@@@LAYOUTBTN@@
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
 </header>
 @@BODY@@
@@ -349,6 +349,7 @@ def build_viewer(out_fp, title, sizes, per_page=None, md_text=None, calib_note=N
         body_html = '<div class="fullmd">%s</div>' % md2html(md_text)
     v = VIEWER_TMPL.replace("@@TITLE@@", title).replace("@@NAV@@", nav)
     v = v.replace("@@LAYBTN@@", "")
+    v = v.replace("@@LAYOUTBTN@@", "")   # layout 叠加仅 1:3 对照查看器有(unified 产物)
     v = v.replace("@@BODY@@", body_html).replace("@@DATA@@", json.dumps(data, ensure_ascii=False))
     if calib_note:
         v = v.replace("<head>", "<head>\n<!-- calib: %s -->" % calib_note, 1)
@@ -372,8 +373,8 @@ section{margin:20px 0}h2{font-size:15px;color:#374151;border-left:4px solid #256
 .pane.meta.ov .ptitle{background:#7c3aed}   /* 第1页总览横带: 紫头与普通横带(灰头)区分 */
 .mfw{font-size:12px;padding:6px 8px}
 body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LAYBTN 降为框叠加诊断——只读叠加, 不切换布局/不藏渠道栏 */
-#laybtn{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:5px;padding:1px 8px;font-size:12px;margin-left:8px}
-#laybtn.on{background:#dbeafe;border-color:#2563eb}
+#laybtn,#layoutbtn{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:5px;padding:1px 8px;font-size:12px;margin-left:8px}
+#laybtn.on,#layoutbtn.on{background:#dbeafe;border-color:#2563eb}
 .mfh{font-size:11px;color:#6b7280;font-weight:bold;margin:6px 0 3px;border-top:1px solid #e5e7eb;padding-top:5px}
 .mfg:first-child .mfh{border-top:none;margin-top:0;padding-top:0}
 .mf{padding:3px 6px;margin:2px 0;border-radius:5px;cursor:pointer;background:#fafafa;border-left:3px solid #e5e7eb}
@@ -400,6 +401,25 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 .mfwnote{font-size:10px;color:#b45309;margin-right:4px}
 .mf.warn{border-left-color:#dc2626;background:#fff7ed}
 .mf.warn .md{background:#dc2626}
+/* layout_ja 叠加(2026-11-12 T-20261112-TRAE-LAYOUT): 页顶条带 + 原图阅读序序号/栏分界 */
+.laybar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px}
+.laytag{font-size:11px;color:#374151;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px}
+.laytag.dbl{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.laytag.sgl{background:#f3f4f6;color:#4b5563}
+.laychip{font-size:11px;border-radius:4px;padding:1px 7px;cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;color:#334155}
+.laychip.front{background:#f3e8ff;border-color:#c4b5fd;color:#6d28d9}
+.laychip.c0{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.laychip.c1{background:#fef3c7;border-color:#fbbf24;color:#b45309}
+.laychip:hover{box-shadow:0 0 0 2px rgba(37,99,235,.2)}
+.layg circle{fill:#fff;fill-opacity:.9;stroke-width:3}
+.layg text{font-size:30px;font-weight:bold;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.layg.front circle{stroke:#7c3aed}.layg.front text{fill:#6d28d9}
+.layg.c0 circle{stroke:#2563eb}.layg.c0 text{fill:#1d4ed8}
+.layg.c1 circle{stroke:#d97706}.layg.c1 text{fill:#b45309}
+.layg.sgl circle{stroke:#0f766e}.layg.sgl text{fill:#0f766e}
+.layg.fix circle{stroke:#9ca3af}.layg.fix text{fill:#6b7280}
+.layb{stroke:#dc2626;stroke-width:3;stroke-dasharray:12 8;opacity:.6;pointer-events:none}
+body.layoff .layg,body.layoff .layb{display:none}
 .mf tr:hover{background:#fef9c3}
 details.mfd summary{cursor:pointer;color:#6b7280;font-size:11px}
 .mbadge{font-size:10px;border-radius:3px;padding:0 4px;margin-left:6px}
@@ -473,7 +493,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .dot.m{background:#60a5fa}.dot.d{background:#fbbf24}.dot.p{background:#34d399}
 .lg{display:inline-block;margin-left:14px;font-size:12px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px;vertical-align:-1px}
 </style></head><body>
-<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYBTN@@
+<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYBTN@@@@LAYOUTBTN@@
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
 </header>
 @@BODY@@
@@ -585,6 +605,15 @@ document.addEventListener('click',function(e){
 var lb=document.getElementById('laybtn');
 if(lb){lb.onclick=function(){document.body.classList.toggle('boxov');lb.classList.toggle('on');};
  if(location.hash==='#meta'){document.body.classList.add('boxov');lb.classList.add('on');}}
+var lbt=document.getElementById('layoutbtn');
+if(lbt){lbt.onclick=function(){document.body.classList.toggle('layoff');lbt.classList.toggle('on');};}
+document.addEventListener('click',function(e){
+ var t=e.target.closest?e.target.closest('[data-layu]'):null;if(!t)return;
+ var uid=t.getAttribute('data-layu');if(!uid)return;
+ if(jumpToUid(uid))return;
+ var sec=t.closest('section');if(!sec)return;
+ sec.querySelectorAll('rect[data-u="'+uid+'"]').forEach(function(r){r.classList.add('on');r.classList.add('cite-on');
+  setTimeout(function(){r.classList.remove('on');r.classList.remove('cite-on');},1600);});});
 </script>
 <div id="citepop"><div id="citepoptitle">原图块定位</div><svg id="citesvg" preserveAspectRatio="xMidYMid meet"></svg></div>
 </body></html>"""
@@ -1212,6 +1241,95 @@ def _meta_overview(meta, audit=None):
 
 
 
+_LAY_CONTENT = ("Text", "Footnote")
+
+
+def _layout_overlay(u_list, W, H):
+    """layout_ja 标注(2026-11-12, T-20261112-TRAE-LAYOUT) -> (页顶条带 html, 原图叠加 svg)。
+    数据源是 unified/page_N.json 里每个块的 layout: {detected, boundary, col, zone, reading_order},
+    由 metapy/layout_ja.py 写回; 这里只读展示, 不改 unified、不重排、不写任何产物。
+    单栏页不出左右栏标记(只出 detected/zone/読順); 双栏页出「左栏 #a–#b / 右栏 #c–#d」+ 每条序号。
+    序号画在块左上/右上外侧(右栏块放右侧), 直径约 3% 页宽, 默认显示, 由 header 的「layout 标注」切 body.layoff 隐藏。"""
+    items = [u for u in (u_list or []) if (u.get("layout") or {}).get("detected")]
+    if not items:
+        return "", ""
+    lay0 = items[0]["layout"]
+    dbl = lay0.get("detected") == "double"
+    boundary = lay0.get("boundary") if dbl else None
+
+    def ro(u):
+        v = u["layout"].get("reading_order")
+        return v if v is not None else 10 ** 6
+
+    def is_content(u):
+        """参与栏流的块: Text/Footnote 且非前区, 且不是通栏(宽>65%页宽)。
+        通栏判据只用宽度: layout_ja 的 boundary 是栏归属阈值而非几何中线(左栏块常越过它),
+        用「跨 boundary」判通栏会把整栏正文误判成通栏。摘要/脚注/跨栏图表本来就是宽块, 宽度即可识别。"""
+        if u.get("type") not in _LAY_CONTENT or u["layout"].get("zone") == "front":
+            return False
+        box = u.get("box") or []
+        if len(box) != 4:
+            return False
+        return box[2] - box[0] <= 0.65 * W
+
+    front = [u for u in items if u["layout"].get("zone") == "front"]
+    body = [u for u in items if u["layout"].get("zone") != "front"]
+    ro_max = max((u["layout"].get("reading_order") or 0) for u in items)
+
+    def chip(cls, text, uid, tip):
+        return ('<span class="laychip %s" data-layu="%s" title="%s">%s</span>'
+                % (cls, html.escape(str(uid or ""), quote=True), html.escape(tip, quote=True), text))
+
+    parts = ['<span class="laytag %s">%s</span>' % ("dbl" if dbl else "sgl",
+                                                    u"双欄 layout" if dbl else u"単欄 layout")]
+    if boundary is not None:
+        parts.append('<span class="laytag">%s</span>' % (u"境界 x=%d" % round(boundary)))
+    if front:
+        parts.append(chip("front", u"前区 front %d 块" % len(front),
+                          min(front, key=ro).get("uid"), u"前区(标题/作者/摘要): 点击跳到首块"))
+    parts.append('<span class="laytag">%s</span>' % (u"正文 body %d 块" % len(body)))
+    if dbl:
+        for col, name in ((0, u"左栏"), (1, u"右栏")):
+            lane = [u for u in body if is_content(u) and (u["layout"].get("col") or 0) == col]
+            if not lane:
+                continue
+            parts.append(chip("c%d" % col, u"%s %d 块 #%d–#%d" % (
+                name, len(lane), min(ro(u) for u in lane), max(ro(u) for u in lane)),
+                              min(lane, key=ro).get("uid"), u"点击跳到%s首块" % name))
+    else:
+        parts.append('<span class="laytag">%s</span>' % u"栏标记: 无(单栏)")
+    parts.append(chip("", u"読順 0→%d" % ro_max, min(items, key=ro).get("uid"),
+                      u"点击跳到阅读序首块"))
+
+    svg = []
+    if boundary is not None:
+        svg.append('<line class="layb" x1="%d" y1="0" x2="%d" y2="%d"/>'
+                   % (round(boundary), round(boundary), H))
+    r = 26
+    for u in sorted(items, key=ro):
+        box = u.get("box") or []
+        lg = u["layout"]
+        if len(box) != 4 or lg.get("reading_order") is None:
+            continue
+        zoom = lg.get("zone") == "front"
+        col = lg.get("col") or 0
+        cls = "layn front" if zoom else ("layn c1" if (dbl and col == 1) else "layn c0")
+        if not zoom and not is_content(u):
+            cls = "layn fix"          # 标题/图表/页眉页脚/通栏块: 不参与栏流, 灰色序号
+        elif not zoom and not dbl:
+            cls = "layn sgl"          # 单栏: 青绿序号, 不暗示左右栏(任务: 单栏不出栏标记)
+        if dbl and col == 1 and not zoom:
+            cx = min(W - r - 4, box[2] + r + 4)
+        else:
+            cx = max(r + 4, box[0] - r - 4)
+        cy = min(H - r - 4, max(r + 4, box[1] + r))
+        svg.append('<g class="%s" data-layu="%s"><circle cx="%d" cy="%d" r="%d"/>'
+                   '<text x="%d" y="%d">%d</text></g>'
+                   % (cls, html.escape(str(u.get("uid")), quote=True), cx, cy, r, cx, cy,
+                      lg["reading_order"]))
+    return '<div class="laybar">%s</div>' % "".join(parts), '<g class="layg">%s</g>' % "".join(svg)
+
+
 def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pages=None, unified_driven=False, meta=None, audit=None, choices=None):
     """1:3 对照查看器: 每页 左原图(叠全部块框) + 右三栏各渠道块列表。
     per_ch = {"mineru": per_page|md字符串|None, ...}; 块 id 带渠道前缀, 同渠道内 rect<->文本联动, 无跨渠道联动。
@@ -1225,6 +1343,7 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
     nav = "".join('<a href="#p%d">%d</a>' % (i, i + 1) for i in range(n))
     secs, data, groups_json = [], {}, {}
     chs = ("mineru", "dots", "paddle")
+    lay_any = False
     for p in range(n):
         W, H = sizes[p]
         rects, col_html = [], {}
@@ -1335,11 +1454,14 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
                     data_e = ' data-e="%s"' % ekey if ekey else ""
                     rects.append('<rect class="r cite-target" data-u="%s"%s x="%s" y="%s" width="%s" height="%s"/>'
                                  % (u["uid"], data_e, bx[0], bx[1], max(2, bx[2] - bx[0]), max(2, bx[3] - bx[1])))
+        lay_strip, lay_svg = _layout_overlay((unified_pages or {}).get(p), W, H)
+        if lay_strip:
+            lay_any = True
         img_cell = ('<div class="pane"><div class="ptitle src">原文件（区块联动 · 👁=%s）</div>'
                     '<div class="imgw"><img src="pages/page_%d.jpg"/><svg viewBox="0 0 %d %d" preserveAspectRatio="none">%s</svg>%s</div>'
                     '<div class="pmask"></div></div>'
                     % ("unified 复检项(虚线=共识框)" if unified_pages is not None else "差异分析",
-                       p, W, H, "".join(rects), "".join(eyes)))
+                       p, W, H, "".join(rects) + (lay_svg or ""), "".join(eyes)))
         ch_cells = "".join('<div class="pane ch"><div class="ptitle %s">%s</div>%s<div class="pmask"></div></div>'
                            % (ch, {"mineru": "MinerU", "dots": "dots.ocr", "paddle": "PaddleOCR"}[ch], col_html[ch]) for ch in chs)
         ov_cell = ""
@@ -1352,8 +1474,10 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
             flag += ' <a class="bad jump" data-t="ffd_%s" title="跳到本页首个含错误字符的块">FFFD×%d</a>' % (first_ffd, nffd)
         if nemp:
             flag += ' <a class="empf jump" data-t="emp_%s" title="跳到本页首个空块">空块×%d</a>' % (first_emp, nemp)
-        secs.append('<section id="p%d"><h2>第 %d 页%s <span class="stat" id="st_p%d"></span></h2><div class="grid">%s%s%s</div></section>' % (p, p + 1, flag, p, ov_cell, img_cell, ch_cells))
+        secs.append('<section id="p%d"><h2>第 %d 页%s <span class="stat" id="st_p%d"></span></h2>%s<div class="grid">%s%s%s</div></section>' % (p, p + 1, flag, p, lay_strip, ov_cell, img_cell, ch_cells))
     v = COMPARE_TMPL.replace("@@TITLE@@", title).replace("@@NAV@@", nav)
+    v = v.replace("@@LAYOUTBTN@@", ('<button id="layoutbtn" class="on" title="显示/隐藏 layout 叠加(阅读序序号 + 双栏分界; 只读, 不改数据)">'
+                                    "layout 标注</button>") if lay_any else "")
     v = v.replace("@@LAYBTN@@", ('<button id="laybtn" title="块边界诊断: 叠加显示全部统一对象框(只读叠加, 不切换布局)">'
                                  "块框叠加</button>") if meta is not None else "")
     v = v.replace("@@BODY@@", '<div class="wrap">%s</div>' % "\n".join(secs))
