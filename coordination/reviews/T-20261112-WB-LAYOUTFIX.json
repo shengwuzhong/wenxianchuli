@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-WB-LAYOUTFIX",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_secrets": true,
+  "handoff_present": true,
+  "out_hash_unchanged": true
+ },
+ "notes": "Approved. Only metapy/layout_ja.py changed (+104/-57). Independently re-ran the comparison on the wb_layoutfix_eval temp outputs: 14/14 pages have identical _order_blocks_ja vs merge_out.order_blocks order, 0 inversions. merge_out detects 7 double-column pages (40_10569 p0/p1/p3/p5, 52_230725 p2/p4/p6), not 8; the old 8th was 52_230725 p0, which merge_out correctly calls single-column. 40_10569 p1 boundary is now 620 and the y=161 block is no longer reversed. Tests 12/12; layout_ja selftest PASS; NER selfcheck OK; compileall OK; canonical out full hash remains 09a8820b6e21dbee. Non-blocking: (1) the order logic is duplicated from merge_out, so a future divergence is possible; add a cross-module consistency test later; (2) summary n_content now counts all ordered blocks, name is misleading; (3) _front_zone_bottom zone remains heuristic and is annotation-only; (4) handoff mistakenly calls 09a8820b a generic example — it is the full-out aggregate hash, verified unchanged."
+}
