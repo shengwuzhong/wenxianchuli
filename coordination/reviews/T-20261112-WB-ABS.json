@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-WB-ABS",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_secrets": true,
+  "handoff_present": true,
+  "preview_match": true
+ },
+ "notes": "Approved. Diff is only metapy/abs.py (+ handoff metadata). Re-ran metadata --stage abs on temp copies: the five preview docs match the frozen 2026-11-12T1413 values exactly (40_10569 366, 43_10814 399, 42_93 469, 5_55 386, 52_230725 empty); three additional docs improve (40_10588 397, 42_103 251, 42_185 232); 52_230302 stays empty. Branch tests 10/10; abs selftest 3/3; NER selfcheck OK; compileall OK. Follow-ups (non-blocking): (1) headingless heuristic could false-positive on a Japanese paper with no abstract at all; add a negative fixture; (2) _collect_jp_inline stops at any '<', so inline <sup> citations in an abstract would truncate; consider allowing <sup>/<sub>; (3) after merge, run the 12-test main suite. Merge gate ignores coordination/tasks|reviews|merges metadata in the diff."
+}

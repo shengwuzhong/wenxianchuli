@@ -43,6 +43,14 @@ STATUS_IGNORE = (
     "coordination/patches/",
 )
 
+# Task/handoff/review/merge files are coordination metadata, not code. They may
+# be committed on the task branch; do not count them as code changes.
+DIFF_IGNORE = (
+    "coordination/tasks/",
+    "coordination/reviews/",
+    "coordination/merges/",
+)
+
 
 def _match(path, patterns):
     for p in patterns:
@@ -114,7 +122,8 @@ def main():
     diff = run_git(["diff", "--name-only", "%s...HEAD" % a.base])
     if diff.returncode != 0:
         fail("git diff failed: %s" % diff.stderr, 3)
-    changed = [x for x in diff.stdout.splitlines() if x.strip()]
+    changed = [x for x in diff.stdout.splitlines()
+               if x.strip() and not x.startswith(DIFF_IGNORE)]
     if not changed:
         fail("no changed files vs %s" % a.base, 3)
 
