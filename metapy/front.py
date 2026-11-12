@@ -2,6 +2,10 @@
 import os, re, io, json, datetime
 from .common import *
 
+# (2026-11-12 T-20261112-WB-META2) 裸上标(非 $ 包裹)分隔符: '^{1)}' / '^{*}' / '^{1,2}' 等,
+# 43_10814 日文作者行以「双空格+裸上标+双空格」分隔多位作者, 需与 SUP_LATEX 同作作者分隔点。
+_BARE_SUP = re.compile(r"\s*\^\{([^}]*)\}\s*")
+
 
 
 def _pick_title(j, want_hangul, want_japanese=False):
@@ -82,6 +86,10 @@ def _parse_author_line(line, u, foot_affil):
         _sup_ph.append(m.group(1))
         return u"\ue000%d\ue001" % (len(_sup_ph) - 1)
     line = SUP_LATEX.sub(_hide_sup, line)
+    # (2026-11-12 T-20261112-WB-META2) 裸上标 '^{n)}' / '^{*}' / '^{n,m}'(非 $ 包裹,
+    # 43_10814 实证: '伊藤 清佳  ^{1)}  深尾 繁治  ^{1)} …' 上标即作者间分隔点)也归一化为
+    # 占位符, 与 SUP_LATEX 同走切分逻辑。marker 内容(含右括号)由后续 affil 配对 strip(')') 归一。
+    line = _BARE_SUP.sub(_hide_sup, line)
     # 英文行逗号分层; 韩/日文行 ·•․、全角逗号'，' 与'逗号+名'分层(英文逗号多为机构内分隔)
     if en_line:
         toks = re.split(r"\s*,\s*|\s+and\s+", line)
@@ -195,7 +203,11 @@ def front_doc(doc, out_root):
 
     # 作者区扫描须跳过另一标题块(英文题 t_en 下会扫到日文题 t_ko, 反之亦然)与栏目名 Section-header
     # (如日文「総 説/解説/特集」, 42_185 实证: 総説+日文题被误当作者)。
+    # (2026-11-12 T-20261112-WB-META2) 但标题块可能含作者行(52_230725 实证: 英题名块 u0_3 内
+    # 第二行即「小暮 敏博(Toshihiro KOGURE)」), 整块跳过会漏作者。改为「跳过标题首行, 仍扫后续行」。
     _title_uids = {u["uid"] for u in (t_ko, t_en) if u is not None}
+    _title_head_lines = {u["uid"]: (u["main_text"] or "").split("\n")[0].strip()
+                         for u in (t_ko, t_en) if u is not None}
 
     def _zone(top_u):
         if top_u is None:
@@ -208,17 +220,20 @@ def front_doc(doc, out_root):
                 continue
             if u["type"] in ("Page-header", "Page-footer", "Page-number", "Footnote"):
                 continue
-            if u["uid"] in _title_uids:
-                continue   # 跳过标题块(含另一标题)
             y1 = u["box"][1]
             if y1 < top_u["box"][3] - 4 or y1 >= limit - 2:
                 continue
             # 栏目名 Section-header(総説/解説/特集等)整块跳过: 不是作者, 也非正文节头(标题区上沿)
             if u["type"] == "Section-header" and JP_SECTION_TAG.match((u["main_text"] or "").strip()):
                 continue
+            is_title_u = u["uid"] in _title_uids
+            head_line = _title_head_lines.get(u["uid"])
             for ln in (u["main_text"] or "").split("\n"):
                 s = ln.strip()
                 if not s:
+                    continue
+                # 标题块: 只跳过标题首行本身, 后续行(作者行)仍入作者区(52_230725 实证)
+                if is_title_u and head_line and s == head_line:
                     continue
                 if ABSTRACT_START.match(s) or JP_ABS_INLINE.match(s):
                     # 内联摘要头(英/韩/日「要旨:」)即作者区边界: 作者行与要旨同块时(40_10569 实证
@@ -237,11 +252,16 @@ def front_doc(doc, out_root):
     affil_foot_all = []   # (2026-11-11) 机构脚注去重列表(供无上标关联时的日文/机构兜底)
 
     def _affil_marker_line(s):
-        """机构脚注行归一化: LaTeX 上标 '$ ^{1)} $熊本…'(40_10569 实证) 折成 '1) 熊本…' 再匹配 MARKER_LINE。
-        返回 (marker, 机构文本) 或 None。"""
+        """机构脚注行归一化: LaTeX 上标 '$ ^{1)} $熊本…'(40_10569 实证) 与裸上标 '^{1)} 京都…'
+        (43_10814 实证) 折成 '1) 熊本…' 再匹配 MARKER_LINE。返回 (marker, 机构文本) 或 None。"""
         _latex = SUP_LATEX.match(s)
         if _latex:
             s = _latex.group(1).strip().rstrip(")") + ") " + s[_latex.end():].strip()
+        else:
+            # (2026-11-12 T-20261112-WB-META2) 裸上标 '^{1)} 京都…' 归一为 '1) 京都…'(右括号在花括号内)
+            _bare = re.match(r"^\^\{\s*([\*\d,，\)]+)\s*\}(\s*)", s)
+            if _bare:
+                s = _bare.group(1).rstrip(")") + ") " + s[_bare.end():].strip()
         m = MARKER_LINE.match(s)
         if not m:
             return None
@@ -280,8 +300,16 @@ def front_doc(doc, out_root):
         # 不再要求低仮名比例——片假名公司名(フォーネスライフ株式会社)仮名比例高, 旧条件会漏判,
         # 导致机构行被 _parse_author_line 误当作者(5_55 实证)。英文机构仍要求低 CJK 比例。
         _jp_affil = JP_AFFIL_HEAD.search(s) and not AFFIL_HEAD.search(s)
+        # (2026-11-12 T-20261112-WB-META2) 英文机构行(如 'Department of Anatomy, Showa Medical
+        # University School of Medicine')含逗号, 旧条件 '无逗号' 会漏判, 被 _parse_author_line 误当
+        # 英文作者(42_93 实证: 机构行被切成 'Department of Anatomy' + 'Showa Medical University
+        # School of Medicine' 两个伪作者, 污染 roman_pool 数量)。改以「强机构词」判定: 纯英文行
+        # 含强机构词(Department/University/School/Center 等)即归机构, 不再要求无逗号。
+        _en_affil_strong = (_hangul_ratio(s) < 0.2 and _japanese_ratio(s) < 0.1
+                            and bool(EN_AFFIL_STRONG.search(s)))
         if (re.fullmatch(u"[\\(（].+[\\)）]", s) and (AFFIL_HEAD.search(s) or JP_AFFIL_HEAD.search(s))) or \
            _jp_affil or \
+           _en_affil_strong or \
            ((_hangul_ratio(s) < 0.2 and _japanese_ratio(s) < 0.1) and (AFFIL_HEAD.search(s) or JP_AFFIL_HEAD.search(s)) and "," not in s):
             affils_zone.append(re.sub(ROLE_WORDS, "", s).strip("() ").strip())
             continue
@@ -339,6 +367,23 @@ def front_doc(doc, out_root):
                 a["affiliation"] = affils_zone[0]
     roman_pool = [a for a in authors if a.get("roman_source")]
     ko_authors = [a for a in authors if not a.get("roman_source")]
+    # (2026-11-12 T-20261112-WB-META2) 连写姓名切分: 日文作者被 OCR 连写成一个 name
+    # (42_93 实证: '本田 一穂 康 徳東 川西 邦夫' = 3 位作者无分隔符无上标), 而英文侧 roman_pool
+    # 有 N 位罗马拼音作者。当日文侧仅 1 个连写作者、其 name 按空格切出 2N 个 CJK token 时,
+    # 按「姓 名」两 token 一组切分成 N 位作者, 再与 roman_pool 顺序链接罗马拼音。
+    if len(roman_pool) >= 2 and len(ko_authors) == 1 and not ko_authors[0].get("roman"):
+        _nm = (ko_authors[0].get("name") or "").strip()
+        _toks = re.findall(u"[一-鿿々〆ぁ-ゖァ-ヶ가-힣]+", _nm)
+        if len(_toks) == 2 * len(roman_pool) and all(1 <= len(t) <= 4 for t in _toks):
+            _pairs = [u" ".join(_toks[i:i + 2]) for i in range(0, len(_toks), 2)]
+            _base = {k: v for k, v in ko_authors[0].items()}
+            _new = []
+            for _pr in _pairs:
+                _a = dict(_base)
+                _a["name"] = _pr
+                _a["markers"] = []
+                _new.append(_a)
+            ko_authors = _new
     if roman_pool and ko_authors:
         if len(roman_pool) == len(ko_authors):          # 顺序链接(895567 同序实证)
             for ka, ra in zip(ko_authors, roman_pool):
@@ -352,7 +397,7 @@ def front_doc(doc, out_root):
                     if tgt and tgt in _norm_roman(ra["name"]):
                         ka["roman"] = ra["name"]
                         break
-    authors = [a for a in authors if not a.get("roman_source")]
+    authors = ko_authors
     # (2026-11-11 扩展日文) 兜底: 首页无作者区时, 从全文档页眉 running head 识别
     # 「姓名・姓名」形态作者(日文综述「解説・資料」栏目: 作者在奇数页页眉, 如 '森 悠一郎・鍵 裕之')。
     # 保守约束: 仅当 authors 为空; 行由「・」分隔的 2-4 段 CJK 名组成; 且与标题/期刊名折叠值不同。
