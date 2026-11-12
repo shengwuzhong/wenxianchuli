@@ -1,5 +1,6 @@
 # 运行产物(体积大, 且含你自己的文档内容)
 out/
+out_preview/
 uploads/
 inbox/
 examples/demo/
