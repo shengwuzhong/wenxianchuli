@@ -19,6 +19,11 @@
   - 其他工具只读；写完释放锁；
   - 没有并行写，只有并行读。
 
+> worktree 模式：`coordination/` 状态默认放**主工作区**。在 worktree 中运行脚本时设置
+> `COORD_ROOT=<主工作区>\coordination`、`REPO_ROOT=<当前 worktree>`。文件锁/guard 对
+> **共享文件**（`channels.json`、`AGENTS.md`、`coordination/**`）和“字面同一目录”模式最有用；
+> 分支内文件由 Git 隔离，跨 worktree 不共享 hash 语义。
+
 ## 2. 所有权矩阵
 
 ### WorkBuddy（2026-11-12 已改，基线已收）

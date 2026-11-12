@@ -41,6 +41,11 @@ $git = 'D:\workbuddy\resources\vendor\PortableGit\cmd\git.exe'
 
 脚本会自动找这个路径；可用 `GIT_EXE` 覆盖。
 
+> **worktree 模式**：`coordination/` 状态默认放主工作区。在 worktree 中运行脚本时设置
+> `COORD_ROOT=<主工作区>\coordination`、`REPO_ROOT=<当前 worktree>`。
+> 文件锁/guard 对共享文件和“字面同一目录”模式最有用；分支内文件由 Git 隔离，
+> 跨 worktree 不共享 hash 语义。
+
 ## 1. 每个任务的完整流程
 
 ### 1.1 领任务
