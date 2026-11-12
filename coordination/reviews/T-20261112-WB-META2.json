@@ -1,0 +1,16 @@
+{
+ "task": "T-20261112-WB-META2",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_secrets": true,
+  "handoff_present": true,
+  "preview_match": true,
+  "acceptance_manual": true
+ },
+ "notes": "Approved with follow-ups. Diff is metapy/front.py, metapy/abs.py, metapy/common.py only. Verified on wb_meta2_eval: 52_230725 authors=1 小暮 敏博; 42_93 authors=3 本田 一穂/康 徳東/川西 邦夫; 43_10814 authors=7, no section words; 42_93/42_185/43_10814 abstract_en are real English abstracts; 43_10814 title_en is no longer Key words; 42_103 abstract_en is now None (not affiliation), as documented. Additional regression: 40_10588/5_55/52_230302/9_1 authors unchanged. Tests 12/12; front 7/7; abs 3/3; NER OK; canonical out/ hash unchanged 09a8820b6e21dbee. Follow-ups: 52_230725 abstract_en is still Japanese text; 40_10569 abstract_en is empty but level=high; 42_103's real English abstract after Key words is not extracted. These are covered by the already-created T-20261112-WB-EN-ABS. Task JSON lacked an acceptance array; manual acceptance from handoff used."
+}
