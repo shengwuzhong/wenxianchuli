@@ -11,14 +11,19 @@ _AUTHOR_ROW = re.compile(
 
 def _is_en_abstract_start(s, u):
     """英题下无 Abstract 头的英文摘要开头判定(2026-11-11 扩展日文, 52_230302 实证):
-    纯英文长句(≥40 折叠字符, 拉丁为主)、非作者行(无罗马锚/上标)、非关键词/标题/节头行,
-    且块为 Text 型(非 Footnote/Section-header)。用于摘要不以 This study/In this 引导的形态。"""
+    纯英文长句(≥40 折叠字符, 拉丁为主)、非作者行(无罗马锚/上标)、非关键词/标题/节头行、
+    非机构行, 且块为 Text 型(非 Footnote/Section-header)。用于摘要不以 This study/In this 引导的形态。"""
     s = (s or "").strip()
     if not s or u["type"] != "Text":
         return False
     if KW_LINE.match(s) or ABS_HEAD_EN.match(s) or regress.REF_HEAD.search(s):
         return False
     if _AUTHOR_ROW.search(s):
+        return False
+    # (2026-11-12 T-20261112-WB-META2) 机构行不能当摘要开头: 'Asahi TelePathology Center,
+    # Asahi General Hospital' / 'Division of Pathology, Department of Oral Diagnostic
+    # Sciences...' 是机构/作者行(42_103/42_185/42_93 实证), 含强机构词即排除。
+    if EN_AFFIL_STRONG.search(s):
         return False
     if _hangul_ratio(s) > 0.2 or _japanese_ratio(s) > 0.15:
         return False   # 非英文(含韩/日文)不出
@@ -79,6 +84,11 @@ def _collect_abstract(pdata, pages, head_u, max_pages=3, skip_fold=None):
                     if len(_parts) >= 2 and all(re.match(r"^[A-Z][A-Za-z .\-']+$", p.strip())
                                                 for p in _parts if p.strip()):
                         continue   # 罗马化作者行('Kim, Jin-Kyoung · Cho, Young-Il')
+                # (2026-11-12 T-20261112-WB-META2) 跳过含 LaTeX 上标的英文作者行
+                # ('Sayaka Ito, M.D., $ ^{1)} $ Shigeharu Fukao, M.D., ...', 43_10814 尾页
+                # 英文摘要实证): 上标是作者-机构关联信号, 摘要正文不含上标。
+                if SUP_LATEX.search(s) and _hangul_ratio(s) < 0.2 and _japanese_ratio(s) < 0.1:
+                    continue
                 if KW_LINE.match(s):
                     stop = True
                     break
@@ -394,6 +404,15 @@ def abstract_doc(doc, out_root):
                         # 作者行含罗马拼音锚「名(Roman)」或上标 marker '^{*}'。
                         if _fold(s) == ten_fold or _AUTHOR_ROW.search(s):
                             continue
+                        # (2026-11-12 T-20261112-WB-META2) 跳过逗号分隔的罗马化作者行
+                        # ('Kazuho Honda, Dedong Kang, and Kunio Kawanishi', 42_93 实证):
+                        # 不含罗马锚/上标, 旧 _AUTHOR_ROW 漏判, 被 _is_en_abstract_start 误当摘要。
+                        if len(s) < 90 and re.match(r"^[A-Z]", s) and "," in s:
+                            _s = re.sub(r"\s+and\s+", ", ", s, flags=re.I)
+                            _ap = [q.strip() for q in _s.split(",") if q.strip()]
+                            if len(_ap) >= 2 and all(re.match(r"^[A-Z][A-Za-z .\-']{1,40}$", q)
+                                                     for q in _ap):
+                                continue
                         if not started:
                             if ABSTRACT_START.match(s):
                                 started = True

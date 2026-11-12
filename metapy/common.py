@@ -5,7 +5,7 @@ r"""metapy 各 stage 共享的阈值、正则、文本折叠与 metadata/audit s
 pipeline 的 _fold_sym/_gdice 在此 re-export，保持既有 `from .common import *` 调用契约。
 """
 
-__all__ = ['ABSTRACT_START', 'ABS_HEAD_EN', 'ABS_HEAD_KO', 'ABS_INLINE_KO', 'AFFIL_HEAD', 'AGREE_CHARS', 'AUDIT_NAME', 'AY_HEAD', 'BOUND_DICE', 'CITE_HINT', 'CONTENT_TYPES', 'CONT_GAP', 'DEGREE', 'DOI_RE', 'ENTRY_MIN_LEN', 'FOOTNOTE_CITE', 'HEAD_EXCLUDE', 'HEAD_ZONE_LINES', 'HONORIFIC', 'ITALIC_TITLE', 'KNAME', 'KW_LINE', 'KW_NO', 'KW_VOL', 'LIST_MARK', 'LV_COLOR', 'MARGIN_X', 'MARKER_LINE', 'MIN_GLUE_LEN', 'NARROW_W', 'NEW_START', 'NEW_WORDS', 'NOTE_LINE', 'NOTE_WORDS', 'NO_RE', 'NUMERIC_CITE_MIN', 'NUM_MARK', 'PGNO_LINE', 'PG_RANGE', 'PP_RE', 'QUOTE_TITLE', 'RAW_HEAD_LEN', 'ROLE_WORDS', 'ROOT', 'STRUCT_TYPES', 'SUP_LATEX', 'TAIL_SOFT_LINES', 'TERM', 'TITLE_EN_ZONE', 'TITLE_READING_DICE', 'TITLE_ZONE', 'URL_LINE', 'VOL_RE', 'YEAR_OK', 'YEAR_RE', '_BIO_MARK', '_clean_lines', '_col_blocks', '_col_of', '_col_of_b', '_complete', '_content_blocks', '_dh_core', '_doc_heads', '_fold', '_foldv', '_frag_ok', '_gdice', '_group_from_members', '_hangul_ratio', '_head_agree', '_is_margin', '_is_running', '_join_sep', '_lang_mismatch', '_line_h', '_norm_ws', '_page_col_boundary', '_rebuild', '_standalone_note', '_strip_glued', '_struct_texts', 'load_audit', 'save_audit', '_japanese_ratio', '_script_kind', 'JP_KW_HEAD', 'JP_ABS_HEAD', 'JP_ABS_INLINE', 'JP_REF_HEAD', 'JP_AFFIL_HEAD', 'JP_KW', 'JP_SECTION_TAG']
+__all__ = ['ABSTRACT_START', 'ABS_HEAD_EN', 'ABS_HEAD_KO', 'ABS_INLINE_KO', 'AFFIL_HEAD', 'AGREE_CHARS', 'AUDIT_NAME', 'AY_HEAD', 'BOUND_DICE', 'CITE_HINT', 'CONTENT_TYPES', 'CONT_GAP', 'DEGREE', 'DOI_RE', 'ENTRY_MIN_LEN', 'FOOTNOTE_CITE', 'HEAD_EXCLUDE', 'HEAD_ZONE_LINES', 'HONORIFIC', 'ITALIC_TITLE', 'KNAME', 'KW_LINE', 'KW_NO', 'KW_VOL', 'LIST_MARK', 'LV_COLOR', 'MARGIN_X', 'MARKER_LINE', 'MIN_GLUE_LEN', 'NARROW_W', 'NEW_START', 'NEW_WORDS', 'NOTE_LINE', 'NOTE_WORDS', 'NO_RE', 'NUMERIC_CITE_MIN', 'NUM_MARK', 'PGNO_LINE', 'PG_RANGE', 'PP_RE', 'QUOTE_TITLE', 'RAW_HEAD_LEN', 'ROLE_WORDS', 'ROOT', 'STRUCT_TYPES', 'SUP_LATEX', 'TAIL_SOFT_LINES', 'TERM', 'TITLE_EN_ZONE', 'TITLE_READING_DICE', 'TITLE_ZONE', 'URL_LINE', 'VOL_RE', 'YEAR_OK', 'YEAR_RE', '_BIO_MARK', '_clean_lines', '_col_blocks', '_col_of', '_col_of_b', '_complete', '_content_blocks', '_dh_core', '_doc_heads', '_fold', '_foldv', '_frag_ok', '_gdice', '_group_from_members', '_hangul_ratio', '_head_agree', '_is_margin', '_is_running', '_join_sep', '_lang_mismatch', '_line_h', '_norm_ws', '_page_col_boundary', '_rebuild', '_standalone_note', '_strip_glued', '_struct_texts', 'load_audit', 'save_audit', '_japanese_ratio', '_script_kind', 'JP_KW_HEAD', 'JP_ABS_HEAD', 'JP_ABS_INLINE', 'JP_REF_HEAD', 'JP_AFFIL_HEAD', 'JP_KW', 'JP_SECTION_TAG', 'EN_AFFIL_STRONG']
 
 import os, re, io, json, collections, datetime
 
@@ -419,6 +419,12 @@ JP_REF_HEAD = re.compile(u"^(?:参\\s*考\\s*文\\s*献|引\\s*用\\s*文\\s*献
 JP_AFFIL_HEAD = re.compile(u"(大学|大学院|研究科|研究部|研究所|研究センター|研究会|研究ネットワーク|学部|学科|病院|学会|協会|株式会社|財団|センター|University|College|Institute|Laboratory|Dept\\.|School of|Hospital)")
 JP_KW = re.compile(u"キーワード|キー\\s*ワード|鍵\\s*語|キイ\\s*ワード")
 JP_SECTION_TAG = re.compile(u"^(?:総\\s*説|総説|解\\s*説|特\\s*集|原\\s*著|症\\s*例\\s*報告|症\\s*例|短\\s*報|資\\s*料|研究\\s*報告|報\\s*告|話題|連\\s*載|背景\\s*および\\s*目的|背景\\s*と\\s*目的|対象\\s*と\\s*方法|対象\\s*及び\\s*方法|方法|結果|考察|結\\s*論|緒\\s*言|はじめに|おわりに|ま\\s*と\\s*め)\\s*$")
+
+# (2026-11-12 T-20261112-WB-META2) 英文强机构词: 纯英文机构行判定用(含逗号也归机构, 避免
+# 被误当英文作者/摘要 — 42_93/42_103/42_185 实证)。人名行(逗号分隔 '名 姓' 词)不含这些词, 不误伤。
+EN_AFFIL_STRONG = re.compile(
+    r"\b(?:Department|Dept\.?|University|Univ\.?|College|School|Center|Centre|"
+    r"Hospital|Institute|Laboratory|Lab\.?|Corporation|Corp\.?|Inc\.?|Ltd\.?|Co\.?)\b", re.I)
 
 
 def _selftest():
