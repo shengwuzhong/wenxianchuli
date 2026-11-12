@@ -1,0 +1,26 @@
+{
+ "task": "T-20261112-WB-REFS-JA",
+ "reviewer": "deepseek-integrator",
+ "verdict": "changes_requested",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_secrets": true,
+  "handoff_present": true,
+  "out_hash_unchanged": true,
+  "gold_2025_1_recall": false,
+  "gold_2025_1_title": false,
+  "gold_2025_1_author": false,
+  "gold_52_230725": true,
+  "gold_40_10569": false
+ },
+ "metrics": {
+  "2025_1": {"pred": 21, "gold_unique": 34, "recall": 0.618, "title_ok": 0.294, "author_ok": 0.618, "missing": [5, 8, 13, 18, 24, 25, 28, 29, 31, 32, 33, 34, 35]},
+  "40_10569": {"pred": 19, "gold_unique": 19, "recall": 0.947, "title_ok": 0.789, "author_ok": 0.947, "missing": [16]},
+  "52_230725": {"pred": 7, "gold_unique": 7, "recall": 1.0, "title_ok": 0.857, "author_ok": 1.0, "missing": []}
+ },
+ "notes": "52_230725 与 40_10569 的方向正确，但 2025_1 未达到 GT 验收：21/34 唯一、title 0.294、author 0.618、13 条缺失。核心原因是 u16_3（第17页）同时含文献/关键词/受付行，_ja_line_selfcontained 的 all() 条件不成立，走 authoryear 分支只切出 3 条；page 16 u15_4 另有 4 条被过滤掉。另有多条英文条目 title 被填成 journal（Furutani/Hongo/Huzita/Kimura/Neal），Sumirah 条 title 被页脚「年10月31日受理」污染。需要一次 follow-up commit 修 2025_1，再按 GT 复测。",
+ "reviewed_at": "2026-11-12T17:05:00+08:00"
+}

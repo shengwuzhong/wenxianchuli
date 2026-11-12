@@ -1,0 +1,146 @@
+{
+ "gold": "D:\\处理工具\\2\\multidoc-ocr-compare-main\\eval\\ja_gold.json",
+ "pred": "out_llm_trial\\wb_refs_review",
+ "docs": [
+  {
+   "doc": "2025_1",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "超多重スタック地中レーダ探査と 群列ボーリングコア解析に基づく奈良盆地 東縁断層帯・帯解断層の極浅部変形構造",
+     "pred": null,
+     "ok": false
+    },
+    "title_en": {
+     "gold": "Shallow subsurface structure of the Obitoke fault in the eastern marginal faults of the Nara basin based on ultra-rapid stacking ground penetrating radar survey and arrayed boring analysis",
+     "pred": null,
+     "ok": false
+    },
+    "journal": {
+     "gold": "活断層研究",
+     "pred": null,
+     "ok": false
+    },
+    "year": {
+     "gold": 2025,
+     "pred": null,
+     "ok": false
+    },
+    "volume": {
+     "gold": "63",
+     "pred": null,
+     "ok": false
+    },
+    "issue": {
+     "gold": null,
+     "pred": null,
+     "ok": true
+    },
+    "pages": {
+     "gold": "1-17",
+     "pred": null,
+     "ok": false
+    },
+    "authors": {
+     "gold": [
+      "川嶋涉造",
+      "木村治夫",
+      "谷口 薫",
+      "中西利典",
+      "堤 浩之"
+     ],
+     "pred": [],
+     "recall": 0.0,
+     "count_ok": false
+    },
+    "abstract": {
+     "gold_len": 0,
+     "pred_len": 0,
+     "skipped": true
+    },
+    "abstract_en": {
+     "gold_len": 1396,
+     "pred_len": 0,
+     "ratio": 0.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 34,
+    "pred": 21,
+    "recall": 0.6176,
+    "title_ok": 0.2941,
+    "author_ok": 0.6176,
+    "matched": 21,
+    "missing": [
+     {
+      "num": 5,
+      "title": "大阪平野の3次元地盤構造モデルの作成",
+      "authors": "堀川晴央, 水野清秀, 佐竹健治, 関口春子, 加瀬祐子, 杉山雄一, 横田 裕, 末廣匡基, Arben Pitarka"
+     },
+     {
+      "num": 8,
+      "title": "大阪層群―淡水・内海成互層の下部洪積統―",
+      "authors": "石田志朗"
+     },
+     {
+      "num": 13,
+      "title": "糸魚川―静岡構造線活断層系神城断層における地中レーダー探査",
+      "authors": "木村治夫・中西利典・丸山 正・安藤亮輔・堀川晴央"
+     },
+     {
+      "num": 18,
+      "title": "堆積速度の差異からみた大阪堆積盆地における後期更新世の基盤ブロックの運動",
+      "authors": "三田村宗樹, 吉川周作"
+     },
+     {
+      "num": 24,
+      "title": "桜井地域の地質",
+      "authors": "西岡芳晴, 尾崎正紀, 寒川旭, 山元孝広, 宮地良典"
+     },
+     {
+      "num": 25,
+      "title": "奈良地域の地質",
+      "authors": "尾崎正紀, 寒川旭, 宮崎一博, 西岡芳晴, 宮地良典, 竹内圭史, 田口雄作"
+     },
+     {
+      "num": 28,
+      "title": "奈良盆地東縁の活断層",
+      "authors": "寒川 旭・衣笠善博・奥村晃史・八木浩司"
+     },
+     {
+      "num": 29,
+      "title": "奈良盆地弥生式遺跡における花粉分析学的考察",
+      "authors": "千田 稔"
+     },
+     {
+      "num": 31,
+      "title": "大阪市におけるボーリング（OD-1）コアの花粉分析（その1）―近畿地方の新期新生代層の研究V―",
+      "authors": "田井昭子"
+     },
+     {
+      "num": 32,
+      "title": "大阪市におけるボーリング（OD-1）コアの花粉分析（その2）―近畿地方の新期新生代層の研究V―",
+      "authors": "田井昭子"
+     },
+     {
+      "num": 33,
+      "title": "地下30 mまで探査可能な地中レーダ探査機器の導入と活断層調査への適用",
+      "authors": "谷口 薫・石井一徳・木村治夫・川嶋涉造・堤 浩之"
+     },
+     {
+      "num": 34,
+      "title": "奈良盆地東縁断層帯の帯解断層と天理撓曲の活動履歴と変位速度",
+      "authors": "堤 浩之・杉戸信彦・木村治夫・川嶋涉造・中西利典・郡谷順英・谷口 薫・小俣雅志"
+     },
+     {
+      "num": 35,
+      "title": "地中レーダ探査データを用いた茨城県波崎海岸の砂浜空間堆積過程の解析",
+      "authors": "有働恵子"
+     }
+    ]
+   }
+  }
+ ]
+}
