@@ -1,0 +1,16 @@
+{
+ "task": "T-20261112-WB-ABS",
+ "title": "日文摘要抽取修复（inline 要旨 + 无头摘要）",
+ "branch": "agent/workbuddy/T-20261112-WB-ABS",
+ "commit": "024ea54",
+ "code_commit": "2d60ead",
+ "merge_commit": "2db9c43",
+ "tag": "merge-T-20261112-WB-ABS",
+ "merged_at": "2026-11-12T14:26:37+08:00",
+ "integrator": "deepseek",
+ "tests": "branch 10/10; main 12/12; metapy.abs 3/3; ner_lite selfcheck OK; compileall OK",
+ "review": "coordination/reviews/T-20261112-WB-ABS.json",
+ "handoff": "coordination/tasks/T-20261112-WB-ABS/handoff.md",
+ "preview": "coordination/previews/T-20261112-WB-ABS-preview.json",
+ "note": "Preview out/ (10 files, 5 docs) was produced by this branch before merge and is frozen. After merge, out/ was NOT regenerated; full-out sha256 remains 09a8820b6e21dbee3f34c3af19d428ac1672234a7b00c32dd7900a8e2b72b091."
+}
