@@ -3,7 +3,7 @@
  "title": "修复 layout_ja 双栏内容集合（40_10569 p1 顺序分歧）",
  "priority": "P0",
  "owner": "workbuddy",
- "status": "claimed",
+ "status": "done",
  "depends_on": [],
  "allowed_files": [
   "metapy/layout_ja.py"
@@ -29,7 +29,7 @@
   "no canonical out/ writes",
   "handoff with before/after"
  ],
- "handoff_to": "",
+ "handoff_to": "deepseek",
  "created_at": "2026-11-12T07:04:29+00:00",
- "updated_at": "2026-11-12T07:04:29+00:00"
+ "updated_at": "2026-11-12T07:27:03+00:00"
 }

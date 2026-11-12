@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-WB-LAYOUTFIX",
+ "title": "修复 layout_ja 双栏内容集合（40_10569 p1 顺序分歧）",
+ "branch": "agent/workbuddy/T-20261112-WB-LAYOUTFIX",
+ "commit": "1b1a516",
+ "merge_commit": "71c1d05",
+ "tag": "merge-T-20261112-WB-LAYOUTFIX",
+ "merged_at": "2026-11-12T15:27:04+08:00",
+ "integrator": "deepseek",
+ "tests": "12/12; layout_ja selftest PASS; ner_lite selfcheck OK; compileall OK",
+ "review": "coordination/reviews/T-20261112-WB-LAYOUTFIX.json",
+ "handoff": "coordination/tasks/T-20261112-WB-LAYOUTFIX/handoff.md",
+ "preview": "coordination/previews/T-20261112-WB-ABS-preview.json",
+ "note": "layout_ja reading_order now matches merge_out.order_blocks: 14/14 pages identical, 0 inversions; merge_out detects 7 double-column pages (the old 8th was 52_230725 p0, correctly single-column). 40_10569 p1 boundary 620, y=161 block no longer reversed. Canonical out/ unchanged: full hash 09a8820b6e21dbee3f34c3af19d428ac1672234a7b00c32dd7900a8e2b72b091. Trae T-LAYOUT can now re-run."
+}
