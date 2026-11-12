@@ -7,7 +7,8 @@
  "depends_on": [],
  "allowed_files": [
   "metapy/abs.py",
-  "metapy/layout_ja.py"
+  "metapy/layout_ja.py",
+  "metapy/common.py"
  ],
  "forbidden": [
   "metapy/m3.py",
