@@ -19,7 +19,7 @@
 | 验证缺口 | `layout_ja` 只在 2 篇 14 页上做过人工核对；全量 11 篇 110 页（39 个双栏页）没有回归报告 |
 | 评测缺口 | GT 已建：11 篇文档字段/摘要、3 篇 61 条 refs；其余 8 篇 refs 仍 pending；基线见 `eval/reports/baseline_current.md` |
 | 交付缺口 | 正式 `out/` 是旧预览：摘要 4/10 有值，而当前代码 8/11；52/40/42_103 的英文摘要修复只在代码里，不在 `out/` |
-| 等权工程完成度 | 14 项等权约 **49%**（100+80+90+100+100+15+45+60+15+20+60+0+0+0）/14 = 48.9% |
+| 等权工程完成度 | 14 项等权约 **53%**（100+80+90+100+100+70+45+60+15+20+60+0+0+0）/14 = 52.9% |
 
 ---
 
@@ -34,7 +34,7 @@
 | P0-3 | 英文摘要 / 英文标题残余修复 | P0 | 已完成（残余 1 篇） | 90% | `metapy/abs.py:12` `_AUTHOR_ROW`；`:17` `_is_en_abstract_start`；`:41` `_collect_abstract`；merge `45a4b0e` |
 | P0-4 | `layout_ja` 栏检测 / 前区 / 阅读序实现 | P0 | 已完成 | 100% | `metapy/layout_ja.py:75` `_column_boundary_ja`；`:110` `_order_blocks_ja`；`:145` `layout_page`；对齐 `merge_out.py:62` `order_blocks`；merge `71c1d05` |
 | P0-5 | 查看器日文标签、字段警告、版面叠加 | P0 | 已完成 | 100% | `viewer.py:753` `_META_LABELS`；`:777` `_meta_is_ja`；`:796` `_meta_warnings`；`:1068` `_meta_overview`；merge `31e8098`；验证 tag `verify-T-20261112-TRAE-LAYOUT` |
-| P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 未开始（有共用基础） | 15% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；`metapy/common.py:418` `JP_REF_HEAD` |
+| P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 进行中（review changes requested） | 70% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；WorkBuddy `810de5a`；review `coordination/reviews/T-20261112-WB-REFS-JA.md` |
 | P1-2 | 引文句（cspan）日文化：全角括号、日文作者-年份、回链 | P1 | 进行中 | 45% | `metapy/cspan.py:35` `NARR`（仅 ASCII 括号）；`:274` `_ref_pages`；`:288` `cspan_doc` |
 | P1-3 | 本篇来源（`issue`）日文刊名 / 关键词 | P1 | 进行中 | 60% | `metapy/issue.py:133` `_jname_from_line`；`:201` `extract`；`:385` `issue_doc` |
 | P1-4 | 脚注文献（frefs）日文适用性 | P1 | 未开始 | 15% | `metapy/refs.py:1706` `frefs_doc` |
@@ -91,15 +91,25 @@
 - 版面叠加：双栏边界线、`body/front` 分区、阅读序序号；截图 `40_10569_p1.png`（576 KB）、`52_230725_p1.png`（675 KB）。
 - 残余：警告只是提示，不修数据；`abstract` 为空的提示会一直存在，直到后端能判定“原文无”。
 
-#### P1-1 参考文献日文化 — 15%（最大缺口）
+#### P1-1 参考文献日文化 — 70%（review changes requested）
 
-当前共抽出 **233 条**参考文献，其中 `title=null` 24 条；但“字段存在”不等于“字段正确”：
+当前 `main` 共抽出 **233 条**参考文献，其中 `title=null` 24 条；但“字段存在”不等于“字段正确”：
 
-- `2025_1`：文献区标题是 `文 献`（字间空格），`unify` 阶段的 `regress.REF_HEAD` 不匹配，页面 `in_ref=false`，`refs_doc` 直接输出“无文献区”，**0 条**；而 `merged.md` 从该标题到文末共 427 行（含关键词、受付信息等），其中 173 行含年份，实际条目远不止 35 条。
+- `2025_1`：文献区标题是 `文 献`（字间空格），`unify` 阶段的 `regress.REF_HEAD` 不匹配，页面 `in_ref=false`，`refs_doc` 直接输出“无文献区”，**0 条**；GT 逐页核对为 **35 条（34 唯一）**，不是 40+。
 - `52_230725`：p7 `u6_6` 一个 Text 块内有 7 行、7 条文献，`_split_entries_block` 只切出 **3 条**，且作者/题名/出处错位（如 `Boersch, H` 的题名被写成 `: Experimentelle Bestimmung...`）。
 - `40_10569`：19 条，16 条 `lang=ko`；`references[0]` 的 `authors` 含“1) 小林祥泰監修: 脳卒中データバンク 2009. 東京”，`title` 却是“中山書店”——典型的日文条目字段串位。
 - `lang` 判定（`metapy/refs.py:657`）只有 `ko`/`en` 两类，汉字多即判 `ko`；全语料 **50 条**日文条目被标成 `ko`，没有 `ja`。
 - 英文条目反而较稳：`42_185` 18 条、`52_230302` 42 条、`5_55` 33 条，`title=null` 很少。
+
+**WorkBuddy `T-20261112-WB-REFS-JA`（`810de5a`）现状**：
+
+| doc | pred | GT 唯一 | recall | title_ok | author_ok | 结论 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `2025_1` | 21 | 34 | **0.618** | **0.294** | **0.618** | 不通过（缺 13 条） |
+| `40_10569` | 19 | 19 | 0.947 | 0.789 | 0.947 | 接近（缺 #16） |
+| `52_230725` | 7 | 7 | **1.000** | 0.857 | **1.000** | 通过 |
+
+Review 记录：`coordination/reviews/T-20261112-WB-REFS-JA.md`。阻塞点：第 17 页 `u16_3` 的 `all(_ja_line_selfcontained)` 不成立，只切出 3 条；第 16 页 `u15_4` 另有 4 条被过滤；多条英文 `title` 被填成 journal；`Sumirah` 条被页脚受付污染。
 
 #### P1-2 引文句 cspan — 45%
 
