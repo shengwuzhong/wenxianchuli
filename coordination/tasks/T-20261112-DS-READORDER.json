@@ -1,0 +1,37 @@
+{
+ "id": "T-20261112-DS-READORDER",
+ "title": "merge_out 双栏阅读序（栏内 y 序）",
+ "priority": "P0",
+ "owner": "deepseek",
+ "status": "claimed",
+ "depends_on": [],
+ "allowed_files": [
+  "merge_out.py",
+  "test_pipeline.py"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/deepseek/T-20261112-DS-READORDER",
+ "base_commit": "main",
+ "acceptance": [
+  "order_blocks unit tests pass",
+  "52_230725/40_10569 temp merged.md order check",
+  "test_pipeline 10+ pass",
+  "no unify.py changes",
+  "no canonical out/ writes",
+  "handoff with before/after"
+ ],
+ "handoff_to": "",
+ "created_at": "2026-11-12T06:06:33+00:00",
+ "updated_at": "2026-11-12T06:06:33+00:00"
+}
