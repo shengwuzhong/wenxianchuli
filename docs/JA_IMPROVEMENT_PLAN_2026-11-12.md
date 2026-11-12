@@ -1,7 +1,7 @@
 # 日文文献处理：进度与规划说明
 
 - 版本：2026-11-12
-- 基线：`main` @ `764afe5`（GT 提交；此前 `75a3da1`，7 个抽取任务 done + GT 1 个 done）
+- 基线：`main` @ `21db8a8`（GT/评审/布局回归已提交；此前 `75a3da1` 为 7 个抽取任务 done）
 - 适用范围：`out/` 下 11 篇日文文献（10 篇已有正式元数据，`2025_1` 只有 merged/unified/viewer，没有 `metadata.json`）。用户口径为“12 篇、2025_1 为第 12 篇”，但 `uploads/` 与 `out/` 实际只有 11 个 PDF，第 12 篇未找到；见 §6。
 - 当前策略：**A 方案冻结**。正式 `out/` 保持 2026-11-12T1413 预览，不重跑；所有验证在临时副本进行。新预览按用户决定放 `out_preview/`。
 - 完成度口径：**工程完成度**（已通过验收的子项 / 当前定义的子项），不是字段准确率。金标准已建 11 篇文档字段/摘要 + 3 篇 refs，refs 准确率仍以 `eval/ja_gold.json` 为准。
@@ -16,10 +16,10 @@
 | 已完成 | 日文摘要（要旨/内联/无头）、作者与机构（核心案例）、英文摘要/标题（残余 1 篇）、`layout_ja` 实现、查看器日文面板与警告 |
 | 最大缺口 | 参考文献（refs）日文化：`2025_1` 抽出 0 条，`52_230725` 7 行只切出 3 条，日文条目字段普遍错位，`lang` 仍把日文标成 `ko` |
 | 第二缺口 | 引文句（cspan）依赖 refs：全角括号/日文作者-年份形态未支持，`2025_1` 为 0，`52_230725` 6 条 unlinked |
-| 验证缺口 | `layout_ja` 只在 2 篇 14 页上做过人工核对；全量 11 篇 110 页（39 个双栏页）没有回归报告 |
+| 验证缺口 | Trae 已回归 11 篇 99 页：39 个双栏页反转 0；但 12 个单栏页实际是双栏但 `layout_ja` 欠检 |
 | 评测缺口 | GT 已建：11 篇文档字段/摘要、3 篇 61 条 refs；其余 8 篇 refs 仍 pending；基线见 `eval/reports/baseline_current.md` |
 | 交付缺口 | 正式 `out/` 是旧预览：摘要 4/10 有值，而当前代码 8/11；52/40/42_103 的英文摘要修复只在代码里，不在 `out/` |
-| 等权工程完成度 | 14 项等权约 **53%**（100+80+90+100+100+70+45+60+15+20+60+0+0+0）/14 = 52.9% |
+| 等权工程完成度 | 15 项等权约 **54%**（100+80+90+85+100+70+45+60+15+100+0+60+0+0+0）/15 = 53.7% |
 
 ---
 
@@ -32,13 +32,14 @@
 | P0-1 | 日文摘要抽取（`要旨：` 内联 + 无头首段） | P0 | 已完成 | 100% | `metapy/abs.py:122` `_collect_jp_inline`；`:151` `_collect_jp_headingless`；`:223` `abstract_doc`；merge `2db9c43` |
 | P0-2 | 日文作者切分 / 机构关联 | P0 | 已完成（核心） | 80% | `metapy/front.py:7` `_BARE_SUP`；`:64` `_parse_author_line`；`:180` `front_doc`；`metapy/common.py:425` `EN_AFFIL_STRONG`；merge `8d1ecd6` |
 | P0-3 | 英文摘要 / 英文标题残余修复 | P0 | 已完成（残余 1 篇） | 90% | `metapy/abs.py:12` `_AUTHOR_ROW`；`:17` `_is_en_abstract_start`；`:41` `_collect_abstract`；merge `45a4b0e` |
-| P0-4 | `layout_ja` 栏检测 / 前区 / 阅读序实现 | P0 | 已完成 | 100% | `metapy/layout_ja.py:75` `_column_boundary_ja`；`:110` `_order_blocks_ja`；`:145` `layout_page`；对齐 `merge_out.py:62` `order_blocks`；merge `71c1d05` |
+| P0-4 | `layout_ja` 栏检测 / 前区 / 阅读序实现 | P0 | 已完成（12 页欠检） | 85% | `metapy/layout_ja.py:75` `_column_boundary_ja`；`:99` `_order_blocks_ja`；`:145` `layout_page`；对齐 `merge_out.py:62` `order_blocks`；merge `71c1d05` |
 | P0-5 | 查看器日文标签、字段警告、版面叠加 | P0 | 已完成 | 100% | `viewer.py:753` `_META_LABELS`；`:777` `_meta_is_ja`；`:796` `_meta_warnings`；`:1068` `_meta_overview`；merge `31e8098`；验证 tag `verify-T-20261112-TRAE-LAYOUT` |
 | P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 进行中（review changes requested） | 70% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；WorkBuddy `810de5a`；review `coordination/reviews/T-20261112-WB-REFS-JA.md` |
 | P1-2 | 引文句（cspan）日文化：全角括号、日文作者-年份、回链 | P1 | 进行中 | 45% | `metapy/cspan.py:35` `NARR`（仅 ASCII 括号）；`:274` `_ref_pages`；`:288` `cspan_doc` |
 | P1-3 | 本篇来源（`issue`）日文刊名 / 关键词 | P1 | 进行中 | 60% | `metapy/issue.py:133` `_jname_from_line`；`:201` `extract`；`:385` `issue_doc` |
 | P1-4 | 脚注文献（frefs）日文适用性 | P1 | 未开始 | 15% | `metapy/refs.py:1706` `frefs_doc` |
-| P1-5 | `layout_ja` 全量回归（11 篇 110 页） | P1 | 进行中 | 20% | `metapy/layout_ja.py:191` `layout_ja_doc`；目前只有 2 篇 14 页的验证记录 |
+| P1-5 | `layout_ja` 全量回归（11 篇 99 页） | P1 | 已完成 | 100% | Trae `T-20261112-TRAE-LAYOUT-FULL`：99 页逐页表、39 双栏页 0 反转、12 单栏差异判定；`coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.md` |
+| P1-6 | `layout_ja` 双栏欠检修复（12 页） | P1 | 未开始 | 0% | Trae 回归发现 `2025_1` p7/p13、`40_10588` p4、`42_103` p5/p13、`42_185` p1/p6、`42_93` p8/p10、`52_230302` p7、`5_55` p8、`9_1` p9 实为双栏但 `detected=single` |
 | P2-1 | 日文金标准与字段准确率评测 | P2 | 进行中 | 60% | `eval/ja_gold.json`（11 篇字段/摘要，3 篇 61 条 refs）；`eval/gold_eval.py`；`eval/validate_gold.py`；基线 `eval/reports/baseline_current.md` |
 | P2-2 | 文本规范化 / 术语统一 | P2 | 未开始 | 0% | 无实现；`metapy/common.py:80` 只有兼容字 NFKC 折叠，不是全文规范化 |
 | P2-3 | 翻译（日→中） | P2 | 未开始 | 0% | 无实现、无规格 |
@@ -77,11 +78,12 @@
 - 残余：`2025_1` 的 `abstract_en` 末尾混入 1 行日文（“して東側が…”，共 11 个假名）。原因见 §2.4。
 - 残余：`_AUTHOR_ROW` 现在要求括号内至少 2 个纯字母词，单字罗马化作者行可能回归；尚无对应测试。
 
-#### P0-4 `layout_ja` 实现 — 100%
+#### P0-4 `layout_ja` 实现 — 85%
 
 - 复刻 `merge_out.order_blocks` 的“full 块按 y 交错、body 块左栏后右栏”逻辑，替换旧的左边缘最大空隙法。
 - `40_10569` p1 的栏边界从错误的 429 纠正为 620；`52_230725` p0 从误判双栏纠正为单栏。
-- `40_10569` + `52_230725` 共 14 页，其中 7 个双栏页与 `merge_out` 的反转数为 **0**（修复前 342 处）。注意：上一轮验收按“双栏页”口径；本轮自动比对在 `52_230725` p1 这个单栏页发现 1 处顺序差异，尚待判定（见 P1-5）。
+- `40_10569` + `52_230725` 共 14 页，其中 7 个双栏页与 `merge_out` 的反转数为 **0**（修复前 342 处）。
+- Trae 全量回归（99 页）发现 **12 个单栏页实际是双栏但 `detected=single`**：`2025_1` p7/p13、`40_10588` p4、`42_103` p5/p13、`42_185` p1/p6、`42_93` p8/p10、`52_230302` p7、`5_55` p8、`9_1` p9。根因是 `_column_boundary_ja` 的“两侧各 ≥2 块”门槛在每栏仅 1 块时判不出双栏；这是 P1-6 的输入。
 - 已知设计债：`layout_ja._order_blocks_ja` 与 `merge_out.order_blocks` 是两份复制逻辑，未来可能漂移。
 
 #### P0-5 查看器 — 100%
@@ -135,11 +137,18 @@ Review 记录：`coordination/reviews/T-20261112-WB-REFS-JA.md`。阻塞点：�
 - 日文论文多数用“参考文献”而不是编号脚注，0 条可能是正确结果；但此前记录过 `42_93` 页脚误报，尚未系统复核。
 - **需你确认**：日文语料是否要求 frefs（脚注引文）能力，还是只保留 refs。若不需要，本项目应明确“frefs 对日文语料不适用”，避免用 0 条误判为缺陷。
 
-#### P1-5 `layout_ja` 全量回归 — 20%
+#### P1-5 `layout_ja` 全量回归 — 100%
 
-- 代码已在 11 篇上跑过：110 页，39 个双栏页，71 个单栏页；11 篇首页均有 `front` 分区（各 1 页）。
-- 人工核对只覆盖 `40_10569`（7 页）和 `52_230725`（7 页），共 14 页；其中双栏页 7 个，占全部双栏页 39 的 **18%**。
-- 我用同一套 IoU≥0.5 映射对 11 篇做了自动比对，9 篇在单栏页上出现 1–5 处 `reading_order` 与 `merge_out` 顺序不一致（例如 `52_230725` p1 的 1 处）；这些不一致目前**未逐页判定**是映射误差、块集合差异还是真实反转，不能直接当缺陷数。
+- 语料实际 **99 页 / 11 篇**（此前写 110 页是笔误）：39 个双栏页、60 个单栏页。
+- Trae `T-20261112-TRAE-LAYOUT-FULL` 已逐页回归：99/99 CSV 覆盖，39 个双栏页反转 **0**，12 个单栏差异页逐页判定为“实为双栏但 `layout_ja` 欠检”，不是映射误差。
+- 截图 12 张（6 页整页 + 6 页放大）；正式 `out/` 未写，哈希仍 `09a8820b…`。
+- 报告：`coordination/tasks/T-20261112-TRAE-LAYOUT-FULL/handoff.md`；review：`coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.md`。
+
+#### P1-6 `layout_ja` 双栏欠检修复 — 0%
+
+- 12 页实为双栏但 `detected=single`：`2025_1` p7/p13、`40_10588` p4、`42_103` p5/p13、`42_185` p1/p6、`42_93` p8/p10、`52_230302` p7、`5_55` p8、`9_1` p9。
+- 根因：`_column_boundary_ja` 要求分隔线两侧各 ≥2 个窄块；当每栏只有 1 个块（如单段落跨栏）时判不出双栏。
+- 修复方向：对“每侧 1 块但几何上明显分栏”的页面增加几何兜底（左右块 x 区间不重叠 + 中间间隙），但不得把真正的单栏页误判为双栏；用 Trae 的 99 页回归复测。
 
 #### P2-1 金标准 — 60%
 
@@ -257,7 +266,8 @@ Review 记录：`coordination/reviews/T-20261112-WB-REFS-JA.md`。阻塞点：�
 | P0 | `T-20261112-DS-GOLD-SCHEMA` | 日文金标准 schema 与比对骨架 | DeepSeek | 已确认字段 | **已完成**：`eval/ja_gold.json` + `eval/gold_eval.py` + 基线报告；不写 `out/` |
 | P0 | `T-20261112-USER-OUT-DECISION` | 是否解冻 `out/` / 补 `2025_1` | 用户 + DeepSeek | 用户拍板 | 明确“继续冻结”或“生成新预览”；若解冻，`2025_1` 必须有 `metadata.json` |
 | P1 | `T-20261112-WB-CSPAN-JA` | 日文全角括注/作者-年份 | WorkBuddy | `WB-REFS-JA` | 6 个合成用例通过；`2025_1` cspan ≥10；`52_230725` unlinked ≤2；exact ≥95% |
-| P1 | `T-20261112-TRAE-LAYOUT-FULL` | 11 篇 110 页 layout/viewer 全量回归 | Trae | 无 | 110 页逐页表；39 个双栏页 0 反转；单栏差异逐页解释；6 张截图；12/12 测试 |
+| P1 | `T-20261112-TRAE-LAYOUT-FULL` | 11 篇 99 页 layout/viewer 全量回归 | Trae | 无 | **已完成**：99 页逐页表；39 个双栏页 0 反转；12 单栏差异逐页判定；12 张截图；12/12 测试；merge `12e5c2a` |
+| P1 | `T-20261112-WB-LAYOUT-DETECT` | 12 页双栏欠检修复 | WorkBuddy | Trae 回归报告 | 12 页全部 `detected=double`；39 个已知双栏页仍 0 反转；不新增单栏误判；99 页回归复测 |
 | P1 | `T-20261112-WB-ISSUE-JA` | 日文刊名/关键词 | WorkBuddy | 无 | `journal` 11/11；有日文关键词的篇目不漏；无回归 |
 | P1 | `T-20261112-WB-AUTHOR-CLEAN` | 作者“・”/`\dagger` 清洗 | WorkBuddy | 无 | `2025_1` 作者无前导“・”、无 `\dagger`；其他篇人数不变 |
 | P2 | `T-20261112-WB-FREFS-JA` | frefs 日文适用性 | WorkBuddy | 用户确认是否需要 | 明确“需要/不需要”；需要则 `42_93` 误报复核 + 日文脚注样例 |
@@ -323,11 +333,18 @@ Review 记录：`coordination/reviews/T-20261112-WB-REFS-JA.md`。阻塞点：�
 
 #### T-20261112-TRAE-LAYOUT-FULL（P1，Trae）
 
-- **目标**：把“2 篇 14 页”的验证扩到“11 篇 110 页”，给出逐页结论，而不是只给汇总。
+- **目标**：把“2 篇 14 页”的验证扩到“11 篇 99 页”，给出逐页结论，而不是只给汇总。
 - **范围**：只读 `metapy/layout_ja.py`、`merge_out.py`；写 `out_llm_trial/trae_layout_full/` 报告/截图；`viewer.py` 仅在发现渲染缺陷时改。
 - **做法**：复用 `T-20261112-TRAE-LAYOUT` 的 IoU≥0.5 映射；对每页输出 `matched/inversions/columns/reading_order`；对单栏页的差异逐页标注“映射误差/块集合差异/真实反转”。
-- **验收**：110 页 CSV/Markdown 表；39 个双栏页 0 反转；单栏差异每页有结论；6 张代表性截图（`2025_1` p1/p3、`40_10569` p1、`42_103` p5、`52_230725` p1/p3）；`test_pipeline.py` 12/12；正式 `out/` 哈希不变。
-- **依赖**：无，可与 WorkBuddy 并行（不同 worktree；只读 `metapy`，写 `viewer.py` 时才可能冲突）。
+- **验收**：99 页 CSV/Markdown 表；39 个双栏页 0 反转；单栏差异每页有结论；12 张截图；`test_pipeline.py` 12/12；正式 `out/` 哈希不变。
+- **结果**：已完成并合并 `12e5c2a`；99/99 页覆盖、39/39 双栏 0 反转、12 页单栏差异判定为 `layout_ja` 欠检；viewer 两个修复（`8570767` 恢复 overlay、`7daf70f` 序号配色）一并合并。
+
+#### T-20261112-WB-LAYOUT-DETECT（P1，WorkBuddy）
+
+- **目标**：修复 Trae 报告的 12 页双栏欠检。
+- **范围**：仅 `metapy/layout_ja.py`；不改 `merge_out.py`、`unify.py`、`m3.py`。
+- **做法建议**：在 `_column_boundary_ja` 的“两侧各 ≥2 块”之外增加几何兜底：左右两组块 x 区间不重叠、中间间隙 ≥20px、两组 y 区间有重叠；每侧仅 1 块时也判双栏；但必须保证 60 个已知单栏页不误判。
+- **验收**：12 页全部 `detected=double`；39 个已知双栏页仍 0 反转；60 个已知单栏页不新增双栏；Trae 99 页回归复测；`test_pipeline.py` 12/12。
 
 #### T-20261112-WB-ISSUE-JA（P1，WorkBuddy）
 
@@ -543,11 +560,11 @@ E. 兼容
 【背景】
 - 正式 out/ 处于 A 方案冻结：禁止对 out/ 运行 metadata.py/pipeline.py/webapp.py 的写操作。
 - 上一轮 T-20261112-TRAE-LAYOUT 只验证了 40_10569（7 页）与 52_230725（7 页），共 14 页；其中双栏页 7 个。
-- 全语料实际是 11 篇、110 页、39 个双栏页。本轮要把验证扩到全量，并解释单栏页上与 merge_out 的顺序差异。
+- 全语料实际是 11 篇、99 页、39 个双栏页。本轮要把验证扩到全量，并解释单栏页上与 merge_out 的顺序差异。
 - 已知：layout_ja 吃 unified 共识块，merge_out 吃 mineru 单渠道块；块集合不同，单栏页可能出现“同一页两种顺序”。不要直接把所有差异当 bug，要逐页判定。
 
 【任务】
-T-20261112-TRAE-LAYOUT-FULL：11 篇 110 页 layout/viewer 全量回归。
+T-20261112-TRAE-LAYOUT-FULL：11 篇 99 页 layout/viewer 全量回归。
 
 【输入】
 - out/<doc>/unified/page_*.json（含 layout.reading_order/col/zone/detected/boundary）
@@ -595,7 +612,7 @@ D. 回归
    Tool: trae
    Tests: unittest 12/12; compileall OK
 5. 写 coordination/tasks/T-20261112-TRAE-LAYOUT-FULL/handoff.md，含：
-   - 110 页汇总表（按文档分组）；
+   - 99 页汇总表（按文档分组）；
    - 双栏 39 页反转表；
    - 单栏差异逐页判定；
    - 截图清单与浏览器实测结论；
@@ -604,7 +621,7 @@ D. 回归
 6. task 置 review（handoff_to: deepseek），释放锁（若加锁）。
 
 【验收标准（必须逐条回答）】
-- [ ] 11 篇 110 页全部有 CSV 行，无跳页。
+- [ ] 11 篇 99 页全部有 CSV 行，无跳页。
 - [ ] 39 个双栏页反转数全为 0；若有，逐页给出 uid/顺序。
 - [ ] 单栏页差异逐页判定，不允许“可能是映射误差”这种无证据结论。
 - [ ] 6 张截图存在、可读，且能看到双栏线/栏标签/阅读序序号。
@@ -613,7 +630,7 @@ D. 回归
 - [ ] handoff 里有“哪些页需要 WorkBuddy 修 layout_ja、哪些需要 DeepSeek 修 merge_out”的明确清单。
 
 【报告格式】
-第一段结论（PASS/FAIL + 双栏页反转数 + 单栏差异页数），第二段 110 页汇总，第三段双栏表，第四段单栏差异判定，第五段截图与测试，第六段建议。不要贴大段代码。
+第一段结论（PASS/FAIL + 双栏页反转数 + 单栏差异页数），第二段 99 页汇总，第三段双栏表，第四段单栏差异判定，第五段截图与测试，第六段建议。不要贴大段代码。
 ```
 
 ---
@@ -673,7 +690,7 @@ D. 回归
 | `52_230725` | 7 | 0（英文摘要） | 721 | 1 | 3 | 7 | 3 |
 | `5_55` | 9 | 386 | 783 | 3 | 33 | 30 | 3 |
 | `9_1` | 11 | 434 | 1279 | 6 | 22 | 41 | 2 |
-| **合计** | **110** | **8/11 有值** | **11/11 非空** | — | **233** | **332** | **39** |
+| **合计** | **99** | **8/11 有值** | **11/11 非空** | — | **233** | **332** | **39** |
 
 补充：
 
@@ -720,5 +737,5 @@ print(len(lines), hashlib.sha256("\n".join(lines).encode()).hexdigest())
 
 - 每项的“完成度”= 已通过验收的子项 / 当前定义的子项；子项定义见 §1.2 与 §3.2 验收清单。
 - 没有金标准的项，不给“准确率”；只给“工程完成度”。
-- 等权总体 = 14 项算术平均，仅用于横向比较，不用于对外承诺。
+- 等权总体 = 15 项算术平均，仅用于横向比较，不用于对外承诺。
 - 正式 `out/` 的哈希是本报告所有“未写 out”结论的唯一硬证据；任何任务结束都应重算一次。
