@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-WB-META2",
+ "title": "日文作者/英文摘要/英文标题修复",
+ "branch": "agent/workbuddy/T-20261112-WB-META2",
+ "commit": "d2a6261",
+ "merge_commit": "8d1ecd6",
+ "tag": "merge-T-20261112-WB-META2",
+ "merged_at": "2026-11-12T15:07:40+08:00",
+ "integrator": "deepseek",
+ "tests": "branch 12/12; main 12/12; front 7/7; abs 3/3; ner_lite selfcheck OK",
+ "review": "coordination/reviews/T-20261112-WB-META2.json",
+ "handoff": "coordination/tasks/T-20261112-WB-META2/handoff.md",
+ "preview": "coordination/previews/T-20261112-WB-ABS-preview.json",
+ "note": "Authors and English metadata fixes merged. Follow-ups covered by T-20261112-WB-EN-ABS: 52_230725 abstract_en still Japanese; 40_10569 abstract_en empty but high; 42_103 English abstract after Key words not extracted. Canonical out/ unchanged: full-out sha256 09a8820b6e21dbee3f34c3af19d428ac1672234a7b00c32dd7900a8e2b72b091."
+}

@@ -3,7 +3,7 @@
  "title": "日文作者/英文摘要/英文标题修复",
  "priority": "P0",
  "owner": "workbuddy",
- "status": "review",
+ "status": "done",
  "depends_on": [
   "T-20261112-WB-ABS"
  ],
@@ -29,5 +29,5 @@
  "acceptance": [],
  "handoff_to": "deepseek",
  "created_at": "2026-11-12T06:34:23+00:00",
- "updated_at": "2026-11-12T06:52:05+00:00"
+ "updated_at": "2026-11-12T07:07:39+00:00"
 }
