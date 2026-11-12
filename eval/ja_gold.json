@@ -1,0 +1,1534 @@
+{
+ "schema_version": "1.0",
+ "generated_at": "2026-11-12",
+ "generated_by": "deepseek-integrator",
+ "corpus": {
+  "expected_docs": 12,
+  "present_docs": 11,
+  "docs": [
+   "2025_1",
+   "40_10569",
+   "40_10588",
+   "42_103",
+   "42_185",
+   "42_93",
+   "43_10814",
+   "52_230302",
+   "52_230725",
+   "5_55",
+   "9_1"
+  ],
+  "missing_note": "uploads/out 实际只有 11 篇 PDF；未找到第 12 篇。2025_1 作为第 11 篇计入；若确有第 12 篇，请提供文件后补入。"
+ },
+ "verification": {
+  "tier_a": [
+   "2025_1",
+   "40_10569",
+   "52_230725"
+  ],
+  "tier_a_method": "2025_1 逐条对照 PDF 第 16-17 页图像；40_10569/52_230725 对照 unified 原文与 metadata raw；字段人工转录。",
+  "tier_b_method": "metadata/abstract 由原文与 PDF 首页人工核对；references 暂未建 GT（pending）。",
+  "abstract_method": "全文转录；2025_1 的英文摘要已剔除尾部日文行。",
+  "refs_rule": "条目级宁多勿漏；title/author 必须非空且高精度；其他字段允许噪声，人工兜底。",
+  "duplicate_note": "2025_1 #22 与 #6 为原文重复著录，保留并在 duplicate_of 之外标注；评估默认按 unique 计。"
+ },
+ "docs": [
+  {
+   "doc": "2025_1",
+   "source_pdf": "uploads/2025_1.pdf",
+   "pages": 17,
+   "language": "ja",
+   "title": "超多重スタック地中レーダ探査と 群列ボーリングコア解析に基づく奈良盆地 東縁断層帯・帯解断層の極浅部変形構造",
+   "title_en": "Shallow subsurface structure of the Obitoke fault in the eastern marginal faults of the Nara basin based on ultra-rapid stacking ground penetrating radar survey and arrayed boring analysis",
+   "authors": [
+    "川嶋涉造",
+    "木村治夫",
+    "谷口 薫",
+    "中西利典",
+    "堤 浩之"
+   ],
+   "affiliations": [
+    "1) 同志社大学大学院理工学研究科",
+    "2) 一般財団法人電力中央研究所",
+    "3) 株式会社パスコ",
+    "5) 同志社大学理工学部",
+    "1 Graduate School of Science and Engineering, Doshisha University",
+    "2 Central Research Institute of Electric Power Industry",
+    "5 Faculty of Science and Engineering, Doshisha University"
+   ],
+   "journal": "活断層研究",
+   "year": 2025,
+   "volume": "63",
+   "issue": null,
+   "pages_range": "1-17",
+   "abstract": null,
+   "abstract_en": "The eastern marginal fault of the Nara basin consists of east-dipping reverse faults running along the topographic boundaries between the eastern hills and mountains and western basins from the southeastern rim of the Kyoto basin to the southeastern rim of the Nara basin. We conducted an ultra-rapid stacking ground penetrating radar survey across the Obitoke fault, the westernmost active fault in the Nara basin, at Imaichi-cho, Nara City. By combining the GPR data with previous borehole data, we tried to image subsurface deformation by the Obitoke fault. The ultra-rapid stacking ground penetrating radar improves the signal-to-noise ratio and the exploration depth by greatly increasing the number of stacks. The survey allowed us to obtain cross sections down to a depth of about 30 m, and we identified west-dipping monoclonal deformation due to the reverse faulting on the Obitoke fault. The results indicate that the Obitoke fault has been active since the middle or late Pleistocene. One problem with ultra-rapid stacking is that clutter caused by artificial structures on the ground is strongly apparent in the images. In this exploration, some clutters made it impossible to interpret the geological structures. Therefore, the development of methods and techniques to reduce clutter is required to obtain high-quality cross sections of ultra-rapid stacking ground penetrating radar.",
+   "abstract_paragraphs": 1,
+   "keywords": [
+    "奈良盆地東縁断層帯",
+    "地中レーダ",
+    "スタッキング処理",
+    "群列ボーリング掘削調査"
+   ],
+   "references": [
+    {
+     "num": 1,
+     "venue_type": "book",
+     "authors": "物理探査学会編",
+     "title": "物理探査ハンドブック 増補改訂版",
+     "year": "2016",
+     "journal": "物理探査学会",
+     "volume": null,
+     "issue": null,
+     "pages": "1045p",
+     "doi": null,
+     "raw": "物理探査学会編, 2016, 「物理探査ハンドブック 増補改訂版」, 物理探査学会, 1045p.",
+     "source": {
+      "page": 16,
+      "uid": "u15_8"
+     },
+     "verified": true
+    },
+    {
+     "num": 2,
+     "venue_type": "journal",
+     "authors": "Furutani, M.",
+     "title": "Stratigraphical subdivision and pollen zonation of the Middle and Upper Pleistocene in the Coastal Area of Osaka Bay, Japan",
+     "year": "1989",
+     "journal": "Journal of Geosciences Osaka City University",
+     "volume": "32",
+     "issue": null,
+     "pages": "91-121",
+     "doi": null,
+     "raw": "Furutani, M., 1989, Stratigraphical subdivision and pollen zonation of the Middle and Upper Pleistocene in the Coastal Area of Osaka Bay, Japan. Journal of Geosciences Osaka City University, 32, 91-121.",
+     "source": {
+      "page": 16,
+      "uid": "u15_8"
+     },
+     "verified": true
+    },
+    {
+     "num": 3,
+     "venue_type": "journal",
+     "authors": "Hongo, M.",
+     "title": "Stratigraphic distribution of Hemiptelea (Ulmaceae) pollen from Pleistocene sediments in the Osaka sedimentary basin, southwest Japan",
+     "year": "2007",
+     "journal": "Review of Palaeobotany and Palynology",
+     "volume": "144",
+     "issue": null,
+     "pages": "287-299",
+     "doi": null,
+     "raw": "Hongo, M., 2007, Stratigraphic distribution of Hemiptelea (Ulmaceae) pollen from Pleistocene sediments in the Osaka sedimentary basin, southwest Japan, Review. Palaeobotany and Palynology, 144, 287-299.",
+     "source": {
+      "page": 16,
+      "uid": "u15_8"
+     },
+     "verified": true
+    },
+    {
+     "num": 4,
+     "venue_type": "journal",
+     "authors": "本郷美佐緒",
+     "title": "大阪堆積盆地における中部更新統の花粉生層序と古環境変遷",
+     "year": "2009",
+     "journal": "地質学雑誌",
+     "volume": "115",
+     "issue": null,
+     "pages": "64-79",
+     "doi": null,
+     "raw": "本郷美佐緒, 2009, 大阪堆積盆地における中部更新統の花粉生層序と古環境変遷, 地質学雑誌, 115, 64-79.",
+     "source": {
+      "page": 16,
+      "uid": "u15_8"
+     },
+     "verified": true
+    },
+    {
+     "num": 5,
+     "venue_type": "journal",
+     "authors": "堀川晴央, 水野清秀, 佐竹健治, 関口春子, 加瀬祐子, 杉山雄一, 横田 裕, 末廣匡基, Arben Pitarka",
+     "title": "大阪平野の3次元地盤構造モデルの作成",
+     "year": "2002",
+     "journal": "活断層・古地震研究報告",
+     "volume": "2",
+     "issue": null,
+     "pages": "291-324",
+     "doi": null,
+     "raw": "堀川晴央, 水野清秀, 佐竹健治, 関口春子, 加瀬祐子, 杉山雄一, 横田 裕, 末廣匡基, Arben Pitarka, 2002, 大阪平野の3次元地盤構造モデルの作成, 活断層・古地震研究報告, 2, 291-324.",
+     "source": {
+      "page": 16,
+      "uid": "u15_8"
+     },
+     "verified": true
+    },
+    {
+     "num": 6,
+     "venue_type": "book",
+     "authors": "中田 高・今泉俊文編",
+     "title": "活断層詳細デジタルマップ",
+     "year": "2002",
+     "journal": "東京大学出版会",
+     "volume": null,
+     "issue": null,
+     "pages": "DVD2枚+付図+解説書68p",
+     "doi": null,
+     "raw": "中田 高・今泉俊文編, 2002, 「活断層詳細デジタルマップ」, 東京大学出版会, DVD2枚+付図+解説書68p.",
+     "source": {
+      "page": 16,
+      "uid": "u15_8"
+     },
+     "verified": true
+    },
+    {
+     "num": 7,
+     "venue_type": "journal",
+     "authors": "Huzita, K.",
+     "title": "Tectonic development of the Median Zone (Setouti) of southwest Japan, since the Miocene: with special reference to the characteristic structure of central Kinki area",
+     "year": "1962",
+     "journal": "Journal of Geosciences Osaka City University",
+     "volume": "6",
+     "issue": null,
+     "pages": "103-144",
+     "doi": null,
+     "raw": "Huzita, K., 1962, Tectonic development of the Median Zone (Setouti) of southwest Japan, since the Miocene: with special reference to the characteristic structure of central Kinki area, Journal of Geosciences Osaka City University, 6, 103-144.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 8,
+     "venue_type": "journal",
+     "authors": "石田志朗",
+     "title": "大阪層群―淡水・内海成互層の下部洪積統―",
+     "year": "1970",
+     "journal": "第四紀研究",
+     "volume": "9",
+     "issue": null,
+     "pages": "101-112",
+     "doi": null,
+     "raw": "石田志朗, 1970, 大阪層群―淡水・内海成互層の下部洪積統―, 第四紀研究, 9, 101-112.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 9,
+     "venue_type": "web",
+     "authors": "地震調査研究推進本部地震調査委員会",
+     "title": "京都盆地―奈良盆地断層帯南部(奈良盆地東縁断層帯)の評価",
+     "year": "2001",
+     "journal": "地震調査研究推進本部地震調査委員会",
+     "volume": null,
+     "issue": null,
+     "pages": "17p",
+     "doi": null,
+     "raw": "地震調査研究推進本部地震調査委員会, 2001, 京都盆地―奈良盆地断層帯南部(奈良盆地東縁断層帯)の評価, 17p. https://www.jishin.go.jp/main/chousa/01jul_keina/index.htm",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 10,
+     "venue_type": "journal",
+     "authors": "金原正明",
+     "title": "花粉分析よりみた奈良盆地の各遺跡における古環境の復元と栽殖について",
+     "year": "1984",
+     "journal": "天理大学学報",
+     "volume": "36",
+     "issue": null,
+     "pages": "157-165",
+     "doi": null,
+     "raw": "金原正明, 1984, 花粉分析よりみた奈良盆地の各遺跡における古環境の復元と栽殖について, 天理大学学報, 36, 157-165.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 11,
+     "venue_type": "journal",
+     "authors": "Kimura, H., Nakanishi, T., Hosoya, T., Hong, W.",
+     "title": "Holocene right-lateral slip-rate revealed by sediment core analyses and ground penetrating radar profiling, the Sagiriko fault, Izu Peninsula, Japan, at the northern tip of the Izu-Bonin-Mariana arc",
+     "year": "2023",
+     "journal": "Nuclear Instruments and Methods in Physics Research Section B",
+     "volume": "538",
+     "issue": null,
+     "pages": "115-122",
+     "doi": null,
+     "raw": "Kimura, H., Nakanishi, T., Hosoya, T., Hong, W., 2023, Holocene right-lateral slip-rate revealed by sediment core analyses and ground penetrating radar profiling, the Sagiriko fault, Izu Peninsula, Japan, at the northern tip of the Izu-Bonin-Mariana arc, Nuclear Instruments and Methods in Physics Research Section B, 538, 115-122.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 12,
+     "venue_type": "journal",
+     "authors": "Kimura, H., Nakanishi, T., Katsuki, K., Hong, W., Matsuyama, H., Takemura, K.",
+     "title": "Holocene activity of the Asamigawa fault detected from sediment cores and a ground penetrating radar cross-section in Beppu area, southwestern Japan",
+     "year": "2019",
+     "journal": "Quaternary International",
+     "volume": "503",
+     "issue": null,
+     "pages": "87-96",
+     "doi": null,
+     "raw": "Kimura, H., Nakanishi, T., Katsuki, K., Hong, W., Matsuyama, H., Takemura, K., 2019, Holocene activity of the Asamigawa fault detected from sediment cores and a ground penetrating radar cross-section in Beppu area, southwestern Japan, Quaternary International, 503, 87-96.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 13,
+     "venue_type": "journal",
+     "authors": "木村治夫・中西利典・丸山 正・安藤亮輔・堀川晴央",
+     "title": "糸魚川―静岡構造線活断層系神城断層における地中レーダー探査",
+     "year": "2013",
+     "journal": "活断層研究",
+     "volume": "38",
+     "issue": null,
+     "pages": "1-16",
+     "doi": null,
+     "raw": "木村治夫・中西利典・丸山 正・安藤亮輔・堀川晴央, 2013, 糸魚川―静岡構造線活断層系神城断層における地中レーダー探査, 活断層研究, 38, 1-16.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 14,
+     "venue_type": "journal",
+     "authors": "Kimura, H. and Tsutsumi, H.",
+     "title": "Geologic and Geophysical Evidence of Repeated Normal Faulting on the Itozawa Fault, the Source of the Mw 6.6 Iwaki Earthquake Triggered by the Mw 9.0 Tohoku-oki Megathrust Earthquake, Northeast Japan",
+     "year": "2023",
+     "journal": "Bulletin of the Seismological Society of America",
+     "volume": "113",
+     "issue": null,
+     "pages": "2492-2504",
+     "doi": null,
+     "raw": "Kimura, H. and Tsutsumi, H., 2023, Geologic and Geophysical Evidence of Repeated Normal Faulting on the Itozawa Fault, the Source of the Mw 6.6 Iwaki Earthquake Triggered by the Mw 9.0 Tohoku-oki Megathrust Earthquake, Northeast Japan, Bulletin of the Seismological Society of America, 113, 2492-2504.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 15,
+     "venue_type": "journal",
+     "authors": "Lei, X., Ren, J., Xu, X., Qian, R., Zhang J. and Song, B.",
+     "title": "Application of high-power ground-penetrating radar antennas with different frequencies to quickly locate the upper breakpoint of active buried faults in an urban area in the Datong basin (northern China)",
+     "year": "2022",
+     "journal": "Journal of Applied Geophysics",
+     "volume": "196",
+     "issue": null,
+     "pages": "104515",
+     "doi": null,
+     "raw": "Lei, X., Ren, J., Xu, X., Qian, R., Zhang J. and Song, B., 2022, Application of high-power ground-penetrating radar antennas with different frequencies to quickly locate the upper breakpoint of active buried faults in an urban area in the Datong basin (northern China), Journal of Applied Geophysics, 196, 104515.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 16,
+     "venue_type": "journal",
+     "authors": "増田富士雄・伊勢屋ふじこ",
+     "title": "“逆グレーディング構造”：自然堤防帯における氾濫原洪水堆積物の示相堆積構造",
+     "year": "1985",
+     "journal": "堆積学研究会報",
+     "volume": "22/23",
+     "issue": null,
+     "pages": "108-116",
+     "doi": null,
+     "raw": "増田富士雄・伊勢屋ふじこ, 1985, “逆グレーディング構造”：自然堤防帯における氾濫原洪水堆積物の示相堆積構造, 堆積学研究会報, 22/23, 108-116.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 17,
+     "venue_type": "book",
+     "authors": "増田富士雄",
+     "title": "ダイナミック地層学",
+     "year": "2019",
+     "journal": "近未来社",
+     "volume": null,
+     "issue": null,
+     "pages": "219p",
+     "doi": null,
+     "raw": "増田富士雄, 2019, 「ダイナミック地層学」, 近未来社, 219p.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 18,
+     "venue_type": "journal",
+     "authors": "三田村宗樹, 吉川周作",
+     "title": "堆積速度の差異からみた大阪堆積盆地における後期更新世の基盤ブロックの運動",
+     "year": "1997",
+     "journal": "地球科学",
+     "volume": "51",
+     "issue": null,
+     "pages": "8-14",
+     "doi": null,
+     "raw": "三田村宗樹, 吉川周作, 1997, 堆積速度の差異からみた大阪堆積盆地における後期更新世の基盤ブロックの運動, 地球科学, 51, 8-14.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 19,
+     "venue_type": "report",
+     "authors": "文部科学省研究開発局・国立大学法人京都大学防災研究所",
+     "title": "奈良盆地東縁断層帯における重点的な調査観測 令和元年度成果報告書",
+     "year": "2020",
+     "journal": "文部科学省・京都大学防災研究所",
+     "volume": null,
+     "issue": null,
+     "pages": "198p",
+     "doi": null,
+     "raw": "文部科学省研究開発局・国立大学法人京都大学防災研究所, 2020, 「奈良盆地東縁断層帯における重点的な調査観測 令和元年度成果報告書」, 文部科学省・京都大学防災研究所, 198p.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 20,
+     "venue_type": "report",
+     "authors": "文部科学省研究開発局・国立大学法人京都大学防災研究所",
+     "title": "奈良盆地東縁断層帯における重点的な調査観測 令和2年度成果報告書",
+     "year": "2021",
+     "journal": "文部科学省・京都大学防災研究所",
+     "volume": null,
+     "issue": null,
+     "pages": "234p",
+     "doi": null,
+     "raw": "文部科学省研究開発局・国立大学法人京都大学防災研究所, 2021, 「奈良盆地東縁断層帯における重点的な調査観測 令和2年度成果報告書」, 文部科学省・京都大学防災研究所, 234p.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 21,
+     "venue_type": "report",
+     "authors": "文部科学省研究開発局・国立大学法人京都大学防災研究所",
+     "title": "奈良盆地東縁断層帯における重点的な調査観測 令和元～3年度成果報告書",
+     "year": "2022",
+     "journal": "文部科学省・京都大学防災研究所",
+     "volume": null,
+     "issue": null,
+     "pages": "564p",
+     "doi": null,
+     "raw": "文部科学省研究開発局・国立大学法人京都大学防災研究所, 2022, 「奈良盆地東縁断層帯における重点的な調査観測 令和元～3年度成果報告書」, 文部科学省・京都大学防災研究所, 564p, 付図12枚, 添付写真集15p.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 22,
+     "venue_type": "book",
+     "authors": "中田 高・今泉俊文編",
+     "title": "活断層詳細デジタルマップ",
+     "year": "2002",
+     "journal": "東京大学出版会",
+     "volume": null,
+     "issue": null,
+     "pages": "DVD2枚+付図+解説書68p",
+     "doi": null,
+     "raw": "中田 高・今泉俊文編, 2002, 「活断層詳細デジタルマップ」, 東京大学出版会, DVD2枚+付図+解説書68p.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true,
+     "note": "与 #6 重复（原文重复著录）",
+     "duplicate_of": 6
+    },
+    {
+     "num": 23,
+     "venue_type": "journal",
+     "authors": "Neal, A.",
+     "title": "Ground-penetrating radar and its use in sedimentology: principles, problems and progress",
+     "year": "2004",
+     "journal": "Earth-Science Reviews",
+     "volume": "66",
+     "issue": null,
+     "pages": "261-330",
+     "doi": null,
+     "raw": "Neal, A., 2004, Ground-penetrating radar and its use in sedimentology: principles, problems and progress, Earth-Science Reviews, 66, 261-330.",
+     "source": {
+      "page": 16,
+      "uid": "u15_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 24,
+     "venue_type": "report",
+     "authors": "西岡芳晴, 尾崎正紀, 寒川旭, 山元孝広, 宮地良典",
+     "title": "桜井地域の地質",
+     "year": "2001",
+     "journal": "地域地質研究報告（5万分の1地質図幅）",
+     "volume": null,
+     "issue": null,
+     "pages": "141p",
+     "doi": null,
+     "raw": "西岡芳晴，尾崎正紀，寒川旭，山元孝広，宮地良典，2001，「桜井地域の地質」，地域地質研究報告（5万分の1地質図幅），地質調査所，141p.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    },
+    {
+     "num": 25,
+     "venue_type": "report",
+     "authors": "尾崎正紀, 寒川旭, 宮崎一博, 西岡芳晴, 宮地良典, 竹内圭史, 田口雄作",
+     "title": "奈良地域の地質",
+     "year": "2000",
+     "journal": "地域地質研究報告（5万分の1地質図幅）",
+     "volume": null,
+     "issue": null,
+     "pages": "162p",
+     "doi": null,
+     "raw": "尾崎正紀，寒川旭，宮崎一博，西岡芳晴，宮地良典，竹内圭史，田口雄作，2000，「奈良地域の地質」，地域地質研究報告（5万分の1地質図幅），地質調査所，162p.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    },
+    {
+     "num": 26,
+     "venue_type": "journal",
+     "authors": "Patria, A., Kimura, H., Kitade, Y., Tsutsumi, H.",
+     "title": "Right-lateral offset associated with the most recent earthquake on the Ikeda fault of the Median Tectonic Line, southwest Japan, revealed by ground-penetrating radar profiling",
+     "year": "2022",
+     "journal": "Progress in Earth and Planetary Science",
+     "volume": "9",
+     "issue": null,
+     "pages": null,
+     "doi": "10.1186/s40645-022-00466-7",
+     "raw": "Patria, A., Kimura, H., Kitade, Y., Tsutsumi, H., 2022, Right-lateral offset associated with the most recent earthquake on the Ikeda fault of the Median Tectonic Line, southwest Japan, revealed by ground-penetrating radar profiling, Progress in Earth and Planetary Science, 9, Doi: 10.1186/s40645-022-00466-7",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    },
+    {
+     "num": 27,
+     "venue_type": "journal",
+     "authors": "Reimer, P. J., and 41 others",
+     "title": "The IntCal20 Northern Hemisphere radiocarbon calibration curve (0-55 kcal BP)",
+     "year": "2020",
+     "journal": "Radiocarbon",
+     "volume": "62",
+     "issue": "4",
+     "pages": "725-757",
+     "doi": null,
+     "raw": "Reimer, P. J., and 41 others, 2020, The IntCal20 Northern Hemisphere radiocarbon calibration curve (0-55 kcal BP), Radiocarbon, 62(4), 725-757.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    },
+    {
+     "num": 28,
+     "venue_type": "journal",
+     "authors": "寒川 旭・衣笠善博・奥村晃史・八木浩司",
+     "title": "奈良盆地東縁の活断層",
+     "year": "1985",
+     "journal": "第四紀研究",
+     "volume": "24",
+     "issue": null,
+     "pages": "85-97",
+     "doi": null,
+     "raw": "寒川 旭・衣笠善博・奥村晃史・八木浩司, 1985, 奈良盆地東縁の活断層, 第四紀研究, 24, 85-97.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    },
+    {
+     "num": 29,
+     "venue_type": "journal",
+     "authors": "千田 稔",
+     "title": "奈良盆地弥生式遺跡における花粉分析学的考察",
+     "year": "1971",
+     "journal": "地理学評論",
+     "volume": "44",
+     "issue": null,
+     "pages": "707-722",
+     "doi": null,
+     "raw": "千田 稔, 1971, 奈良盆地弥生式遺跡における花粉分析学的考察, 地理学評論, 44, 707-722.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    },
+    {
+     "num": 30,
+     "venue_type": "conference",
+     "authors": "Sumirah, Sumargana, L., Nugroho, D., Dinanta, G. P. and Anantasena, Y.",
+     "title": "Identify depth of peat using Ultra GPR in Siak Regency, Riau Province",
+     "year": "2018",
+     "journal": "IEEE Asia-Pacific Conference on Geoscience, Electronics and Remote Sensing Technology (AGERS)",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": "10.1109/AGERS.2018.8554095",
+     "raw": "Sumirah, Sumargana, L., Nugroho, D., Dinanta, G. P. and Anantasena, Y., 2018, Identify depth of peat using Ultra GPR in Siak Regency, Riau Province, IEEE Asia-Pacific Conference on Geoscience, Electronics and Remote Sensing Technology (AGERS), Doi:10.1109/AGERS.2018.8554095",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    },
+    {
+     "num": 31,
+     "venue_type": "journal",
+     "authors": "田井昭子",
+     "title": "大阪市におけるボーリング（OD-1）コアの花粉分析（その1）―近畿地方の新期新生代層の研究V―",
+     "year": "1966",
+     "journal": "地球科学",
+     "volume": "83",
+     "issue": null,
+     "pages": "25-33",
+     "doi": null,
+     "raw": "田井昭子，1966a，大阪市におけるボーリング（OD-1）コアの花粉分析（その1）—近畿地方の新期新生代層の研究V—，地球科学，83，25-33.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true,
+     "note": "1966a"
+    },
+    {
+     "num": 32,
+     "venue_type": "journal",
+     "authors": "田井昭子",
+     "title": "大阪市におけるボーリング（OD-1）コアの花粉分析（その2）―近畿地方の新期新生代層の研究V―",
+     "year": "1966",
+     "journal": "地球科学",
+     "volume": "84",
+     "issue": null,
+     "pages": "31-38",
+     "doi": null,
+     "raw": "田井昭子，1966b，大阪市におけるボーリング（OD-1）コアの花粉分析（その2）—近畿地方の新期新生代層の研究V—，地球科学，84，31-38.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true,
+     "note": "1966b"
+    },
+    {
+     "num": 33,
+     "venue_type": "conference",
+     "authors": "谷口 薫・石井一徳・木村治夫・川嶋涉造・堤 浩之",
+     "title": "地下30 mまで探査可能な地中レーダ探査機器の導入と活断層調査への適用",
+     "year": "2021",
+     "journal": "日本活断層学会2021年度秋季学術大会",
+     "volume": null,
+     "issue": null,
+     "pages": "P-4",
+     "doi": null,
+     "raw": "谷口 薫・石井一徳・木村治夫・川嶋涉造・堤 浩之，2021，地下30 mまで探査可能な地中レーダ探査機器の導入と活断層調査への適用，日本活断層学会2021年度秋季学術大会，P-4.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    },
+    {
+     "num": 34,
+     "venue_type": "journal",
+     "authors": "堤 浩之・杉戸信彦・木村治夫・川嶋涉造・中西利典・郡谷順英・谷口 薫・小俣雅志",
+     "title": "奈良盆地東縁断層帯の帯解断層と天理撓曲の活動履歴と変位速度",
+     "year": "2023",
+     "journal": "活断層研究",
+     "volume": "58",
+     "issue": null,
+     "pages": "1-19",
+     "doi": null,
+     "raw": "堤 浩之・杉戸信彦・木村治夫・川嶋涉造・中西利典・郡谷順英・谷口 薫・小俣雅志，2023，奈良盆地東縁断層帯の帯解断層と天理撓曲の活動履歴と変位速度，活断層研究，58，1-19.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    },
+    {
+     "num": 35,
+     "venue_type": "journal",
+     "authors": "有働恵子",
+     "title": "地中レーダ探査データを用いた茨城県波崎海岸の砂浜空間堆積過程の解析",
+     "year": "2010",
+     "journal": "海洋開発論文集",
+     "volume": "26",
+     "issue": null,
+     "pages": "1173-1178",
+     "doi": null,
+     "raw": "有働恵子，2010，地中レーダ探査データを用いた茨城県波崎海岸の砂浜空間堆積過程の解析，海洋開発論文集，26，1173-1178.",
+     "source": {
+      "page": 17,
+      "uid": "u16_3"
+     },
+     "verified": true
+    }
+   ],
+   "references_status": "verified",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": [
+    "原文无日文要旨；abstract_en 为首页英文摘要，已剔除尾部日文行。",
+    "作者名按 OCR 原文；已去掉前导“・”。"
+   ]
+  },
+  {
+   "doc": "40_10569",
+   "source_pdf": "uploads/40_10569.pdf",
+   "pages": 7,
+   "language": "ja",
+   "title": "脳卒中の病型ごとの急性期から回復期までの実態調査 —熊本脳卒中地域連携パスの9年間のデータを用いて—",
+   "title_en": "Survey of stroke types in acute hospitals and Kaifukuki rehabilitation wards: nine years of Kumamoto Stroke Liaison Critical Pathway data",
+   "authors": [
+    "本田 省二",
+    "徳永 誠",
+    "渡邊 進",
+    "田北 智裕",
+    "大塚 忠弘",
+    "米原 敏郎",
+    "西徹",
+    "寺崎 修司",
+    "三浦 正毅",
+    "平田 好文",
+    "山鹿真紀夫",
+    "橋本洋一郎"
+   ],
+   "affiliations": [
+    "熊本機能病院リハビリテーション科",
+    "熊本脳卒中地域連携ネットワーク研究会"
+   ],
+   "journal": "脳卒中",
+   "year": 2018,
+   "volume": 40,
+   "issue": null,
+   "pages_range": "343-349",
+   "abstract": "【目的】脳卒中の病型ごとに急性期から回復期までの実態を明らかにする．【対象と方法】対象は9年間に熊本脳卒中地域連携パスに登録された脳卒中患者20,758例である．急性期病院と回復期リハ病院の現状とその年次推移を調査した．【結果】データ入力率は，急性期病院で60.8～96.2%，回復期リハ病院で57.5～64.1%であった．年齢，急性期病院在院日数，回復期リハ病院の入院時Functional Independence Measure (FIM)，退院時FIM，在院日数の中央値は，それぞれ76歳，14日，66点，101点，85日であった．年次推移では，急性期と回復期の在院日数は短縮，データ入力率，回復期入院時FIM，回復期からの在宅復帰率は上昇していた．【結論】データ入力率が改善すれば地域連携パスは実態調査の有力な手段になる．",
+   "abstract_en": "Background and purpose: This study aimed to identify the types of stroke in acute care hospitals and Kaifukuki rehabilitation wards (KRW). Methods: A total of 20,758 stroke patients were enrolled in the Kumamoto Stroke Liaison Critical Pathway over a period of 9 years. We examined the data from acute hospitals and KRW and their annual trends. Results: The rate of data entry was 60.8–96.1% in acute hospitals and 57.5–64.1% in KRW. The median patient age was 76 years, median length of stay (LOS) in acute hospitals was 14 days, median Functional Independence Measure (FIM) score on admission to KRW was 66, median FIM score on discharge from KRW was 101, and median LOS in KRW was 85 days. The annual trends showed that LOS in acute hospitals and KRW were decreasing, and that data entry rates, FIM on admission, and home discharge rates from KRW were also increasing. Conclusions: If the data entry rate improves, the Stroke Liaison Critical Pathway will be very useful in the stroke survey.",
+   "abstract_paragraphs": 1,
+   "keywords": [],
+   "references": [
+    {
+     "num": 1,
+     "venue_type": "book",
+     "authors": "小林祥泰監修",
+     "title": "脳卒中データバンク 2009",
+     "year": "2009",
+     "journal": "中山書店",
+     "volume": null,
+     "issue": null,
+     "pages": "pp1-205",
+     "doi": null,
+     "raw": "1) 小林祥泰監修: 脳卒中データバンク 2009. 東京, 中山書店. 2009, pp1-205",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 2,
+     "venue_type": "report",
+     "authors": "回復期リハビリテーション病棟協会",
+     "title": "回復期リハビリテーション病棟の現状と課題に関する調査報告書",
+     "year": "2017",
+     "journal": "回復期リハビリテーション病棟協会",
+     "volume": null,
+     "issue": null,
+     "pages": "pp1-170",
+     "doi": null,
+     "raw": "2) 回復期リハビリテーション病棟協会: 回復期リハビリテーション病棟の現状と課題に関する調査報告書, pp1-170, 2017. http://plus1co.net/d_data/27zitai_book.pdf",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 3,
+     "venue_type": "journal",
+     "authors": "近藤克則",
+     "title": "リハビリテーション患者データベースの二次分析―プロセス, 可能性と限界―",
+     "year": "2012",
+     "journal": "Jpn J Rehabil Med",
+     "volume": "49",
+     "issue": null,
+     "pages": "142-148",
+     "doi": null,
+     "raw": "3) 近藤克則: リハビリテーション患者データベースの二次分析―プロセス, 可能性と限界―. Jpn J Rehabil Med 49: 142-148, 2012",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 4,
+     "venue_type": "journal",
+     "authors": "木村和美, 数井誠司, 山口武典",
+     "title": "脳梗塞急性期医療の全国実態調査",
+     "year": "2003",
+     "journal": "臨床医",
+     "volume": "29",
+     "issue": null,
+     "pages": "19-22",
+     "doi": null,
+     "raw": "4) 木村和美, 数井誠司, 山口武典: 脳梗塞急性期医療の全国実態調査. 臨床医 29: 19-22, 2003",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 5,
+     "venue_type": "journal",
+     "authors": "白井和歌子, 徳光直樹, 和田 始ら",
+     "title": "北海道北部における脳卒中の実態調査―道北脳卒中共同研究9年間のデータより―",
+     "year": "2014",
+     "journal": "脳卒中",
+     "volume": "36",
+     "issue": null,
+     "pages": "23-28",
+     "doi": null,
+     "raw": "5) 白井和歌子, 徳光直樹, 和田 始ら: 北海道北部における脳卒中の実態調査―道北脳卒中共同研究9年間のデータより―. 脳卒中 36: 23-28, 2014",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 6,
+     "venue_type": "journal",
+     "authors": "平野照之, 橋本洋一郎, 米原敏郎ら",
+     "title": "地域完結型脳卒中診療態勢―熊本市神経内科関連3施設の虚血性脳血管障害診療状況―",
+     "year": "2002",
+     "journal": "脳卒中",
+     "volume": "24",
+     "issue": null,
+     "pages": "201-207",
+     "doi": null,
+     "raw": "6) 平野照之, 橋本洋一郎, 米原敏郎ら: 地域完結型脳卒中診療態勢―熊本市神経内科関連3施設の虚血性脳血管障害診療状況―. 脳卒中 24: 201-207, 2002",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 7,
+     "venue_type": "journal",
+     "authors": "前島伸一郎, 大沢愛子, 棚橋紀夫",
+     "title": "地域連携クリニカルパス, 埼玉西部地域の現状と特徴",
+     "year": "2013",
+     "journal": "Jpn J Rehabil Med",
+     "volume": "50",
+     "issue": null,
+     "pages": "441-447",
+     "doi": null,
+     "raw": "7) 前島伸一郎, 大沢愛子, 棚橋紀夫: 地域連携クリニカルパス, 埼玉西部地域の現状と特徴. Jpn J Rehabil Med 50: 441-447, 2013",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 8,
+     "venue_type": "journal",
+     "authors": "徳永 誠, 渡邊 進, 三宮克彦ら",
+     "title": "熊本脳卒中地域連携パス運用3年間における臨床指標の変化",
+     "year": "2013",
+     "journal": "J Clin Rehabil",
+     "volume": "22",
+     "issue": null,
+     "pages": "935-941",
+     "doi": null,
+     "raw": "8) 徳永 誠, 渡邊 進, 三宮克彦ら: 熊本脳卒中地域連携パス運用3年間における臨床指標の変化. J Clin Rehabil 22: 935-941, 2013",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 9,
+     "venue_type": "journal",
+     "authors": "中西俊人, 徳永 誠, 渡邊 進ら",
+     "title": "実績指数の導入前後におけるFIM利得と在院日数の変化―熊本脳卒中地域連携パスにおける重症度・病院ごとの調査―",
+     "year": "2017",
+     "journal": "J Clin Rehabil",
+     "volume": "26",
+     "issue": null,
+     "pages": "925-929",
+     "doi": null,
+     "raw": "9) 中西俊人, 徳永 誠, 渡邊 進ら: 実績指数の導入前後におけるFIM利得と在院日数の変化―熊本脳卒中地域連携パスにおける重症度・病院ごとの調査―. J Clin Rehabil 26: 925-929, 2017",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 10,
+     "venue_type": "journal",
+     "authors": "川野眞一, 児島勇樹, 黒土達也ら",
+     "title": "熊本脳卒中地域連携パス電子版を用いた回復期リハビリテーション病院からの転帰分析",
+     "year": "2013",
+     "journal": "J Clin Rehabil",
+     "volume": "22",
+     "issue": null,
+     "pages": "1242-1246",
+     "doi": null,
+     "raw": "10) 川野眞一, 児島勇樹, 黒土達也ら: 熊本脳卒中地域連携パス電子版を用いた回復期リハビリテーション病院からの転帰分析. J Clin Rehabil 22: 1242-1246, 2013",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 11,
+     "venue_type": "journal",
+     "authors": "寺崎修司, 平田好文, 橋本洋一郎ら",
+     "title": "脳卒中地域連携パス電子版の開発",
+     "year": "2010",
+     "journal": "脳卒中",
+     "volume": "32",
+     "issue": null,
+     "pages": "654-659",
+     "doi": null,
+     "raw": "11) 寺崎修司, 平田好文, 橋本洋一郎ら: 脳卒中地域連携パス電子版の開発. 脳卒中 32: 654-659, 2010",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 12,
+     "venue_type": "book",
+     "authors": "柳井久江",
+     "title": "4 steps エクセル統計, 第4版",
+     "year": "2016",
+     "journal": "オーエムエス出版",
+     "volume": null,
+     "issue": null,
+     "pages": "pp1-310",
+     "doi": null,
+     "raw": "12) 柳井久江: 4 steps エクセル統計, 第4版. 埼玉, オーエムエス出版. 2016, pp1-310",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 13,
+     "venue_type": "journal",
+     "authors": "橋本洋一郎, 平野照之, 米原敏郎ら",
+     "title": "脳卒中の診療態勢―地域完結型―",
+     "year": "2001",
+     "journal": "脳卒中",
+     "volume": "23",
+     "issue": null,
+     "pages": "364-369",
+     "doi": null,
+     "raw": "13) 橋本洋一郎, 平野照之, 米原敏郎ら: 脳卒中の診療態勢―地域完結型―. 脳卒中 23: 364-369, 2001",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 14,
+     "venue_type": "journal",
+     "authors": "園田 茂, 永井将太, 才藤栄一",
+     "title": "回復期リハビリテーション病棟の着目点と課題",
+     "year": "2005",
+     "journal": "Jpn J Rehabil Med",
+     "volume": "42",
+     "issue": null,
+     "pages": "614-617",
+     "doi": null,
+     "raw": "14) 園田 茂, 永井将太, 才藤栄一: 回復期リハビリテーション病棟の着目点と課題. Jpn J Rehabil Med 42: 614-617, 2005",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 15,
+     "venue_type": "journal",
+     "authors": "徳永 誠, 中西亮二, 渡邊 進ら",
+     "title": "患者層の違いを考慮したADLデータ処理",
+     "year": "2015",
+     "journal": "Jpn J Rehabil Med",
+     "volume": "52",
+     "issue": null,
+     "pages": "404-407",
+     "doi": null,
+     "raw": "15) 徳永 誠, 中西亮二, 渡邊 進ら: 患者層の違いを考慮したADLデータ処理. Jpn J Rehabil Med 52: 404-407, 2015",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 16,
+     "venue_type": "journal",
+     "authors": "Tokunaga M, Watanabe S, Nakanishi R, et al",
+     "title": "The influence of stroke type, gender, and age on FIM improvement",
+     "year": "2014",
+     "journal": "Jpn J Compr Rehabil Sci",
+     "volume": "5",
+     "issue": null,
+     "pages": "136-140",
+     "doi": null,
+     "raw": "16) Tokunaga M, Watanabe S, Nakanishi R, et al: The influence of stroke type, gender, and age on FIM improvement. Jpn J Compr Rehabil Sci 5: 136-140, 2014",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 17,
+     "venue_type": "journal",
+     "authors": "時里 香, 徳永 誠, 奥村幸祐ら",
+     "title": "合併症のため回復期リハビリテーション病棟から急性期病院へ転院あるいは死亡退院した脳卒中患者の原因に関する調査",
+     "year": "2015",
+     "journal": "J Clin Rehabil",
+     "volume": "24",
+     "issue": null,
+     "pages": "734-739",
+     "doi": null,
+     "raw": "17) 時里 香, 徳永 誠, 奥村幸祐ら: 合併症のため回復期リハビリテーション病棟から急性期病院へ転院あるいは死亡退院した脳卒中患者の原因に関する調査. J Clin Rehabil 24: 734-739, 2015",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 18,
+     "venue_type": "journal",
+     "authors": "徳永 誠, 久保皇之, 鉄田直大ら",
+     "title": "日本リハビリテーション・データベースへのデータ入力率と病院の脳卒中患者アウトカムとの関連―回復期リハ9病院における調査―",
+     "year": "2016",
+     "journal": "J Clin Rehabil",
+     "volume": "25",
+     "issue": null,
+     "pages": "311-316",
+     "doi": null,
+     "raw": "18) 徳永 誠, 久保皇之, 鉄田直大ら: 日本リハビリテーション・データベースへのデータ入力率と病院の脳卒中患者アウトカムとの関連―回復期リハ9病院における調査―. J Clin Rehabil 25: 311-316, 2016",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true
+    },
+    {
+     "num": 19,
+     "venue_type": "journal",
+     "authors": "東平日出夫, 松岡哲也, 渡部広明ら",
+     "title": "日本外傷データバンクにおけるデータ欠損の特徴",
+     "year": "2011",
+     "journal": "日救急医会誌",
+     "volume": "22",
+     "issue": null,
+     "pages": "147-155",
+     "doi": null,
+     "raw": "19) 東平日出夫, 松岡哲也, 渡部広明ら: 日本外傷データバンクにおけるデータ欠損の特徴. 日救急医会誌 22: 147-155, 2011",
+     "source": {
+      "page": 7,
+      "uid": "u6_4"
+     },
+     "verified": true,
+     "note": "原块尾部粘连英文作者/摘要，GT 只取文献句"
+    }
+   ],
+   "references_status": "verified",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": []
+  },
+  {
+   "doc": "40_10588",
+   "source_pdf": "uploads/40_10588.pdf",
+   "pages": 6,
+   "language": "ja",
+   "title": "経過中に脳梗塞とたこつぼ型心筋症を併発した3症例",
+   "title_en": "Takotsubo cardiomyopathy around the onset of acute ischemic stroke",
+   "authors": [
+    "谷 裕基",
+    "中嶋 秀人",
+    "垣内 謙佑",
+    "元木三記子",
+    "吉本 幸世",
+    "太田 真",
+    "奥村 嘉也",
+    "北岡 治子",
+    "木村 文治",
+    "荒若 繁樹"
+   ],
+   "affiliations": [
+    "大阪医科大学内科学 IV・神経内科",
+    "清恵会病院脳神経外科",
+    "清恵会病院内科"
+   ],
+   "journal": "脳卒中",
+   "year": 2018,
+   "volume": 40,
+   "issue": null,
+   "pages_range": "382-387",
+   "abstract": "経過中に脳梗塞とたこつぼ型心筋症を併発した3症例を経験した．症例1は85歳女性．心原性脳塞栓症の発症翌日にたこつぼ型心筋症を発症し，ニコランジル投与により軽快．症例2は67歳女性．精神的ストレスからたこつぼ型心筋症を発症し，2日後に脳塞栓症を発症．たこつぼ型心筋症に伴う心室内血栓を原因と考えられ保存的治療で軽快．たこつぼ型心筋症も経過観察で軽快した．症例3は68歳男性．好酸球性多発血管炎性肉芽腫症の経過中に脳梗塞とたこつぼ型心筋症をほぼ同時に発症し，ニコランジルとカルペリチド投与により軽快．症例1と3は自覚症状がなく，心電図とバイタルサインの変化により発見された．脳梗塞とたこつぼ型心筋症の因果関係は多様である．脳梗塞に心筋症を併発する場合，症状や所見が軽微なこともあるため，見逃される可能性がある．たこつぼ型心筋症の合併は転帰に影響し得るため，それを念頭に置いた脳梗塞診療が必要である．",
+   "abstract_en": "We report here three patients with cerebral infarction associated with Takotsubo cardiomyopathy. Case 1 was an 85-year-old woman who suffered from Takotsubo cardiomyopathy one day after acute cerebral embolism, and her symptoms were relieved by Nicorandil administration. Case 2 was a 67-year-old woman who developed Takotsubo cardiomyopathy due to psychological stress. Two days later, she developed acute cerebral embolism that was attributed to Takotsubo cardiomyopathy. Clinical symptoms of cerebral embolism and cardiomyopathy were relieved by conservative treatment. Case 3 was a 68-year-old man. Takotsubo cardiomyopathy and cerebral infarction seemed to occur at almost the same time during the course of eosinophilic granulomatosis with polyangiitis. Left ventricular wall motion was improved by the administration of Nicorandil and Carperitide. Although cases 1 and 3 did not show clinical symptoms such as the chest pain, Takotsubo cardiomyopathy was identified from the changes in electrocardiogram and vital signs. The present findings show that cerebral infarction and Takotsubo cardiomyopathy could be associated with other factors. Since Takotsubo cardiomyopathy could potentially influence the outcome of cerebral infarction, more attention should be paid for the presence of Takotsubo cardiomyopathy in acute stroke care.",
+   "abstract_paragraphs": 1,
+   "keywords": [],
+   "references": null,
+   "references_status": "pending",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": []
+  },
+  {
+   "doc": "42_103",
+   "source_pdf": "uploads/42_103.pdf",
+   "pages": 13,
+   "language": "ja",
+   "title": "デジタル遠隔病理診断の現在と将来 — 地域病院での取り組みから見えるもの",
+   "title_en": "Present and future of digital telepathology – what can be seen from the initiatives of a community hospital",
+   "authors": [
+    "深山 正久"
+   ],
+   "affiliations": [
+    "国保旭中央病院遠隔病理診断センター",
+    "Asahi TelePathology Center, Asahi General Hospital"
+   ],
+   "journal": "診断病理",
+   "year": 2025,
+   "volume": 42,
+   "issue": 2,
+   "pages_range": "103-115",
+   "abstract": "デジタル遠隔病理診断は病理診断分野の実践的課題である。旭中央病院遠隔病理診断の取り組み－地域がん診療病院との連携，都市部からの支援，Class II 機器を用いた連携－を紹介し，デジタル遠隔病理診断が「病理医不足」，「すべての病理診断を保健医療機関で」という二つの課題を解決する現実的手段であることを示した。診療報酬上の問題点を以下，連携病理，診断補助装置，連携迅速診断，病理診療所，検査所 80%，遠隔常勤の各ルールとして整理した。多くのデジタル遠隔病理診断の試みが進展し，交流が進むことを期待する。",
+   "abstract_en": "Telepathology using digital whole slide images is a practical challenge in the field of pathology. Three initiatives of digital telepathology of Asahi General Hospital were presented, which included collaboration with a regional hospital for cancer treatment, support from a hospital branch clinic of pathology in Tokyo, and collaboration with another hospital using Class II devices. These demonstrated that digital telepathology is a realistic means to resolve both issues, “shortage of pathologists in Japan” and “all pathology diagnosis at health care institutions.” We should overcome six restriction rules in Japanese medical insurance systems for the promotion of digital telepathology, regarding to 1) network construction with hospitals and clinics, 2) diagnostic devices, 3) collaborative intraoperative diagnosis, 4) setup of pathology clinics, 5) 80%-specimen rule for commercial laboratory, and 6) criteria for full-time remote pathologists. It is expected that many attempts of digital telepathology will be developed and shared in the near future.",
+   "abstract_paragraphs": 1,
+   "keywords": [],
+   "references": null,
+   "references_status": "pending",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": []
+  },
+  {
+   "doc": "42_185",
+   "source_pdf": "uploads/42_185.pdf",
+   "pages": 7,
+   "language": "ja",
+   "title": "唾液腺細胞の可塑性解析 ーマウスモデルを用いた実験的考察ー",
+   "title_en": "Analysis of cellular plasticity in salivary glands using mouse models",
+   "authors": [
+    "美島 健二"
+   ],
+   "affiliations": [
+    "昭和医科大学歯学部口腔病態診断科学講座口腔病理学部門",
+    "Division of Pathology, Department of Oral Diagnostic Sciences, Showa Medical University School of Dentistry"
+   ],
+   "journal": "診断病理",
+   "year": 2025,
+   "volume": 42,
+   "issue": 3,
+   "pages_range": "185-191",
+   "abstract": "細胞の可塑性とは，最終分化した細胞が他の分化した細胞や分化に逆行して，幹細胞などのより未分化な細胞に変化することである。唾液腺細胞における可塑性に関する解析は，マウスの顎下腺を用いた実験的解析がなされており，放射線照射や導管結紮後の再生過程において唾液腺細胞が可塑性を示すことが報告されている。また，我々は，マウス顎下腺より唾液腺筋上皮細胞の単離に成功し，in vitro における3次元的細胞培養系を用いて，その可塑性について検証したので本稿において概説したい。",
+   "abstract_en": "Cellular plasticity is a phenomenon in which differentiated cells change into other differentiated cells, or into undifferentiated cells such as stem cells in the opposite direction to differentiation. Experimental analysis of salivary gland cell plasticity has been performed using mouse submandibular glands, and it has been reported that salivary gland cells exhibit plasticity in mouse models of radiation exposure and duct ligation. Ductal and myoepithelial cells can acquire cellular plasticity such as dedifferentiation, through damaged stimulation. To recapitulate this phenomenon in vitro, we isolated salivary gland myoepithelial cells from mouse submandibular glands and analyzed their plasticity using a three-dimensional cell culture system in vitro. Consequently, activation of Notch signaling induced a ductal marker, Krt18 expression, but reduced myoepithelial cell makers,   \\alpha -SMA, and Snai2 expression. Thus, we clarified part of the mechanism by which myoepithelial cells acquire cellular plasticity, and we would like to outline this in the present article.",
+   "abstract_paragraphs": 1,
+   "keywords": [],
+   "references": null,
+   "references_status": "pending",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": []
+  },
+  {
+   "doc": "42_93",
+   "source_pdf": "uploads/42_93.pdf",
+   "pages": 10,
+   "language": "ja",
+   "title": "膜性腎症の発症メカニズム —原因抗原と IgG4 関連自己免疫疾患としての考察—",
+   "title_en": "Pathogenesis of membranous nephropathy : implications of causative podocyte-associated antigens and IgG4-mediated autoimmune disease",
+   "authors": [
+    "本田 一穂",
+    "康 徳東",
+    "川西 邦夫"
+   ],
+   "affiliations": [
+    "昭和医科大学医学部解剖学講座顕微解剖学部門",
+    "Department of Anatomy, Showa Medical University School of Medicine"
+   ],
+   "journal": "診断病理",
+   "year": 2025,
+   "volume": 42,
+   "issue": 2,
+   "pages_range": "93-102",
+   "abstract": "膜性腎症は糸球体係蹄壁の上皮下に沈着する免疫複合物が，補体活性化などを介して濾過バリアを傷害し，高度蛋白尿をきたす免疫疾患である。最近，病理組織切片にレーザーマイクロダイセクション・液体クロマトグラフィー・質量分析法 (LMD-LCMS/MS 法) の技術が応用され，この疾患の原因抗原が次々と解明されている。その結果，膜性腎症のおよそ 70% の原因抗原である phospholipase A2 receptor (PLA2R) をはじめ，多くの原因抗原が糸球体足細胞 (ポドサイト) に発現している蛋白であることが明らかとなった。また，血中に対応する自己抗体が検出されることから，膜性腎症はポドサイトに対する自己免疫疾患と理解されている。一方，自己抗体のサブクラスが主として IgG4 であることから，本疾患を IgG4 関連自己免疫疾患の一つととらえることもできる。従来，特発性と続発性に分類されていた膜性腎症は，原因抗原を特定することが診断の要となり，原因抗原と IgG4 免疫応答に基づいた病態の解明と治療の選択が始まっている。",
+   "abstract_en": "Membranous nephropathy is an immune disease in which immune complexes are deposited under the glomerular epithelium, damaging the filtration barrier and resulting in severe proteinuria. Recently, a new technology called laser microdissection-liquid chromatography mass spectrometry (LMD-LCMS/MS) has been applied to pathological tissue sections, revealing the causative antigens of this disease. As a result, many causative antigens, including phospholipase A2 receptor (PLA2R), which is found in 70% of membranous nephropathy cases, have been identified as proteins expressed in glomerular podocytes. Corresponding autoantibodies are detected in the blood, leading to the understanding that membranous nephropathy is an autoimmune disease targeting podocytes. In addition, since the autoantibody subclass is IgG4, this disease can be considered an IgG4-related autoimmune disease. Membranous nephropathy was previously classified as idiopathic or secondary, but with the identification of causative antigens, it is now classified based on the specific antigen involved. The elucidation of the pathogenesis and selection of treatment strategies have begun based on the causative antigen and the characteristic IgG4 immune response in membranous nephropathy.",
+   "abstract_paragraphs": 1,
+   "keywords": [],
+   "references": null,
+   "references_status": "pending",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": []
+  },
+  {
+   "doc": "43_10814",
+   "source_pdf": "uploads/43_10814.pdf",
+   "pages": 5,
+   "language": "ja",
+   "title": "くも膜下出血急性期患者における stress index の検討",
+   "title_en": "Assessment of stress index in patients with subarachnoid hemorrhage of acute phase",
+   "authors": [
+    "伊藤 清佳",
+    "深尾 繁治",
+    "野々山 裕",
+    "藤田 智昭",
+    "辻 篤司",
+    "野崎 和彦",
+    "木戸岡 実"
+   ],
+   "affiliations": [
+    "京都岡本記念病院脳神経外科",
+    "滋賀医科大学脳神経外科"
+   ],
+   "journal": "脳卒中",
+   "year": 2021,
+   "volume": 43,
+   "issue": null,
+   "pages_range": "201-205",
+   "abstract": "【背景および目的】くも膜下出血(SAH)急性期の病態はカテコラミン血中濃度(CA)の推移と関連があり，CAと血糖値(Glu)を血清K値(K)で除した値であるstress index(SI)は相関する．本研究はSIとSAH重症度や転帰との関連を解析することを目的とした．【方法】4年間に2施設で治療したSAHを対象とし，重症度と転帰別に各々2群に分け，搬入時の生化学因子(K, Glu)を診療録より収集し，各群間，およびGrade(G)Vでの生化学因子の解析を行った．【結果】対象症例122例について，重症群(66例)，転帰不良群(62例)は，それぞれ軽症群(56例)，転帰良好群(60例)に比べ，GluとSIが有意に高値だった(いずれもp<0.01).GVではSI 56.00以下で転帰良好例を抽出することが可能だった．【結論】SIがSAH急性期における簡便な予後予測因子となる可能性が示唆された．",
+   "abstract_en": "Background and Purpose: Subarachnoid hemorrhage (SAH) in an acute phase causes increase in serum catecholamine concentration, which is well associated with stress index (SI) calculated as serum glucose (Glu) divided by potassium (K). The purpose of this study was to analyze the relationship between SI and severity of SAH, and SI and patient's outcome. Methods: We collected SAH patient's clinical data (including K and Glu on arrival) from two institutes for the past four years. We divided SAH patients into two groups based on severity of SAH and patient's outcome. K, Glu, and SI were compared between the two groups. Results: We retrospectively analyzed 122 SAH patients. Glu and SI were significantly higher (p < 0.01 for both Glu and SI) in the severe (n=66) and poor outcome (n=62) groups than in the moderate (n=56) and good outcome (n=60) groups. In World Federation of Neurological Surgeons grade V patients, the receiver operating characteristics assessment revealed that the good outcome group could be detected by SI  $ \\leq $56.00. Conclusion: SI might be simply used as a prognosis predicting factor in clinical situations.",
+   "abstract_paragraphs": 1,
+   "keywords": [],
+   "references": null,
+   "references_status": "pending",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": []
+  },
+  {
+   "doc": "52_230302",
+   "source_pdf": "uploads/52_230302.pdf",
+   "pages": 7,
+   "language": "ja",
+   "title": "中性子回折実験で探る高温高圧下での Si を含んだ hcp 鉄の水素化挙動",
+   "title_en": "High-pressure and high-temperature neutron diffraction experiments of Si-bearing iron deuteride with hcp structure",
+   "authors": [
+    "森 悠一郎",
+    "鍵 裕之"
+   ],
+   "affiliations": [
+    "Graduate School of Science, The University of Tokyo, Tokyo 113-0033, Japan",
+    "東京大学大学院理学系研究科, 〒113-0033 東京都文京区本郷7-3-1"
+   ],
+   "journal": "岩石鉱物科学",
+   "year": 2023,
+   "volume": 52,
+   "issue": null,
+   "pages_range": "1-7",
+   "abstract": null,
+   "abstract_en": "The identification of light elements in the Earth's core has been an open question for more than 50 years. From seismic observation, the Earth's core is believed to contain some light elements because it is about 10% less dense than pure Fe at the corresponding pressure and temperature conditions. Among the candidates of light elements in the core, hydrogen is one of the promising light elements. Neutron diffraction is very useful in systems when detecting light atoms surrounded by heavy atoms because its scattering intensity is independent of atomic number. Hence, many neutron diffraction studies have been performed on the iron–hydrogen binary system. On the other hand, it is likely that there is more than one type of light elements dissolved in the core, and interactions between light elements are also involved. Here, we focused on an Fe–Si–H system, and we investigated the sites occupied by deuterium and its site occupancy of hcp  $ Fe_{0.95}Si_{0.05}H_{x} $ at 14.7 GPa and 800 K by in-situ neutron diffraction experiments. So far, this pressure condition is the highest for neutron diffraction experiments at high pressure and high temperature, where crystal structure analysis has been conducted.",
+   "abstract_paragraphs": 0,
+   "keywords": [],
+   "references": null,
+   "references_status": "pending",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": [
+    "原文无日文要旨；abstract_en 为英文摘要。"
+   ]
+  },
+  {
+   "doc": "52_230725",
+   "source_pdf": "uploads/52_230725.pdf",
+   "pages": 7,
+   "language": "ja",
+   "title": "表面形状観察のための高分解能走査電子顕微鏡法",
+   "title_en": "High-resolution scanning electron microscopy to observe surface morphology",
+   "authors": [
+    "小暮 敏博"
+   ],
+   "affiliations": [
+    "Department of Earth and Planetary Science, Graduate School of Science, The University of Tokyo, 7-3-1 Hongo, Bunkyo-ku, Tokyo 113-0033, Japan",
+    "東京大学大学院理学系研究科地球惑星科学専攻, 〒113-0033 東京都文京区本郷 7-3-1"
+   ],
+   "journal": "岩石鉱物科学",
+   "year": 2023,
+   "volume": 52,
+   "issue": null,
+   "pages_range": "1-7",
+   "abstract": null,
+   "abstract_en": "Basis, conditions, and practical techniques for scanning electron microscopy (SEM) are described, to obtain high–resolution secondary–electron images (SEIs) which give valuable information for fine morphology of mineral specimens. Although minimization of the electron–probe diameter on specimens is the primary request for high–resolution imaging, a smaller scattering volume in the specimen with a lower acceleration voltage is often important to acquire clear SEIs to show surface structures of the specimens. The operators are recommended to optimize the acceleration voltage and other operating conditions of SEM, as well as specimen preparation conditions, depending on their samples and purpose of the observation.",
+   "abstract_paragraphs": 0,
+   "keywords": [],
+   "references": [
+    {
+     "num": 1,
+     "venue_type": "journal",
+     "authors": "Boersch, H.",
+     "title": "Experimentelle Bestimmung der Energieverteilung in thermisch ausgelösten Elektronenstrahlen",
+     "year": "1954",
+     "journal": "Z. Phys.",
+     "volume": "139",
+     "issue": null,
+     "pages": "115-146",
+     "doi": null,
+     "raw": "Boersch, H. (1954): Experimentelle Bestimmung der Energieverteilung in thermisch ausgelösten Elektronenstrahlen. Z. Phys., 139, 115-146.",
+     "source": {
+      "page": 7,
+      "uid": "u6_6"
+     },
+     "verified": true
+    },
+    {
+     "num": 2,
+     "venue_type": "book",
+     "authors": "Fuchs, E., Oppolzer, H. and Rehme, H.",
+     "title": "Particle Beam Micro-analysis: Fundamentals, Methods and Applications",
+     "year": "1990",
+     "journal": "VCH Publishing",
+     "volume": null,
+     "issue": null,
+     "pages": "pp. 507",
+     "doi": null,
+     "raw": "Fuchs, E., Oppolzer, H. and Rehme, H. (1990): Particle Beam Micro-analysis: Fundamentals, Methods and Applications. pp. 507, VCH Publishing, New York.",
+     "source": {
+      "page": 7,
+      "uid": "u6_6"
+     },
+     "verified": true
+    },
+    {
+     "num": 3,
+     "venue_type": "book",
+     "authors": "堀内繁雄",
+     "title": "高分解能電子顕微鏡―原理と利用法―",
+     "year": "1988",
+     "journal": "共立出版",
+     "volume": null,
+     "issue": null,
+     "pages": "pp. 236",
+     "doi": null,
+     "raw": "堀内繁雄(1988): 高分解能電子顕微鏡―原理と利用法―. pp. 236, 共立出版, 東京.",
+     "source": {
+      "page": 7,
+      "uid": "u6_6"
+     },
+     "verified": true
+    },
+    {
+     "num": 4,
+     "venue_type": "journal",
+     "authors": "Kanaya, K. and Okayama, S.",
+     "title": "Penetration and energy-loss theory of electrons in solid targets",
+     "year": "1972",
+     "journal": "J. Phys. D: Appl. Phys.",
+     "volume": "5",
+     "issue": null,
+     "pages": "43-58",
+     "doi": null,
+     "raw": "Kanaya, K. and Okayama, S. (1972): Penetration and energy-loss theory of electrons in solid targets. J. Phys. D: Appl. Phys., 5, 43-58.",
+     "source": {
+      "page": 7,
+      "uid": "u6_6"
+     },
+     "verified": true
+    },
+    {
+     "num": 5,
+     "venue_type": "web",
+     "authors": "神田公生",
+     "title": "走査電顕モンテ・カルロ(フリーソフト)",
+     "year": "1997",
+     "journal": "個人公開（vector）",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "神田公生(1997): 走査電顕モンテ・カルロ(フリーソフト) https://www vector.co.jp/soft / win95/edu/se059369.html",
+     "source": {
+      "page": 7,
+      "uid": "u6_6"
+     },
+     "verified": true
+    },
+    {
+     "num": 6,
+     "venue_type": "journal",
+     "authors": "佐藤貢",
+     "title": "低加速電圧走査電子顕微鏡法における結像理論―低加速電圧における高分解能技術―",
+     "year": "1995",
+     "journal": "電子顕微鏡",
+     "volume": "30",
+     "issue": null,
+     "pages": "164-169",
+     "doi": null,
+     "raw": "佐藤貢(1995): 低加速電圧走査電子顕微鏡法における結像理論―低加速電圧における高分解能技術―. 電子顕微鏡, 30, 164-169.",
+     "source": {
+      "page": 7,
+      "uid": "u6_6"
+     },
+     "verified": true
+    },
+    {
+     "num": 7,
+     "venue_type": "book",
+     "authors": "田中信夫",
+     "title": "電子線ナノイメージング―高分解能 TEMとSTEMによる可視化",
+     "year": "2009",
+     "journal": "内田老鶴圃",
+     "volume": null,
+     "issue": null,
+     "pages": "pp. 247",
+     "doi": null,
+     "raw": "田中信夫(2009): 電子線ナノイメージング―高分解能 TEMとSTEMによる可視化. pp. 247, 内田老鶴圃, 東京.",
+     "source": {
+      "page": 7,
+      "uid": "u6_6"
+     },
+     "verified": true
+    }
+   ],
+   "references_status": "verified",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": [
+    "原文无日文要旨；abstract_en 为英文摘要。"
+   ]
+  },
+  {
+   "doc": "5_55",
+   "source_pdf": "uploads/5_55.pdf",
+   "pages": 9,
+   "language": "ja",
+   "title": "アプタマー技術による大規模疾患プロテオミクス",
+   "title_en": "Large-scale Disease Proteomics by Aptamer Technology",
+   "authors": [
+    "古市真木雄",
+    "和賀巌",
+    "小田吉哉"
+   ],
+   "affiliations": [
+    "フォーネスライフ株式会社：103-0023 東京都中央区日本橋本町 3-8-3",
+    "東京大学大学院医学系研究科リピドミクス社会連携講座：113-8654 東京都文京区本郷 7-3-1 東京大学医学部教育研究棟 13F",
+    "NEC ソリューションイノベータ株式会社デジタルヘルスケア事業推進室：136-8608 東京都江東区新木場 1-18-7",
+    "東北大学 革新的イノベーション研究プロジェクト，産学連携機構：980-0845 宮城県仙台市青葉区荒巻字青葉 468-1"
+   ],
+   "journal": "Proteome Letters",
+   "year": 2020,
+   "volume": "5",
+   "issue": "2",
+   "pages_range": "55-63",
+   "abstract": "近年，質量分析技術の発展や新技術の出現により，大規模な疾患プロテオーム研究事例が増えてきた。本報告では，血液中の数千種類のタンパク質を同時に解析できる修飾型人工 DNA 配列（アプタマー）を用いた Affinity Proteomics 技術に焦点を当てて，多数の検体が用いられている最近の大規模研究を中心に幾つかの研究例を報告する。今回紹介する技術の特徴は，まず抗体の代わりに数千種類の修飾型アプタマーを準備し，血液中の各標的タンパク質に特異的に結合させ，洗浄し，標的タンパク質と結合したアプタマーのみを遺伝子チップで捕捉して定量する，つまりタンパク質を遺伝子のようにマイクロアレイ上で測定する技術である。本法は多検体測定と定量性に優れていることから臨床応用例が多い。国内における臨床プロテオーム研究分野の発展と社会実装の一助になると考えて最新動向を総説として記述した。",
+   "abstract_en": "According to the resent progress on the mass spectrometric technologies and the other novel approaches for quantitative protein analysis, the large-scale proteome researches with disease related human specimens have increased. In this report, affinity proteomics are focused on, which could analyze thousands of proteins in blood at the same time. As the technical feature, thousands of artificial DNA aptamers are prepared, then bound to proteins in the blood. The signals on the microarray of each aptamer reflects each target protein amounts. In addition to the technical points, the novel trends and new findings found in more than 200 papers, which might contribute to the future of the proteome research field and social implementation, are also described as our review report.",
+   "abstract_paragraphs": 1,
+   "keywords": [],
+   "references": null,
+   "references_status": "pending",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": []
+  },
+  {
+   "doc": "9_1",
+   "source_pdf": "uploads/9_1.pdf",
+   "pages": 11,
+   "language": "ja",
+   "title": "LC-MS/MS によるがん主要メタボローム絶対定量系の構築と 代謝解析への応用",
+   "title_en": "Development and Application of LC-MS/MS Method for Determination of Major Metabolites Intra/Extra Cultured Cell Lines",
+   "authors": [
+    "金光祥臣",
+    "小林大樹",
+    "中谷航太",
+    "和泉自泰",
+    "馬場健史",
+    "松本雅記"
+   ],
+   "affiliations": [
+    "新潟大学医学部医学科：951-8510 新潟市中央区旭町通 1 番町 757",
+    "九州大学生体防御医学研究所：812-8582 福岡市東区馬出 3-1-1",
+    "新潟大学医歯学総合病院薬剤部：951-8520 新潟市中央区旭町通 1 番町 754"
+   ],
+   "journal": "Proteome Letters",
+   "year": 2024,
+   "volume": "9",
+   "issue": "1",
+   "pages_range": "1-11",
+   "abstract": "がんは特有の代謝状態の可塑性と多様性を有しており、その理解には複数のオミクスデータを活用したシステム的な解釈が必要となる。メタボロミクスにおいては、がん細胞内外の量的変動を正確かつ網羅的に捉える分析技術が必要であるが、主要代謝物であるアミノ酸や有機酸などは化合物極性が高く、一般的な逆相系分析カラムを用いた LC-MS 測定系では定量が困難なものが多い。そこで筆者は、アミノ基混合修飾ポリマー粒子充填カラムを用いたアミノ酸、ATP 類、NAD 類の同時測定系と 2-ピコリルアミン誘導体化法とアダマンチルエチル基カラムを用いた有機酸測定系を駆使することで、同位体希釈法によるがん主要メタボロームの絶対定量を可能にした。3 種の前立腺がん細胞株に応用し、Data Independent Acquisition (DIA) プロテオミクスデータと照合させると、細胞株特有の代謝システム変遷が見えてきた。本手法は、がんメタボロミクスの重要な分析基盤として活用が期待できる。",
+   "abstract_en": "Because cancer has unique plasticity and diversity in its metabolic state, systematic interpretation using multiple omics data is important. Metabolomics requires analytical tools that can accurately and comprehensively capture quantitative changes in metabolites inside and outside of cancer cells. However, most critical metabolites, such as amino acids and organic acids, are difficult to quantify by LC-MS using common reversed-phase analytical columns owing to their polarity and sensitivity limitations. To address this issue, we developed a system for the simultaneous absolute determination of amino acids, ATP, and NAD using a column packed with polymer particles featuring mixed amino group modifications. Furthermore, we adapted an organic acid measurement system using the 2-picolylamine derivatization method, and an adamantylethyl group column was used to establish a system for the absolute quantification of major cancer metabolomes using an isotope dilution method. Application of this method to three prostate cancer cell lines, combined with data-independent acquisition (DIA) proteomic data, revealed cell line-specific metabolic transitions. These methods introduced in this report are expected to be an important analytical platform for cancer metabolomics.",
+   "abstract_paragraphs": 1,
+   "keywords": [],
+   "references": null,
+   "references_status": "pending",
+   "skipped": {
+    "footnote_refs": "skip (not in scope; keep as plain text)"
+   },
+   "notes": []
+  }
+ ]
+}

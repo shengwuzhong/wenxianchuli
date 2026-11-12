@@ -1,0 +1,43 @@
+{
+ "id": "T-20261112-DS-GOLD-SCHEMA",
+ "title": "日文金标准 GT 与比对骨架（2025_1/40_10569/52_230725 refs + 11 篇字段/摘要）",
+ "priority": "P0",
+ "owner": "deepseek",
+ "status": "done",
+ "depends_on": [],
+ "allowed_files": [
+  "eval/ja_gold.json",
+  "eval/gold_eval.py",
+  "eval/validate_gold.py",
+  "eval/reports/baseline_current.md",
+  "eval/reports/baseline_current.json",
+  "docs/JA_GOLD_2026-11-12.md",
+  "docs/JA_IMPROVEMENT_PLAN_2026-11-12.md"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "unify.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/previews/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "main",
+ "base_commit": "75a3da1",
+ "acceptance": [
+  "eval/ja_gold.json 通过 validate_gold.py",
+  "11 篇文档字段/摘要 GT；8 篇日文摘要全文；3 篇无日文摘要记 null",
+  "2025_1 refs 35 条（34 唯一，1 条原文重复）；40_10569 19 条；52_230725 7 条",
+  "eval/gold_eval.py 可只读比对 out/<doc>/metadata.json",
+  "baseline_current.md 记录当前代码基线",
+  "no canonical out/ writes"
+ ],
+ "handoff_to": "deepseek",
+ "created_at": "2026-11-12T08:30:00+00:00",
+ "updated_at": "2026-11-12T08:45:00+00:00"
+}

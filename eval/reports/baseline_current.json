@@ -1,0 +1,1157 @@
+{
+ "gold": "D:\\处理工具\\2\\multidoc-ocr-compare-main\\eval\\ja_gold.json",
+ "pred": "out_llm_trial\\ja_status_1112",
+ "docs": [
+  {
+   "doc": "2025_1",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "超多重スタック地中レーダ探査と 群列ボーリングコア解析に基づく奈良盆地 東縁断層帯・帯解断層の極浅部変形構造",
+     "pred": "超多重スタック地中レーダ探査と 群列ボーリングコア解析に基づく奈良盆地 東縁断層帯・帯解断層の極浅部変形構造",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Shallow subsurface structure of the Obitoke fault in the eastern marginal faults of the Nara basin based on ultra-rapid stacking ground penetrating radar survey and arrayed boring analysis",
+     "pred": "Shallow subsurface structure of the Obitoke fault in the eastern marginal faults of the Nara basin based on ultra-rapid stacking ground penetrating radar survey and arrayed boring analysis",
+     "ok": true
+    },
+    "journal": {
+     "gold": "活断層研究",
+     "pred": null,
+     "ok": false
+    },
+    "year": {
+     "gold": 2025,
+     "pred": 2025,
+     "ok": true
+    },
+    "volume": {
+     "gold": "63",
+     "pred": null,
+     "ok": false
+    },
+    "issue": {
+     "gold": null,
+     "pred": 63,
+     "ok": false
+    },
+    "pages": {
+     "gold": "1-17",
+     "pred": "1-17",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "川嶋涉造",
+      "木村治夫",
+      "谷口 薫",
+      "中西利典",
+      "堤 浩之"
+     ],
+     "pred": [
+      "川嶋涉造",
+      "・木村治夫",
+      "・谷口 薫",
+      "中西利典",
+      "堤 浩之"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 0,
+     "pred_len": 0,
+     "skipped": true
+    },
+    "abstract_en": {
+     "gold_len": 1396,
+     "pred_len": 1446,
+     "ratio": 0.9814,
+     "pred_kana": 11,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 34,
+    "pred": 0,
+    "recall": 0.0,
+    "title_ok": 0.0,
+    "author_ok": 0.0,
+    "matched": 0,
+    "missing": [
+     {
+      "num": 1,
+      "title": "物理探査ハンドブック 増補改訂版",
+      "authors": "物理探査学会編"
+     },
+     {
+      "num": 2,
+      "title": "Stratigraphical subdivision and pollen zonation of the Middle and Upper Pleistocene in the Coastal Area of Osaka Bay, Japan",
+      "authors": "Furutani, M."
+     },
+     {
+      "num": 3,
+      "title": "Stratigraphic distribution of Hemiptelea (Ulmaceae) pollen from Pleistocene sediments in the Osaka sedimentary basin, southwest Japan",
+      "authors": "Hongo, M."
+     },
+     {
+      "num": 4,
+      "title": "大阪堆積盆地における中部更新統の花粉生層序と古環境変遷",
+      "authors": "本郷美佐緒"
+     },
+     {
+      "num": 5,
+      "title": "大阪平野の3次元地盤構造モデルの作成",
+      "authors": "堀川晴央, 水野清秀, 佐竹健治, 関口春子, 加瀬祐子, 杉山雄一, 横田 裕, 末廣匡基, Arben Pitarka"
+     },
+     {
+      "num": 6,
+      "title": "活断層詳細デジタルマップ",
+      "authors": "中田 高・今泉俊文編"
+     },
+     {
+      "num": 7,
+      "title": "Tectonic development of the Median Zone (Setouti) of southwest Japan, since the Miocene: with special reference to the characteristic structure of central Kinki area",
+      "authors": "Huzita, K."
+     },
+     {
+      "num": 8,
+      "title": "大阪層群―淡水・内海成互層の下部洪積統―",
+      "authors": "石田志朗"
+     },
+     {
+      "num": 9,
+      "title": "京都盆地―奈良盆地断層帯南部(奈良盆地東縁断層帯)の評価",
+      "authors": "地震調査研究推進本部地震調査委員会"
+     },
+     {
+      "num": 10,
+      "title": "花粉分析よりみた奈良盆地の各遺跡における古環境の復元と栽殖について",
+      "authors": "金原正明"
+     },
+     {
+      "num": 11,
+      "title": "Holocene right-lateral slip-rate revealed by sediment core analyses and ground penetrating radar profiling, the Sagiriko fault, Izu Peninsula, Japan, at the northern tip of the Izu-Bonin-Mariana arc",
+      "authors": "Kimura, H., Nakanishi, T., Hosoya, T., Hong, W."
+     },
+     {
+      "num": 12,
+      "title": "Holocene activity of the Asamigawa fault detected from sediment cores and a ground penetrating radar cross-section in Beppu area, southwestern Japan",
+      "authors": "Kimura, H., Nakanishi, T., Katsuki, K., Hong, W., Matsuyama, H., Takemura, K."
+     },
+     {
+      "num": 13,
+      "title": "糸魚川―静岡構造線活断層系神城断層における地中レーダー探査",
+      "authors": "木村治夫・中西利典・丸山 正・安藤亮輔・堀川晴央"
+     },
+     {
+      "num": 14,
+      "title": "Geologic and Geophysical Evidence of Repeated Normal Faulting on the Itozawa Fault, the Source of the Mw 6.6 Iwaki Earthquake Triggered by the Mw 9.0 Tohoku-oki Megathrust Earthquake, Northeast Japan",
+      "authors": "Kimura, H. and Tsutsumi, H."
+     },
+     {
+      "num": 15,
+      "title": "Application of high-power ground-penetrating radar antennas with different frequencies to quickly locate the upper breakpoint of active buried faults in an urban area in the Datong basin (northern China)",
+      "authors": "Lei, X., Ren, J., Xu, X., Qian, R., Zhang J. and Song, B."
+     },
+     {
+      "num": 16,
+      "title": "“逆グレーディング構造”：自然堤防帯における氾濫原洪水堆積物の示相堆積構造",
+      "authors": "増田富士雄・伊勢屋ふじこ"
+     },
+     {
+      "num": 17,
+      "title": "ダイナミック地層学",
+      "authors": "増田富士雄"
+     },
+     {
+      "num": 18,
+      "title": "堆積速度の差異からみた大阪堆積盆地における後期更新世の基盤ブロックの運動",
+      "authors": "三田村宗樹, 吉川周作"
+     },
+     {
+      "num": 19,
+      "title": "奈良盆地東縁断層帯における重点的な調査観測 令和元年度成果報告書",
+      "authors": "文部科学省研究開発局・国立大学法人京都大学防災研究所"
+     },
+     {
+      "num": 20,
+      "title": "奈良盆地東縁断層帯における重点的な調査観測 令和2年度成果報告書",
+      "authors": "文部科学省研究開発局・国立大学法人京都大学防災研究所"
+     },
+     {
+      "num": 21,
+      "title": "奈良盆地東縁断層帯における重点的な調査観測 令和元～3年度成果報告書",
+      "authors": "文部科学省研究開発局・国立大学法人京都大学防災研究所"
+     },
+     {
+      "num": 23,
+      "title": "Ground-penetrating radar and its use in sedimentology: principles, problems and progress",
+      "authors": "Neal, A."
+     },
+     {
+      "num": 24,
+      "title": "桜井地域の地質",
+      "authors": "西岡芳晴, 尾崎正紀, 寒川旭, 山元孝広, 宮地良典"
+     },
+     {
+      "num": 25,
+      "title": "奈良地域の地質",
+      "authors": "尾崎正紀, 寒川旭, 宮崎一博, 西岡芳晴, 宮地良典, 竹内圭史, 田口雄作"
+     },
+     {
+      "num": 26,
+      "title": "Right-lateral offset associated with the most recent earthquake on the Ikeda fault of the Median Tectonic Line, southwest Japan, revealed by ground-penetrating radar profiling",
+      "authors": "Patria, A., Kimura, H., Kitade, Y., Tsutsumi, H."
+     },
+     {
+      "num": 27,
+      "title": "The IntCal20 Northern Hemisphere radiocarbon calibration curve (0-55 kcal BP)",
+      "authors": "Reimer, P. J., and 41 others"
+     },
+     {
+      "num": 28,
+      "title": "奈良盆地東縁の活断層",
+      "authors": "寒川 旭・衣笠善博・奥村晃史・八木浩司"
+     },
+     {
+      "num": 29,
+      "title": "奈良盆地弥生式遺跡における花粉分析学的考察",
+      "authors": "千田 稔"
+     },
+     {
+      "num": 30,
+      "title": "Identify depth of peat using Ultra GPR in Siak Regency, Riau Province",
+      "authors": "Sumirah, Sumargana, L., Nugroho, D., Dinanta, G. P. and Anantasena, Y."
+     },
+     {
+      "num": 31,
+      "title": "大阪市におけるボーリング（OD-1）コアの花粉分析（その1）―近畿地方の新期新生代層の研究V―",
+      "authors": "田井昭子"
+     },
+     {
+      "num": 32,
+      "title": "大阪市におけるボーリング（OD-1）コアの花粉分析（その2）―近畿地方の新期新生代層の研究V―",
+      "authors": "田井昭子"
+     },
+     {
+      "num": 33,
+      "title": "地下30 mまで探査可能な地中レーダ探査機器の導入と活断層調査への適用",
+      "authors": "谷口 薫・石井一徳・木村治夫・川嶋涉造・堤 浩之"
+     },
+     {
+      "num": 34,
+      "title": "奈良盆地東縁断層帯の帯解断層と天理撓曲の活動履歴と変位速度",
+      "authors": "堤 浩之・杉戸信彦・木村治夫・川嶋涉造・中西利典・郡谷順英・谷口 薫・小俣雅志"
+     },
+     {
+      "num": 35,
+      "title": "地中レーダ探査データを用いた茨城県波崎海岸の砂浜空間堆積過程の解析",
+      "authors": "有働恵子"
+     }
+    ]
+   }
+  },
+  {
+   "doc": "40_10569",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "脳卒中の病型ごとの急性期から回復期までの実態調査 —熊本脳卒中地域連携パスの9年間のデータを用いて—",
+     "pred": "脳卒中の病型ごとの急性期から回復期までの実態調査 —熊本脳卒中地域連携パスの9年間のデータを用いて—",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Survey of stroke types in acute hospitals and Kaifukuki rehabilitation wards: nine years of Kumamoto Stroke Liaison Critical Pathway data",
+     "pred": "Survey of stroke types in acute hospitals and Kaifukuki rehabilitation wards: nine years of Kumamoto Stroke Liaison Critical Pathway data",
+     "ok": true
+    },
+    "journal": {
+     "gold": "脳卒中",
+     "pred": "脳卒中",
+     "ok": true
+    },
+    "year": {
+     "gold": 2018,
+     "pred": 2018,
+     "ok": true
+    },
+    "volume": {
+     "gold": 40,
+     "pred": 40,
+     "ok": true
+    },
+    "issue": {
+     "gold": null,
+     "pred": null,
+     "ok": true
+    },
+    "pages": {
+     "gold": "343-349",
+     "pred": "343-349",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "本田 省二",
+      "徳永 誠",
+      "渡邊 進",
+      "田北 智裕",
+      "大塚 忠弘",
+      "米原 敏郎",
+      "西徹",
+      "寺崎 修司",
+      "三浦 正毅",
+      "平田 好文",
+      "山鹿真紀夫",
+      "橋本洋一郎"
+     ],
+     "pred": [
+      "本田 省二",
+      "徳永 誠",
+      "渡邊 進",
+      "田北 智裕",
+      "大塚 忠弘",
+      "米原 敏郎",
+      "西徹",
+      "寺崎 修司",
+      "三浦 正毅",
+      "平田 好文",
+      "山鹿真紀夫",
+      "橋本洋一郎"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 366,
+     "pred_len": 366,
+     "ratio": 1.0,
+     "pred_kana": 93,
+     "gold_kana": 93
+    },
+    "abstract_en": {
+     "gold_len": 995,
+     "pred_len": 995,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 19,
+    "pred": 19,
+    "recall": 0.2632,
+    "title_ok": 0.0,
+    "author_ok": 0.2632,
+    "matched": 5,
+    "missing": [
+     {
+      "num": 4,
+      "title": "脳梗塞急性期医療の全国実態調査",
+      "authors": "木村和美, 数井誠司, 山口武典"
+     },
+     {
+      "num": 5,
+      "title": "北海道北部における脳卒中の実態調査―道北脳卒中共同研究9年間のデータより―",
+      "authors": "白井和歌子, 徳光直樹, 和田 始ら"
+     },
+     {
+      "num": 6,
+      "title": "地域完結型脳卒中診療態勢―熊本市神経内科関連3施設の虚血性脳血管障害診療状況―",
+      "authors": "平野照之, 橋本洋一郎, 米原敏郎ら"
+     },
+     {
+      "num": 7,
+      "title": "地域連携クリニカルパス, 埼玉西部地域の現状と特徴",
+      "authors": "前島伸一郎, 大沢愛子, 棚橋紀夫"
+     },
+     {
+      "num": 8,
+      "title": "熊本脳卒中地域連携パス運用3年間における臨床指標の変化",
+      "authors": "徳永 誠, 渡邊 進, 三宮克彦ら"
+     },
+     {
+      "num": 9,
+      "title": "実績指数の導入前後におけるFIM利得と在院日数の変化―熊本脳卒中地域連携パスにおける重症度・病院ごとの調査―",
+      "authors": "中西俊人, 徳永 誠, 渡邊 進ら"
+     },
+     {
+      "num": 10,
+      "title": "熊本脳卒中地域連携パス電子版を用いた回復期リハビリテーション病院からの転帰分析",
+      "authors": "川野眞一, 児島勇樹, 黒土達也ら"
+     },
+     {
+      "num": 11,
+      "title": "脳卒中地域連携パス電子版の開発",
+      "authors": "寺崎修司, 平田好文, 橋本洋一郎ら"
+     },
+     {
+      "num": 13,
+      "title": "脳卒中の診療態勢―地域完結型―",
+      "authors": "橋本洋一郎, 平野照之, 米原敏郎ら"
+     },
+     {
+      "num": 14,
+      "title": "回復期リハビリテーション病棟の着目点と課題",
+      "authors": "園田 茂, 永井将太, 才藤栄一"
+     },
+     {
+      "num": 15,
+      "title": "患者層の違いを考慮したADLデータ処理",
+      "authors": "徳永 誠, 中西亮二, 渡邊 進ら"
+     },
+     {
+      "num": 16,
+      "title": "The influence of stroke type, gender, and age on FIM improvement",
+      "authors": "Tokunaga M, Watanabe S, Nakanishi R, et al"
+     },
+     {
+      "num": 17,
+      "title": "合併症のため回復期リハビリテーション病棟から急性期病院へ転院あるいは死亡退院した脳卒中患者の原因に関する調査",
+      "authors": "時里 香, 徳永 誠, 奥村幸祐ら"
+     },
+     {
+      "num": 18,
+      "title": "日本リハビリテーション・データベースへのデータ入力率と病院の脳卒中患者アウトカムとの関連―回復期リハ9病院における調査―",
+      "authors": "徳永 誠, 久保皇之, 鉄田直大ら"
+     }
+    ]
+   }
+  },
+  {
+   "doc": "40_10588",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "経過中に脳梗塞とたこつぼ型心筋症を併発した3症例",
+     "pred": "経過中に脳梗塞とたこつぼ型心筋症を併発した3症例",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Takotsubo cardiomyopathy around the onset of acute ischemic stroke",
+     "pred": "Takotsubo cardiomyopathy around the onset of acute ischemic stroke",
+     "ok": true
+    },
+    "journal": {
+     "gold": "脳卒中",
+     "pred": "脳卒中",
+     "ok": true
+    },
+    "year": {
+     "gold": 2018,
+     "pred": 2018,
+     "ok": true
+    },
+    "volume": {
+     "gold": 40,
+     "pred": 40,
+     "ok": true
+    },
+    "issue": {
+     "gold": null,
+     "pred": null,
+     "ok": true
+    },
+    "pages": {
+     "gold": "382-387",
+     "pred": "382-387",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "谷 裕基",
+      "中嶋 秀人",
+      "垣内 謙佑",
+      "元木三記子",
+      "吉本 幸世",
+      "太田 真",
+      "奥村 嘉也",
+      "北岡 治子",
+      "木村 文治",
+      "荒若 繁樹"
+     ],
+     "pred": [
+      "谷 裕基",
+      "中嶋 秀人",
+      "垣内 謙佑",
+      "元木三記子",
+      "吉本 幸世",
+      "太田 真",
+      "奥村 嘉也",
+      "北岡 治子",
+      "木村 文治",
+      "荒若 繁樹"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 397,
+     "pred_len": 397,
+     "ratio": 1.0,
+     "pred_kana": 165,
+     "gold_kana": 165
+    },
+    "abstract_en": {
+     "gold_len": 1339,
+     "pred_len": 1339,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 0,
+    "pred": 20,
+    "recall": null,
+    "title_ok": null,
+    "author_ok": null,
+    "matched": 0,
+    "missing": []
+   }
+  },
+  {
+   "doc": "42_103",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "デジタル遠隔病理診断の現在と将来 — 地域病院での取り組みから見えるもの",
+     "pred": "デジタル遠隔病理診断の現在と将来 — 地域病院での取り組みから見えるもの",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Present and future of digital telepathology – what can be seen from the initiatives of a community hospital",
+     "pred": "Present and future of digital telepathology – what can be seen from the initiatives of a community hospital",
+     "ok": true
+    },
+    "journal": {
+     "gold": "診断病理",
+     "pred": "診断病理",
+     "ok": true
+    },
+    "year": {
+     "gold": 2025,
+     "pred": 2025,
+     "ok": true
+    },
+    "volume": {
+     "gold": 42,
+     "pred": 42,
+     "ok": true
+    },
+    "issue": {
+     "gold": 2,
+     "pred": 2,
+     "ok": true
+    },
+    "pages": {
+     "gold": "103-115",
+     "pred": "103-115",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "深山 正久"
+     ],
+     "pred": [
+      "深山 正久"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 251,
+     "pred_len": 251,
+     "ratio": 1.0,
+     "pred_kana": 79,
+     "gold_kana": 79
+    },
+    "abstract_en": {
+     "gold_len": 1062,
+     "pred_len": 1062,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 0,
+    "pred": 19,
+    "recall": null,
+    "title_ok": null,
+    "author_ok": null,
+    "matched": 0,
+    "missing": []
+   }
+  },
+  {
+   "doc": "42_185",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "唾液腺細胞の可塑性解析 ーマウスモデルを用いた実験的考察ー",
+     "pred": "唾液腺細胞の可塑性解析 ーマウスモデルを用いた実験的考察ー",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Analysis of cellular plasticity in salivary glands using mouse models",
+     "pred": "Analysis of cellular plasticity in salivary glands using mouse models",
+     "ok": true
+    },
+    "journal": {
+     "gold": "診断病理",
+     "pred": "診断病理",
+     "ok": true
+    },
+    "year": {
+     "gold": 2025,
+     "pred": 2025,
+     "ok": true
+    },
+    "volume": {
+     "gold": 42,
+     "pred": 42,
+     "ok": true
+    },
+    "issue": {
+     "gold": 3,
+     "pred": 3,
+     "ok": true
+    },
+    "pages": {
+     "gold": "185-191",
+     "pred": "185-191",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "美島 健二"
+     ],
+     "pred": [
+      "美島 健二"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 232,
+     "pred_len": 232,
+     "ratio": 1.0,
+     "pred_kana": 101,
+     "gold_kana": 101
+    },
+    "abstract_en": {
+     "gold_len": 1083,
+     "pred_len": 1083,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 0,
+    "pred": 18,
+    "recall": null,
+    "title_ok": null,
+    "author_ok": null,
+    "matched": 0,
+    "missing": []
+   }
+  },
+  {
+   "doc": "42_93",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "膜性腎症の発症メカニズム —原因抗原と IgG4 関連自己免疫疾患としての考察—",
+     "pred": "膜性腎症の発症メカニズム —原因抗原と IgG4 関連自己免疫疾患としての考察—",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Pathogenesis of membranous nephropathy : implications of causative podocyte-associated antigens and IgG4-mediated autoimmune disease",
+     "pred": "Pathogenesis of membranous nephropathy : implications of causative podocyte-associated antigens and IgG4-mediated autoimmune disease",
+     "ok": true
+    },
+    "journal": {
+     "gold": "診断病理",
+     "pred": "診断病理",
+     "ok": true
+    },
+    "year": {
+     "gold": 2025,
+     "pred": 2025,
+     "ok": true
+    },
+    "volume": {
+     "gold": 42,
+     "pred": 42,
+     "ok": true
+    },
+    "issue": {
+     "gold": 2,
+     "pred": 2,
+     "ok": true
+    },
+    "pages": {
+     "gold": "93-102",
+     "pred": "93-102",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "本田 一穂",
+      "康 徳東",
+      "川西 邦夫"
+     ],
+     "pred": [
+      "本田 一穂",
+      "康 徳東",
+      "川西 邦夫"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 469,
+     "pred_len": 469,
+     "ratio": 1.0,
+     "pred_kana": 194,
+     "gold_kana": 194
+    },
+    "abstract_en": {
+     "gold_len": 1257,
+     "pred_len": 1257,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 0,
+    "pred": 49,
+    "recall": null,
+    "title_ok": null,
+    "author_ok": null,
+    "matched": 0,
+    "missing": []
+   }
+  },
+  {
+   "doc": "43_10814",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "くも膜下出血急性期患者における stress index の検討",
+     "pred": "くも膜下出血急性期患者における stress index の検討",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Assessment of stress index in patients with subarachnoid hemorrhage of acute phase",
+     "pred": "Assessment of stress index in patients with subarachnoid hemorrhage of acute phase",
+     "ok": true
+    },
+    "journal": {
+     "gold": "脳卒中",
+     "pred": "脳卒中",
+     "ok": true
+    },
+    "year": {
+     "gold": 2021,
+     "pred": 2021,
+     "ok": true
+    },
+    "volume": {
+     "gold": 43,
+     "pred": 43,
+     "ok": true
+    },
+    "issue": {
+     "gold": null,
+     "pred": null,
+     "ok": true
+    },
+    "pages": {
+     "gold": "201-205",
+     "pred": "201-205",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "伊藤 清佳",
+      "深尾 繁治",
+      "野々山 裕",
+      "藤田 智昭",
+      "辻 篤司",
+      "野崎 和彦",
+      "木戸岡 実"
+     ],
+     "pred": [
+      "伊藤 清佳",
+      "深尾 繁治",
+      "野々山 裕",
+      "藤田 智昭",
+      "辻 篤司",
+      "野崎 和彦",
+      "木戸岡 実"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 399,
+     "pred_len": 399,
+     "ratio": 1.0,
+     "pred_kana": 114,
+     "gold_kana": 114
+    },
+    "abstract_en": {
+     "gold_len": 1140,
+     "pred_len": 1140,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 0,
+    "pred": 8,
+    "recall": null,
+    "title_ok": null,
+    "author_ok": null,
+    "matched": 0,
+    "missing": []
+   }
+  },
+  {
+   "doc": "52_230302",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "中性子回折実験で探る高温高圧下での Si を含んだ hcp 鉄の水素化挙動",
+     "pred": "中性子回折実験で探る高温高圧下での Si を含んだ hcp 鉄の水素化挙動",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "High-pressure and high-temperature neutron diffraction experiments of Si-bearing iron deuteride with hcp structure",
+     "pred": "High-pressure and high-temperature neutron diffraction experiments of Si-bearing iron deuteride with hcp structure",
+     "ok": true
+    },
+    "journal": {
+     "gold": "岩石鉱物科学",
+     "pred": "岩石鉱物科学",
+     "ok": true
+    },
+    "year": {
+     "gold": 2023,
+     "pred": 2023,
+     "ok": true
+    },
+    "volume": {
+     "gold": 52,
+     "pred": 52,
+     "ok": true
+    },
+    "issue": {
+     "gold": null,
+     "pred": null,
+     "ok": true
+    },
+    "pages": {
+     "gold": "1-7",
+     "pred": "1-7",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "森 悠一郎",
+      "鍵 裕之"
+     ],
+     "pred": [
+      "森 悠一郎",
+      "鍵 裕之"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 0,
+     "pred_len": 0,
+     "skipped": true
+    },
+    "abstract_en": {
+     "gold_len": 1216,
+     "pred_len": 1216,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 0,
+    "pred": 42,
+    "recall": null,
+    "title_ok": null,
+    "author_ok": null,
+    "matched": 0,
+    "missing": []
+   }
+  },
+  {
+   "doc": "52_230725",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "表面形状観察のための高分解能走査電子顕微鏡法",
+     "pred": "表面形状観察のための高分解能走査電子顕微鏡法",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "High-resolution scanning electron microscopy to observe surface morphology",
+     "pred": "High-resolution scanning electron microscopy to observe surface morphology",
+     "ok": true
+    },
+    "journal": {
+     "gold": "岩石鉱物科学",
+     "pred": "岩石鉱物科学",
+     "ok": true
+    },
+    "year": {
+     "gold": 2023,
+     "pred": 2023,
+     "ok": true
+    },
+    "volume": {
+     "gold": 52,
+     "pred": 52,
+     "ok": true
+    },
+    "issue": {
+     "gold": null,
+     "pred": null,
+     "ok": true
+    },
+    "pages": {
+     "gold": "1-7",
+     "pred": "1-7",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "小暮 敏博"
+     ],
+     "pred": [
+      "小暮 敏博"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 0,
+     "pred_len": 0,
+     "skipped": true
+    },
+    "abstract_en": {
+     "gold_len": 721,
+     "pred_len": 721,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 7,
+    "pred": 3,
+    "recall": 0.4286,
+    "title_ok": 0.1429,
+    "author_ok": 0.4286,
+    "matched": 3,
+    "missing": [
+     {
+      "num": 3,
+      "title": "高分解能電子顕微鏡―原理と利用法―",
+      "authors": "堀内繁雄"
+     },
+     {
+      "num": 5,
+      "title": "走査電顕モンテ・カルロ(フリーソフト)",
+      "authors": "神田公生"
+     },
+     {
+      "num": 6,
+      "title": "低加速電圧走査電子顕微鏡法における結像理論―低加速電圧における高分解能技術―",
+      "authors": "佐藤貢"
+     },
+     {
+      "num": 7,
+      "title": "電子線ナノイメージング―高分解能 TEMとSTEMによる可視化",
+      "authors": "田中信夫"
+     }
+    ]
+   }
+  },
+  {
+   "doc": "5_55",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "アプタマー技術による大規模疾患プロテオミクス",
+     "pred": "アプタマー技術による大規模疾患プロテオミクス",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Large-scale Disease Proteomics by Aptamer Technology",
+     "pred": "Large-scale Disease Proteomics by Aptamer Technology",
+     "ok": true
+    },
+    "journal": {
+     "gold": "Proteome Letters",
+     "pred": null,
+     "ok": false
+    },
+    "year": {
+     "gold": 2020,
+     "pred": 2020,
+     "ok": true
+    },
+    "volume": {
+     "gold": "5",
+     "pred": 5,
+     "ok": true
+    },
+    "issue": {
+     "gold": "2",
+     "pred": null,
+     "ok": false
+    },
+    "pages": {
+     "gold": "55-63",
+     "pred": "55-63",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "古市真木雄",
+      "和賀巌",
+      "小田吉哉"
+     ],
+     "pred": [
+      "古市真木雄",
+      "和賀巌",
+      "小田吉哉"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 386,
+     "pred_len": 386,
+     "ratio": 1.0,
+     "pred_kana": 174,
+     "gold_kana": 174
+    },
+    "abstract_en": {
+     "gold_len": 783,
+     "pred_len": 783,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 0,
+    "pred": 33,
+    "recall": null,
+    "title_ok": null,
+    "author_ok": null,
+    "matched": 0,
+    "missing": []
+   }
+  },
+  {
+   "doc": "9_1",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "LC-MS/MS によるがん主要メタボローム絶対定量系の構築と 代謝解析への応用",
+     "pred": "LC-MS/MS によるがん主要メタボローム絶対定量系の構築と 代謝解析への応用",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Development and Application of LC-MS/MS Method for Determination of Major Metabolites Intra/Extra Cultured Cell Lines",
+     "pred": "Development and Application of LC-MS/MS Method for Determination of Major Metabolites Intra/Extra Cultured Cell Lines",
+     "ok": true
+    },
+    "journal": {
+     "gold": "Proteome Letters",
+     "pred": null,
+     "ok": false
+    },
+    "year": {
+     "gold": 2024,
+     "pred": 2024,
+     "ok": true
+    },
+    "volume": {
+     "gold": "9",
+     "pred": 9,
+     "ok": true
+    },
+    "issue": {
+     "gold": "1",
+     "pred": null,
+     "ok": false
+    },
+    "pages": {
+     "gold": "1-11",
+     "pred": "1-11",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "金光祥臣",
+      "小林大樹",
+      "中谷航太",
+      "和泉自泰",
+      "馬場健史",
+      "松本雅記"
+     ],
+     "pred": [
+      "金光祥臣",
+      "小林大樹",
+      "中谷航太",
+      "和泉自泰",
+      "馬場健史",
+      "松本雅記"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 434,
+     "pred_len": 434,
+     "ratio": 1.0,
+     "pred_kana": 204,
+     "gold_kana": 204
+    },
+    "abstract_en": {
+     "gold_len": 1279,
+     "pred_len": 1279,
+     "ratio": 1.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 0,
+    "pred": 22,
+    "recall": null,
+    "title_ok": null,
+    "author_ok": null,
+    "matched": 0,
+    "missing": []
+   }
+  }
+ ]
+}
