@@ -396,6 +396,10 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 .mfg table.refs td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal}
 .mfg table.cspt td{white-space:normal;word-break:break-word}   /* 引文句句子换行, 引文高亮不再被裁掉 */
 .mftag{display:inline-block;font-size:9px;color:#6b7280;border:1px solid #e5e7eb;border-radius:3px;padding:0 3px;margin-right:4px;vertical-align:1px}
+.mfwarn{display:inline-block;font-size:9px;color:#b91c1c;background:#fee2e2;border:1px solid #fca5a5;border-radius:3px;padding:0 4px;margin:0 4px 0 2px;vertical-align:1px}
+.mfwnote{font-size:10px;color:#b45309;margin-right:4px}
+.mf.warn{border-left-color:#dc2626;background:#fff7ed}
+.mf.warn .md{background:#dc2626}
 .mf tr:hover{background:#fef9c3}
 details.mfd summary{cursor:pointer;color:#6b7280;font-size:11px}
 .mbadge{font-size:10px;border-radius:3px;padding:0 4px;margin-left:6px}
@@ -743,6 +747,96 @@ def _cspan_sentence_groups(cspans):
     return list(groups.values())
 
 
+# ============ 日文元数据面板(2026-11-12, T-20261112-TRAE-VIEWER) ============
+# 只做展示层: 字段标签双语化 + 字段级“待复核”提示。不改 metadata.json schema、不写后端数据;
+# 韩文/中文文献(_meta_is_ja 为 False)的文案与行序保持原样。
+_META_LABELS = {
+    "title": (u"标题", u"日文标题 · 標題"),
+    "title_en": (u"标题(英)", u"英文标题 · Title"),
+    "authors": (u"作者", u"作者 · 著者"),
+    "affiliations": (u"机构", u"机构 · 機関"),
+    "abstract": (u"摘要(韩)", u"日文摘要 · 要旨"),
+    "abstract_en": (u"摘要(英)", u"英文摘要 · Abstract"),
+    "journal": (u"期刊", u"期刊 · 誌名"),
+    "journal_en": (u"期刊(英)", u"期刊(英) · Journal"),
+    "year": (u"年", u"年 · 発行年"),
+    "volume": (u"卷", u"卷 · 巻"),
+    "issue": (u"期", u"期 · 号"),
+    "pages": (u"页", u"页码 · 頁"),
+    "keywords": (u"关键词", u"关键词 · キーワード"),
+    "keywords_en": (u"关键词(英)", u"关键词(英) · Keywords"),
+    "references": (u"参考文献", u"参考文献 · 文献"),
+    "footnote": (u"脚注", u"脚注"),
+}
+_KW_LINE = re.compile(u"^\\s*key\\s*words?\\b", re.I)   # 关键词行被误抽成英文标题
+_EN_AFFIL = re.compile(u"\\b(?:University|College|Institute|Laborator(?:y|ies)|Department|Dept\\.?|"
+                       u"School|Hospital|Center|Centre|Faculty|Clinic|Foundation)\\b", re.I)
+_JP_SECTION_WORDS = (u"はじめに", u"おわりに", u"対象と方法", u"対象および方法", u"まとめ")
+
+
+def _meta_is_ja(meta):
+    """日文文献判定(只决定面板文案/警告是否启用): 题录/摘要/关键词/机构里出现仮名即视为日文。
+    韩文(谚文)/中文(纯汉字)文献不会命中, 面板保持原有行为。"""
+    from metapy.common import _JP_KANA_RE
+    parts = []
+    for k in ("title", "title_en", "journal", "journal_en", "abstract", "abstract_en"):
+        parts.append(str((meta.get(k) or {}).get("value") or ""))
+    parts.extend(str(x) for x in (meta.get("keywords") or []) + (meta.get("keywords_en") or []))
+    parts.extend(str(x) for x in (meta.get("affiliations") or []))
+    for a in meta.get("authors") or []:
+        parts.append(str(a.get("name") or ""))
+    return len(_JP_KANA_RE.findall("".join(parts))) >= 3
+
+
+def _meta_labels(ja):
+    """字段标签: 非日文只给中文原标签; 日文给“中文 · 日文”双语。"""
+    return {k: (v[1] if ja else v[0]) for k, v in _META_LABELS.items()}
+
+
+def _meta_warnings(meta, ja):
+    """字段级“待复核”提示(只提示, 不改数据): {字段名: [文案]}。
+    仅日文文献启用——韩文/中文文档的元数据面板不新增任何提示。"""
+    w = {}
+    if not ja:
+        return w
+    from metapy.common import _JP_KANA_RE, JP_SECTION_TAG
+
+    def add(k, msg):
+        w.setdefault(k, []).append(msg)
+
+    if not str((meta.get("abstract") or {}).get("value") or "").strip():
+        add("abstract", u"日文摘要未抽取/原文无")
+    abe = str((meta.get("abstract_en") or {}).get("value") or "").strip()
+    if abe:
+        affs = [str(x or "") for x in (meta.get("affiliations") or [])]
+        if _JP_KANA_RE.search(abe):
+            add("abstract_en", u"疑似机构/非英文摘要(含假名)")
+        elif any(_gdice(abe, a) >= 0.6 for a in affs if a):
+            add("abstract_en", u"疑似机构/非英文摘要(与机构高度相似)")
+        elif len(abe) <= 160 and len(abe.split()) <= 20 and _EN_AFFIL.search(abe):
+            add("abstract_en", u"疑似机构/非英文摘要(机构名样式)")
+    if _KW_LINE.match(str((meta.get("title_en") or {}).get("value") or "")):
+        add("title_en", u"疑似关键词行")
+    aus = meta.get("authors") or []
+    if not aus:
+        add("authors", u"作者可能异常: 未抽取到作者")
+    else:
+        bad = [a.get("name") for a in aus
+               if JP_SECTION_TAG.match((a.get("name") or "").strip())
+               or any(s in (a.get("name") or "") for s in _JP_SECTION_WORDS)]
+        if bad:
+            add("authors", u"作者可能异常: 混入章节词 %s" % u"、".join(str(x) for x in bad[:3]))
+    return w
+
+
+def _wbadge(msgs):
+    """“待复核”徽标 + 提示文案(hover 同文案); 无提示返回空串。"""
+    if not msgs:
+        return ""
+    return ('<span class="mfwarn" title="%s">待复核</span><span class="mfwnote">%s</span>'
+            % (html.escape(u"；".join(msgs), quote=True), html.escape(u"；".join(msgs))))
+
+
 def _meta_cell(meta, pno, audit=None, choices=None):
     """metadata 面板(方案A): 只列落在本页(pno, 1 基)的字段——原图×本页字段对照。
     每行 lv 色条=置信, data-u=unified uid(点击钉住该块的证据遮罩/闪共识框)。
@@ -752,6 +846,11 @@ def _meta_cell(meta, pno, audit=None, choices=None):
     (kind,raw_head) 精确 → uid → index 兜底(兜底加 ? 提示漂移)——index 重跑即漂移, uid 有 §45 漂移前科。"""
     if not meta:
         return ""
+    ja = _meta_is_ja(meta)
+    L = _meta_labels(ja)
+    W = _meta_warnings(meta, ja)
+    lab_ref = u"本页参考文献 · 文献" if ja else u"本页文献"
+    lab_ftn = u"本页脚注 · 脚注" if ja else u"本页脚注"
     grp = []
 
     def row(lv, uid, inner):
@@ -772,11 +871,12 @@ def _meta_cell(meta, pno, audit=None, choices=None):
     t = meta.get("title") or {}
     if t.get("value") and (t.get("page") or 1) == pno:
         grp.append(("题录", row((t.get("confidence") or {}).get("level", "mid"), t.get("uid"),
-                                 dot(0) + "<b>标题</b> " + esc(t["value"][:90]))))
+                                 dot(0) + "<b>%s</b> " % L["title"] + esc(t["value"][:90]))))
     te = meta.get("title_en") or {}
     if te.get("value") and (te.get("page") or 1) == pno:
         grp.append(("题录", row((te.get("confidence") or {}).get("level", "mid"), te.get("uid"),
-                                 dot(0) + "<b>标题(英)</b> " + esc(te["value"][:90]))))
+                                 dot(0) + "<b>%s</b> " % L["title_en"] + _wbadge(W.get("title_en"))
+                                 + esc(te["value"][:90]))))
     aus = [a for a in (meta.get("authors") or []) if (a.get("page") or 1) == pno]
     if aus:
         rows = []
@@ -789,16 +889,26 @@ def _meta_cell(meta, pno, audit=None, choices=None):
             af = a.get("affiliation") or ""
             rows.append("<tr><td>%s</td><td>%s</td></tr>" % (esc(nm), esc(af[:40])))
         grp.append(("题录", row("mid", aus[0].get("uid"),
-                                 dot(0) + "<b>作者</b><table>%s</table>" % "".join(rows))))
+                                 dot(0) + "<b>%s</b>" % L["authors"] + _wbadge(W.get("authors"))
+                                 + "<table>%s</table>" % "".join(rows))))
     affs = meta.get("affiliations") or []
     if pno == 1 and affs:
-        grp.append(("题录", row("mid", None, dot(0) + "<b>机构</b> " + esc(" / ".join(affs)[:110]))))
+        grp.append(("题录", row("mid", None, dot(0) + "<b>%s</b> " % L["affiliations"]
+                                 + esc(" / ".join(affs)[:110]))))
+    # 字段有值也不代表抽对: 作者 0 人(本页无行可挂)单独出一行“待复核”
+    if pno == 1 and W.get("authors") and not (meta.get("authors") or []):
+        grp.append(("题录", row("warn", None, dot(0) + "<b>%s</b> " % L["authors"]
+                                 + _wbadge(W["authors"]))))
     # —— 摘要 ——
-    for k, lab in (("abstract", "摘要(韩)"), ("abstract_en", "摘要(英)")):
+    # 摘要为空时没有行可挂: 第 1 页在组首补一行“待复核”(只提示, 不造数据)
+    if pno == 1 and W.get("abstract") and not str((meta.get("abstract") or {}).get("value") or "").strip():
+        grp.append(("摘要", row("warn", None, dot(0) + "<b>%s</b> " % L["abstract"]
+                                 + _wbadge(W["abstract"]))))
+    for k, lab in (("abstract", L["abstract"]), ("abstract_en", L["abstract_en"])):
         f = meta.get(k) or {}
         if f.get("value") and (f.get("page") or 1) == pno:
             v = f["value"]
-            inner = dot(0) + "<b>%s</b> " % lab
+            inner = dot(0) + "<b>%s</b>" % lab + _wbadge(W.get(k)) + " "
             if len(v) > 140:
                 inner += ('<details class="mfd"><summary>%s…(全文 %d 字)</summary>'
                           '<div class="mft">%s</div></details>' % (_texesc(v[:140]), len(v), _texesc(v)))
@@ -877,12 +987,12 @@ def _meta_cell(meta, pno, audit=None, choices=None):
             badge = '<span class="mbadge %s">编号连续%s</span>' % ("ok" if seq_ok else "bad",
                                                                     "✓" if seq_ok else "✗")
         grp.append(("文献%s" % badge,
-                    dot(0) + '<b>本页文献 %d 条</b>' % len(refs)
+                    dot(0) + '<b>%s %d 条</b>' % (lab_ref, len(refs))
                     + tbl_head + "".join(_ref_rows(refs, au_by_uid, "ref")) + "</table>"))
     fnrefs = [r for r in (meta.get("footnote_refs") or []) if r.get("page") == pno]
     if fnrefs:
         grp.append(("脚注",
-                    dot(0) + '<b>本页脚注 %d 条(frefs)</b>' % len(fnrefs)
+                    dot(0) + '<b>%s %d 条(frefs)</b>' % (lab_ftn, len(fnrefs))
                     + tbl_head + "".join(_ref_rows(fnrefs, au_by_uid, "fref")) + "</table>"))
     # —— 行内引文句(--stage cspan): 同段同句合并展示; 引文高亮+对号徽标; hover=原图块框 ——
     cspans = [s for s in (meta.get("citation_spans") or []) if s.get("page") == pno]
@@ -962,6 +1072,9 @@ def _meta_overview(meta, audit=None):
     import collections
     if not meta:
         return ""
+    ja = _meta_is_ja(meta)
+    L = _meta_labels(ja)
+    W = _meta_warnings(meta, ja)
     esc = lambda s: html.escape(str(s if s is not None else ""), quote=False)
 
     def row(lv, uid, inner):
@@ -991,11 +1104,12 @@ def _meta_overview(meta, audit=None):
     t = meta.get("title") or {}
     if t.get("value"):
         grp.append(("题录", row((t.get("confidence") or {}).get("level", "mid"), _p1_uid(t),
-                                 dot() + "<b>标题</b> " + _pg_hint(t) + esc(t["value"][:120]))))
+                                 dot() + "<b>%s</b> " % L["title"] + _pg_hint(t) + esc(t["value"][:120]))))
     te = meta.get("title_en") or {}
     if te.get("value"):
         grp.append(("题录", row((te.get("confidence") or {}).get("level", "mid"), _p1_uid(te),
-                                 dot() + "<b>标题(英)</b> " + _pg_hint(te) + esc(te["value"][:120]))))
+                                 dot() + "<b>%s</b>" % L["title_en"] + _wbadge(W.get("title_en")) + " "
+                                 + _pg_hint(te) + esc(te["value"][:120]))))
     aus = meta.get("authors") or []
     if aus:
         trs = []
@@ -1007,36 +1121,43 @@ def _meta_overview(meta, audit=None):
                 nm += " [%s]" % a["role"]
             trs.append("<tr><td>%s</td><td>%s</td></tr>" % (esc(nm), esc((a.get("affiliation") or "")[:48])))
         grp.append(("题录", row("mid", aus[0].get("uid"),
-                                 dot() + "<b>作者 %d 人</b><table>%s</table>" % (len(aus), "".join(trs)))))
+                                 dot() + "<b>%s %d 人</b>" % (L["authors"], len(aus)) + _wbadge(W.get("authors"))
+                                 + "<table>%s</table>" % "".join(trs))))
+    elif W.get("authors"):
+        grp.append(("题录", row("warn", None, dot() + "<b>%s</b> " % L["authors"] + _wbadge(W["authors"]))))
     affs = meta.get("affiliations") or []
     if affs:
-        grp.append(("题录", row("mid", None, dot() + "<b>机构 %d 个</b> " % len(affs)
+        grp.append(("题录", row("mid", None, dot() + "<b>%s %d 个</b> " % (L["affiliations"], len(affs))
                                  + esc(" / ".join(affs)[:160]))))
     # —— 来源(--stage issue: 本篇期刊/年/卷/期/页) ——
-    for k, lab in (("journal", u"期刊"), ("journal_en", u"期刊(英)"), ("year", u"年"),
-                   ("volume", u"卷"), ("issue", u"期"), ("pages", u"页")):
+    for k in ("journal", "journal_en", "year", "volume", "issue", "pages"):
         f = meta.get(k) or {}
         if f.get("value") is not None:
             grp.append(("来源", row((f.get("confidence") or {}).get("level", "mid"), None,
-                                     dot() + "<b>%s</b> %s" % (lab, esc(f["value"])))))
+                                     dot() + "<b>%s</b> %s" % (L[k], esc(f["value"])))))
     # —— 关键词(韩/英双字段, 2026-11-09 用户拍板: 有双板的都提取) ——
     # 行带 evidence uid(audit.issue.keywords.source*): 点击=跳到原文关键词行所在块并橙框闪烁。
     kw_src = (((audit or {}).get("issue") or {}).get("keywords") or {})
     kws = meta.get("keywords") or []
     if kws:
         grp.append(("关键词", row("mid", (kw_src.get("source") or {}).get("uid"),
-                                  dot() + "<b>关键词 %d 个</b> " % len(kws) + esc(", ".join(kws)[:200]))))
+                                  dot() + "<b>%s %d 个</b> " % (L["keywords"], len(kws))
+                                  + esc(", ".join(kws)[:200]))))
     kws_en = meta.get("keywords_en") or []
     if kws_en:
         grp.append(("关键词(英)", row("mid", (kw_src.get("source_en") or {}).get("uid"),
-                                      dot() + "<b>关键词(英) %d 个</b> " % len(kws_en)
+                                      dot() + "<b>%s %d 个</b> " % (L["keywords_en"], len(kws_en))
                                       + esc(", ".join(kws_en)[:200]))))
     # —— 摘要(折叠全文) ——
-    for k, lab in (("abstract", u"摘要(韩)"), ("abstract_en", u"摘要(英)")):
+    # 摘要为空时没有行可挂: 组首补一行“待复核”(只提示, 不造数据)
+    if W.get("abstract") and not str((meta.get("abstract") or {}).get("value") or "").strip():
+        grp.append(("摘要", row("warn", None, dot() + "<b>%s</b> " % L["abstract"]
+                                 + _wbadge(W["abstract"]))))
+    for k in ("abstract", "abstract_en"):
         f = meta.get(k) or {}
         if f.get("value"):
             v = f["value"]
-            inner = dot() + "<b>%s</b> " % lab
+            inner = dot() + "<b>%s</b>" % L[k] + _wbadge(W.get(k)) + " "
             if (f.get("page") or 1) != 1:
                 inner += '<span class="mftag">证据在第 %d 页</span>' % f["page"]
             if len(v) > 140:
@@ -1056,14 +1177,14 @@ def _meta_overview(meta, audit=None):
                                                                  u"✓" if seq_ok else u"✗")) if seq_ok is not None else ""
         cnt = collections.Counter((r.get("confidence") or {}).get("level") for r in refs)
         grp.append(("文献", row("mid", None,
-                                 dot() + "<b>参考文献 %d 条</b>%s %s · %s" % (
-                                     len(refs), badge, dist_text(cnt), page_span(refs)))))
+                                 dot() + "<b>%s %d 条</b>%s %s · %s" % (
+                                     L["references"], len(refs), badge, dist_text(cnt), page_span(refs)))))
     fnrefs = meta.get("footnote_refs") or []
     if fnrefs:
         cnt = collections.Counter((r.get("confidence") or {}).get("level") for r in fnrefs)
         grp.append(("文献", row("mid", None,
-                                 dot() + "<b>脚注 %d 条</b>(frefs) %s · %s" % (
-                                     len(fnrefs), dist_text(cnt), page_span(fnrefs)))))
+                                 dot() + "<b>%s %d 条</b>(frefs) %s · %s" % (
+                                     L["footnote"], len(fnrefs), dist_text(cnt), page_span(fnrefs)))))
     cspans = meta.get("citation_spans") or []
     if cspans:
         cc = collections.Counter({"exact": "high", "partial": "mid", "unlinked": "low"}.get(
