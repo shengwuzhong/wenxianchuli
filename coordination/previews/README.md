@@ -28,6 +28,10 @@ out_llm_trial/previews/2026-11-12T1413/
 
 见 `T-20261112-WB-ABS-preview.json`。
 
+哈希口径：sha256 小写；全量 `out/` 清单按 posix 相对路径排序，完整清单在
+`out_llm_trial/previews/2026-11-12T1413/out_manifest.tsv`。校验时请用同一排序口径，
+不要用 PowerShell `Sort-Object` 与 Python `sorted` 互相比较。
+
 ## 冻结规则
 
 1. **不得**再对正式 `out/` 运行 `metadata.py`、`pipeline.py`、`webapp.py` 的写操作，直到明确解冻。

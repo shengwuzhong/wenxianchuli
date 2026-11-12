@@ -1,70 +1,72 @@
 {
-    "preview_id":  "out-preview-2026-11-12T1413",
-    "source_task":  "T-20261112-WB-ABS",
-    "created_at":  "2026-11-12T14:19:48.1560807+08:00",
-    "snapshot_dir":  "out_llm_trial/previews/2026-11-12T1413",
-    "docs":  [
-                 "5_55",
-                 "43_10814",
-                 "42_93",
-                 "40_10569",
-                 "52_230725"
-             ],
-    "files":  [
-                  {
-                      "path":  "out/40_10569/metadata.json",
-                      "bytes":  141373,
-                      "sha256":  "68DC8E7DEED361CB67F6CC5019F7C698DF9524793DE6FC7123910CC40BFEA390"
-                  },
-                  {
-                      "path":  "out/40_10569/metadata_audit.json",
-                      "bytes":  18001,
-                      "sha256":  "74786FBFFBC3689E716DDCE77DC1F8359BAC05CDFA7FEBB41B78BEAE46FE4091"
-                  },
-                  {
-                      "path":  "out/42_93/metadata.json",
-                      "bytes":  177697,
-                      "sha256":  "95C9FB07C842B354CF72A9D9B408BCEA65A0B2AFED1D5689BAE2A88CDE1BBB3E"
-                  },
-                  {
-                      "path":  "out/42_93/metadata_audit.json",
-                      "bytes":  39674,
-                      "sha256":  "3736A2810D8B6AA3C5B9D5B91653572A451C76AD7708940C2E846D2CF74312B1"
-                  },
-                  {
-                      "path":  "out/43_10814/metadata.json",
-                      "bytes":  99892,
-                      "sha256":  "06D2FCECB63DE7A6A3CC47F487D0D86181EFA5F7E83BA327DF428E4EA78E7429"
-                  },
-                  {
-                      "path":  "out/43_10814/metadata_audit.json",
-                      "bytes":  12964,
-                      "sha256":  "CD263BDF4CCF358913B06DE7ECF1D7DAC7EF4DAADF8914AA75C26B1B1CA2762E"
-                  },
-                  {
-                      "path":  "out/5_55/metadata.json",
-                      "bytes":  101132,
-                      "sha256":  "B64BEF625AFBD8CC7005A1AC26669F4BD4B3267D784632975E44A1261828A912"
-                  },
-                  {
-                      "path":  "out/5_55/metadata_audit.json",
-                      "bytes":  27406,
-                      "sha256":  "0A5E9020AC65FB710985B6D91D34EB4022B64813AA2BCEF98EB5EF76A1E06453"
-                  },
-                  {
-                      "path":  "out/52_230725/metadata.json",
-                      "bytes":  37858,
-                      "sha256":  "6D6A0FB610473212FBED75731C4499868666D34B960D20305E562F56B6433E4D"
-                  },
-                  {
-                      "path":  "out/52_230725/metadata_audit.json",
-                      "bytes":  2468,
-                      "sha256":  "7C5BD9B86F0AAE8352C136CC0A71DC104D6ACE11C52CDEAB1B1E18B53C1CF895"
-                  }
-              ],
-    "files_sha256":  "1D453862D5F23772B9579CE8361B6C1107F8A6F7534CA09B25BBCB57D1417389",
-    "out_files":  1151,
-    "out_bytes":  185251956,
-    "out_manifest_sha256":  "30E44FB851E9FD647BC627E2077302F584D0F47A89B03AC83DDFDDC0AF065F74",
-    "note":  "WorkBuddy abstract-fix preview written to canonical out/ at 14:13. Preserve as-is; do not restore/replace without explicit decision. Snapshot is ignored by Git."
+ "preview_id": "out-preview-2026-11-12T1413",
+ "source_task": "T-20261112-WB-ABS",
+ "created_at": "2026-11-12T14:19:48.1560807+08:00",
+ "snapshot_dir": "out_llm_trial/previews/2026-11-12T1413",
+ "docs": [
+  "5_55",
+  "43_10814",
+  "42_93",
+  "40_10569",
+  "52_230725"
+ ],
+ "files": [
+  {
+   "path": "out/40_10569/metadata.json",
+   "bytes": 141373,
+   "sha256": "68dc8e7deed361cb67f6cc5019f7c698df9524793de6fc7123910cc40bfea390"
+  },
+  {
+   "path": "out/40_10569/metadata_audit.json",
+   "bytes": 18001,
+   "sha256": "74786fbffbc3689e716ddce77dc1f8359bac05cdfa7febb41b78beae46fe4091"
+  },
+  {
+   "path": "out/42_93/metadata.json",
+   "bytes": 177697,
+   "sha256": "95c9fb07c842b354cf72a9d9b408bcea65a0b2afed1d5689bae2a88cde1bbb3e"
+  },
+  {
+   "path": "out/42_93/metadata_audit.json",
+   "bytes": 39674,
+   "sha256": "3736a2810d8b6aa3c5b9d5b91653572a451c76ad7708940c2e846d2cf74312b1"
+  },
+  {
+   "path": "out/43_10814/metadata.json",
+   "bytes": 99892,
+   "sha256": "06d2fcecb63de7a6a3cc47f487d0d86181efa5f7e83ba327df428e4ea78e7429"
+  },
+  {
+   "path": "out/43_10814/metadata_audit.json",
+   "bytes": 12964,
+   "sha256": "cd263bdf4ccf358913b06de7ecf1d7dac7ef4daadf8914aa75c26b1b1ca2762e"
+  },
+  {
+   "path": "out/5_55/metadata.json",
+   "bytes": 101132,
+   "sha256": "b64bef625afbd8cc7005a1ac26669f4bd4b3267d784632975e44a1261828a912"
+  },
+  {
+   "path": "out/5_55/metadata_audit.json",
+   "bytes": 27406,
+   "sha256": "0a5e9020ac65fb710985b6d91d34eb4022b64813aa2bcef98eb5ef76a1e06453"
+  },
+  {
+   "path": "out/52_230725/metadata.json",
+   "bytes": 37858,
+   "sha256": "6d6a0fb610473212fbed75731c4499868666d34b960d20305e562f56b6433e4d"
+  },
+  {
+   "path": "out/52_230725/metadata_audit.json",
+   "bytes": 2468,
+   "sha256": "7c5bd9b86f0aae8352c136cc0a71dc104d6ace11c52cdeab1b1e18b53c1cf895"
+  }
+ ],
+ "files_sha256": "0a0d5ec8bc3286177e59eb11f09a35ffc24ac702928878c85688437b1661eed7",
+ "out_files": 1151,
+ "out_bytes": 185251956,
+ "out_manifest_sha256": "09a8820b6e21dbee3f34c3af19d428ac1672234a7b00c32dd7900a8e2b72b091",
+ "note": "WorkBuddy abstract-fix preview written to canonical out/ at 14:13. Preserve as-is; do not restore/replace without explicit decision. Snapshot is ignored by Git.",
+ "manifest_path": "out_llm_trial/previews/2026-11-12T1413/out_manifest.tsv",
+ "hash_note": "sha256 lowercase; full out manifest sorted by posix relative path"
 }
