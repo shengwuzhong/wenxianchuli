@@ -1,0 +1,72 @@
+{
+ "version": 1,
+ "baseline": "c5e8fcc",
+ "integrator": "deepseek",
+ "owners": {
+  "workbuddy": [
+   "metapy/entity.py",
+   "audit_accuracy.py",
+   "metapy/layout_ja.py",
+   "app.js",
+   "metapy/issue.py",
+   "pipeline_io.py",
+   "regress.py",
+   "metapy/refs.py",
+   "metapy/cspan.py",
+   "metapy/abs.py",
+   "metapy/common.py",
+   "metapy/front.py",
+   "unify.py",
+   "metapy/__init__.py",
+   "webapp.py"
+  ],
+  "deepseek": [
+   "AGENTS.md",
+   "coordination/",
+   "pipeline.py",
+   "merge_out.py",
+   "metadata.py",
+   "ner_lite.py",
+   "test_pipeline.py",
+   "requirements.txt",
+   ".gitignore",
+   ".gitattributes",
+   ".github/",
+   "docs/",
+   "README.md",
+   "README.zh-CN.md",
+   "PROJECT_ONBOARDING.md"
+  ],
+  "trae": [
+   "viewer.py",
+   "start.bat",
+   "start.sh",
+   "static/",
+   "templates/"
+  ]
+ },
+ "shared": {
+  "channels.json": "integrator-only",
+  "examples/": "read-only"
+ },
+ "frozen": [
+  "metapy/m3.py"
+ ],
+ "frozen_exceptions": {
+  "unify.py": "WorkBuddy 2026-11-12 P20 line-height change accepted in baseline c5e8fcc; further changes require --allow-frozen unify.py + integrator review"
+ },
+ "private": [
+  "channels.local.json"
+ ],
+ "generated": [
+  "out/",
+  "out_llm_trial/",
+  "uploads/",
+  "inbox/",
+  "__pycache__/",
+  ".workbuddy/",
+  ".worktrees/",
+  "_server.lock",
+  "*.log"
+ ]
+}
