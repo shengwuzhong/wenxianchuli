@@ -62,6 +62,22 @@ $env:COORD_ROOT = Join-Path $main 'coordination'
 $env:REPO_ROOT  = Join-Path $main '.worktrees\deepseek'
 ```
 
+### 共享运行数据
+
+每个 worktree 的 `out/`、`uploads/` 是指向主目录的 junction；`channels.local.json` 是 hardlink：
+
+| worktree 路径 | 类型 | 指向 |
+| --- | --- | --- |
+| `<worktree>/out` | Junction | `<main>/out` |
+| `<worktree>/uploads` | Junction | `<main>/uploads` |
+| `<worktree>/channels.local.json` | HardLink | `<main>/channels.local.json` |
+
+- 三个工具看到同一份 `out/`、`uploads/`；
+- **同一时刻只允许一个** `pipeline.py` / `webapp.py` 写 `out/`；
+- 不要删除/移动 worktree 里的 `out`、`uploads` 链接；不要 `git clean -fdx`；
+- `channels.local.json` 原地编辑会同步三处；如果编辑器“替换文件”，链接会断，改完检查 `LinkType`；
+- 这些链接都被 `.gitignore` 忽略，不会提交。
+
 ## 1. 每个任务的完整流程
 
 ### 1.1 领任务
