@@ -11,7 +11,7 @@ r"""五大基础问题回归检测(验收标准 v1.0 §5.1 的语言无关判据
 import os, re, io, json, argparse, html
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-REF_HEAD = re.compile(r"참고\s*문헌|인용\s*문헌|参考文献|引用文献|文献|References|REFERENCES|Bibliography|문헌", re.I)
+REF_HEAD = re.compile(r"참고\s*문헌|인용\s*문헌|参\s*考\s*文\s*献|引\s*用\s*文\s*献|参考文献|引用文献|文\s*献|文献|References|REFERENCES|Bibliography|문헌", re.I)
 NUM_MARK = re.compile(r"\[\s*(\d+)\s*\]")
 TERMINAL = set(u".”」』)）》…")
 OPEN_CONN = set(u",·,/\\")  # T2: 末字符为开放连接符(半角逗号/中点/斜杠/反斜杠)

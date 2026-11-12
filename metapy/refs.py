@@ -4,11 +4,54 @@ import regress
 from .common import *
 
 
+def _ja_line_selfcontained(s):
+    """日文/英文文献块内单行是否自含一条文献: 含合法年份(19xx/20xx) 且 行末有终止符
+    (句点/页码/出版社/网址/DOI 之一)。用于多行块按行切分(52_230725 7 行→7 条), 不破坏
+    跨行续接的英文/韩文条目(其单行往往不含年份或行末无终止)。"""
+    if not re.search(r"(?:19|20)\d{2}", s):
+        return False
+    tail = s.rstrip()
+    if re.search(r"[.。]\s*$", tail):
+        return True
+    if re.search(r"(?:pp?\.?\s*\d|\d+\s*[-–~～]\s*\d+\s*쪽?|頁?\.?\s*\d+)\s*$", tail, re.I):
+        return True
+    if re.search(r"(?:Press|Publishing|Publishers?|出版|書店|書房|大学出版会)\s*[.。]?\s*$", tail, re.I):
+        return True
+    if re.search(r"https?://|www\.|doi\s*[:：]", tail, re.I):
+        return True
+    return False
+
+
+# 日文作者-年头(短姓名 + 括号年), 区别于正文句(长句含文内引用 '…(2021)…')。
+# 作者段 ≤ ~30 折叠字符且无句点/逗号段, 紧接 '(19|20)xx' 或 ', 年'(52_230725 '堀内繁雄(1988)' /
+# 52_230302 '服部高典, 佐野亜沙美 (2016)' 实证); 长正文 '高温高圧下…(2021)…' 作者段超长故不匹配。
+_JA_AY_HEAD = re.compile(
+    u"^(?=[ぁ-ゖァ-ヶ一-鿿A-Za-z])[^。．\\n]{0,30}?(?:\\s*\\((?:19|20)\\d{2}[a-z]?\\)|,\\s*(?:19|20)\\d{2}[a-z]?(?=[,.]))")
+
+
+def _ay_head(s):
+    """条目头判断: 英文/韩文用 AY_HEAD, 日文用 _JA_AY_HEAD(短姓名+括号年)。合并口径,
+    供 _split_entries_block 与 refs_doc 过滤共用——不改 AY_HEAD 本身(避免英文/韩文回归)。"""
+    return bool(AY_HEAD.match(s) or _JA_AY_HEAD.match(s))
+
+
 def _split_entries_block(t, style):
     """块文本 -> [(num|None, entry_text)]。bracketed: [n] 切; numbered: 行首 N. 切; authoryear: 条目头行切。"""
     t = (t or "").strip()
     if not t:
         return []
+    # (2026-11-12 T-20261112-WB-REFS-JA) 多行按行切: 日文文献块常见'一行一条'('著者(年): 題名.
+    # 誌名, 巻, 頁' 每行独立), 但 AY_HEAD 只认英文/韩文头(不含日文汉字/仮名), 日文条目被并入前一条
+    # (52_230725 u6_6 7 行只出 3 条实证)。判据: 行数≥2 且每行都含合法年份 + 行末终止符
+    # (句点/页码/出版社/网址/DOI 之一), 则按行切(每行一条), 否则走原风格切分。
+    lines = [ln.strip() for ln in t.split("\n") if ln.strip()]
+    if len(lines) >= 2 and all(
+            _ja_line_selfcontained(ln) for ln in lines):
+        out = []
+        for ln in lines:
+            m = NUM_MARK.match(ln) or LIST_MARK.match(ln)
+            out.append((int(m.group(1)) if m else None, ln))
+        return [x for x in out if x[1]]
     if style == "bracketed":
         out = []
         for seg in regress.split_entries(t):
@@ -31,7 +74,10 @@ def _split_entries_block(t, style):
                 out.append((None, seg))
         return out
     # authoryear: 条目头行切, 头前行(无年份)并入
-    marks = [m for m in AY_HEAD.finditer(t)]
+    # 头=英文/韩文 AY_HEAD(长作者段) 或 日文 _JA_AY_HEAD(短姓名+括号年); 合并位置排序。
+    marks = sorted(
+        [m for m in AY_HEAD.finditer(t)] + [m for m in _JA_AY_HEAD.finditer(t)],
+        key=lambda m: m.start())
     if len(marks) >= 1:
         out = []
         pos = [m.start() for m in marks]
@@ -39,7 +85,7 @@ def _split_entries_block(t, style):
         # 按条目头行重组
         cur = ""
         for ln in tail0.split("\n"):
-            if AY_HEAD.match(ln) and cur:
+            if _ay_head(ln) and cur:
                 out.append((None, cur.strip()))
                 cur = ln
             else:
@@ -654,8 +700,94 @@ def _extract_fields(entry, tailflow=False):
         f["title"] = re.sub(r"\*([^*\n]+)\*", r"\1", f["title"]).strip()
     h = len(re.findall(u"[가-힣一-鿿]", e))   # A5: 汉字计入韩文(韩旧著录汉混, '春川百年史' lang='?' 实证)
     el = len(re.findall(r"[A-Za-z]", e))
-    f["lang"] = "ko" if h > el else ("en" if el > h else "?")
+    # (2026-11-12 T-20261112-WB-REFS-JA) 日文/括号年式著录字段: 含仮名或 '著者(年):' 括号年式的条目
+    # 走日文分支, 修复 title 冒号前缀/source 串位(40_10569 '著者: 題名' / 52_230725 '著者(年): 題名' 实证)。
+    if _japanese_ratio(e) > 0 or re.search(u"\\((?:19|20)\\d{2}[a-z]?\\)\\s*[:：]", e):
+        ja = _ja_reference_fields(e, f, myear)
+        if ja:
+            f.update(ja)
+    # (2026-11-12 T-20261112-WB-REFS-JA) 语言三元: 含仮名→ja(日文条目汉字被旧 'ko/en' 二分类误标 ko,
+    # 40_10569 '小林祥泰監修…' 实证); 否则维持原 'ko/en/?' 口径(英文/韩文条目语义不变)。
+    if _japanese_ratio(e) > 0:
+        f["lang"] = "ja"
+    else:
+        f["lang"] = "ko" if h > el else ("en" if el > h else "?")
     return f
+
+
+def _ja_reference_fields(e, f, myear):
+    """日文/括号年式参考文献字段解析(2026-11-12 T-20261112-WB-REFS-JA)。覆盖:
+      式A '著者(年): 題名. 誌名, 巻, 頁' (52_230725, 英/日同形)
+      式B 'N) 著者: 題名. 誌名, 巻: 頁-頁, 年' (40_10569)
+      式C '著者, 年, 「題名」, 出版社, 頁' (2025_1 逗号式, 借 _corner_biblio_fields)
+    式A/B 的 title 冒号前缀、source 串位在旧 ko/en 通用分支里被切坏, 这里按标点角色回填。
+    未命中返回 {}。"""
+    e0 = NUM_MARK.sub("", LIST_MARK.sub("", (e or "").strip())).strip()
+    # —— 式A: '著者(年): 題名...' —— 年份在作者后括号内, 后随冒号
+    m_py = re.match(u"^(.*?)\\((?:19|20)\\d{2}[a-z]?\\)\\s*[:：]\\s*(.+)$", e0)
+    if m_py:
+        auth0 = m_py.group(1).strip().rstrip(u",， ")
+        body = m_py.group(2).strip()
+        # 题名=冒号后至首个 '. '(句点+空白); 出处=其后
+        m_td = re.match(u"^(.+?)\\.\\s+(.+)$", body)
+        title = None
+        source = None
+        if m_td:
+            title = m_td.group(1).strip()
+            source = m_td.group(2).strip()
+        else:
+            title = body
+        out = {"grammar": "noquote", "authors_raw": auth0}
+        if title and re.search(u"[ぁ-ゖァ-ヶ一-鿿A-Za-z]", title):
+            out["title"] = title
+        if source:
+            out["source"] = _seg_clean(source)
+        out["authors"] = _split_authors(auth0, corp=False, latcorp=False)
+        return out
+    # —— 式B: '著者: 題名. 誌名, 巻: 頁, 年' —— 作者后直接冒号(无括号年), 年份在尾部
+    m_ca = re.match(u"^(.*?)[:：]\\s*(.+)$", e0)
+    if not m_ca:
+        return {}
+    auth0 = m_ca.group(1).strip()
+    body = m_ca.group(2).strip()
+    # 作者段必含日文(漢字/仮名) 且不含题名尾迹; 纯英文作者走 _split_authors 已在 base 处理
+    if not re.search(u"[ぁ-ゖァ-ヶ一-鿿]", auth0):
+        return {}
+    if len(auth0) > 60:   # 作者段过长 = 冒号可能是题名内部冒号, 放弃
+        return {}
+    m_td = re.match(u"^(.+?)\\.\\s+([^.]{2,})$", body)
+    title = None
+    source = None
+    if m_td:
+        title = m_td.group(1).strip()
+        rest = m_td.group(2).strip()
+        segs = [s.strip() for s in re.split(u"[,，]", rest) if s.strip()]
+        if segs:
+            source = segs[0]
+    else:
+        segs = [s.strip() for s in re.split(u"[,，]", body) if s.strip()]
+        if len(segs) >= 2:
+            title = segs[0]
+            source = ", ".join(segs[1:])
+        else:
+            title = body
+    if title:
+        title = re.sub(u"\\s*\\((?:19|20)\\d{2}[a-z]?\\)\\s*$", "", title).strip()
+        title = title.rstrip(u".。 ").strip()
+    out = {"grammar": "noquote", "authors_raw": auth0}
+    if title and re.search(u"[ぁ-ゖァ-ヶ一-鿿A-Za-z]", title):
+        out["title"] = title
+    if source:
+        out["source"] = _seg_clean(source)
+    # 作者切分: 日文用 '・'/'，'/',' 分隔, 尾 'ら/ほか/監修/編' 剥离
+    au = auth0
+    au = re.sub(u"(?:ら|ほか|等)\\s*$", "", au).strip()
+    au = re.sub(u"(?:監修|編|編集|著)\\s*$", "", au).strip(u" ,，・")
+    parts = [p.strip() for p in re.split(u"[・，,]", au) if p.strip()]
+    parts = [re.sub(u"\\s+", "", p) for p in parts]   # 日文姓名内空格('徳永 誠' → '徳永誠')合并
+    parts = [p for p in parts if re.search(u"[ぁ-ゖァ-ヶ一-鿿A-Za-z]", p)]
+    out["authors"] = parts
+    return out
 
 
 def _validate_fields(f):
@@ -1354,6 +1486,22 @@ def refs_doc(doc, out_root):
     # —— L1: 文献区= in_ref 页(复用 regress.ref_region 口径); 起始页的 참고문헌 头定位 ——
     ref_pages = [p for p in pages if pdata[p].get("in_ref")]
     if not ref_pages:
+        # (2026-11-12 T-20261112-WB-REFS-JA) 文献区回退: 全篇 in_ref 皆 False(日文文献头
+        # '文 献' 字间空格形态 regress.ref_region 不认, 2025_1 实证)时, 本地扫描 unified 页——
+        # 找 Section-header/Page-header/Text 首行匹配 '文\s*献/引用文献/参考文献/References' 的
+        # 最后一页, 从该页到文末作为 ref_pages。不改 unified 的 in_ref 字段(只扩不写), 免重跑 M3。
+        _jp_head = re.compile(u"^(?:参\\s*考\\s*文\\s*献|引\\s*用\\s*文\\s*献|文\\s*献|References?|REFERENCES|Bibliography)\\s*$")
+        last_ref_head = None
+        for p in pages:
+            for u in pdata[p]["unified"]:
+                if u["type"] not in ("Section-header", "Page-header", "Text"):
+                    continue
+                first = (u["main_text"] or "").split("\n")[0].strip()
+                if _jp_head.match(first):
+                    last_ref_head = p
+        if last_ref_head is not None:
+            ref_pages = list(range(last_ref_head, max(pages) + 1))
+    if not ref_pages:
         print("== ① %s == 无文献区" % doc)
         return None
     # unify in_ref 起点晚一页实证(1892171 p28: '참고문헌'+'I. 국남문헌' 头页 in_ref=False——unify.ref_region
@@ -1427,7 +1575,7 @@ def refs_doc(doc, out_root):
             prev = merged[-1]
             prev_open = not _complete(prev["text"])
             new_head = e["num"] is not None or (e["num"] is None and
-                                                AY_HEAD.match(e["text"]))
+                                                _ay_head(e["text"]))
             if prev_open and not new_head:
                 prev["text"] += " " + e["text"].strip()
                 continue
@@ -1438,11 +1586,14 @@ def refs_doc(doc, out_root):
             continue
         if e["num"] is None:
             # 无编号条目: 作者-年头起 + 带 引号/斜体题名/来源线索 之一(防正文句含年份混入)
-            if not AY_HEAD.match(e["text"]):
+            if not _ay_head(e["text"]):
                 continue
             if not (QUOTE_TITLE.search(e["text"]) or ITALIC_TITLE.search(e["text"])
                     or re.search(r"pp?\.\s?\d|학\s*회|회\s*지|제\s*\d+\s*[권호]|출판사|University|Press|"
-                                 r"Journal|학술|Inc\.|Book|[A-Za-z]{4,}", e["text"])):
+                                 r"Journal|학술|Inc\.|Book|[A-Za-z]{4,}", e["text"])
+                    or (re.search(u"[ぁ-ゖァ-ヶ]", e["text"]) and
+                        re.search(u"(?:出版|書店|書房|大学|学会|研究会|誌|雑誌|\\d+\\s*[,，]\\s*\\d+\\s*[-–~～]\\s*\\d+)",
+                                  e["text"]))):
                 continue
         entries.append(e)
     # —— 批次2: num 恢复(895567 41 条全 null 实测)——numbered 且 num 过半为空 → 按序重编 1..N(验收: int 连续) ——
