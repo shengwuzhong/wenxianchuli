@@ -2,13 +2,15 @@
 r"""layout_ja: 日文文献版面旁路(unify 后处理, M3 之前)。
 
 针对日文双栏文献(学会誌/医学会誌 常见排版)的版面分析旁路, 解决三件事:
-  ① 栏检测: 复用 _page_col_boundary 的页栏判定, 并针对日文「左栏窄右栏宽」「标题横跨双栏」
-     等形态增强(栏边界取内容块左边缘最大空隙, 而非固定页宽中点)。
+  ① 栏检测: 复刻 merge_out._column_boundary 的投票法(排除跨栏宽块), 保证与 merge 阶段
+     栏边界一致(40_10569 p1 实证: 旧 _page_col_boundary 最大空隙法因宽块左边缘拉偏得 429,
+     本法与 merge_out 一致得 620)。
   ② 前区分区: 识别首页 front matter(标题/作者/摘要区), 与正文流区分。日文文献前区结构
      与韩/英文不同: 标题常为「日文主标题 + 英文副标题」, 摘要为「要旨」内联段(无独立头),
      作者带「上标数字」关联脚注机构。
-  ③ 阅读序: 双栏页按「左栏自上而下 → 右栏自上而下」重排块序列, 产 reading_order 序号;
-     单栏页按 y 递增。结果只作旁路标注, 不改变 unify 的几何/文本/共识。
+  ③ 阅读序: 复刻 merge_out.order_blocks(双栏「左栏 y 序 → 右栏 y 序」+ full 块按 y 交错,
+     单栏纯 y,x), 产 reading_order 序号, 与 merge 阶段排序 0 反转。结果只作旁路标注,
+     不改变 unify 的几何/文本/共识。
 
 用法:
   python metadata.py <doc> --stage layout_ja     # 单篇, 写回 unified/page_N.json
@@ -21,9 +23,7 @@ r"""layout_ja: 日文文献版面旁路(unify 后处理, M3 之前)。
 """
 import os, re, io, json, datetime, collections
 
-from .common import (ROOT, CONTENT_TYPES, STRUCT_TYPES, TERM,
-                     _fold, _content_blocks, _is_margin, _page_col_boundary,
-                     _col_of_b, _japanese_ratio, JP_SECTION_TAG, JP_ABS_INLINE,
+from .common import (CONTENT_TYPES, JP_SECTION_TAG, JP_ABS_INLINE,
                      JP_KW_HEAD, JP_ABS_HEAD)
 
 
@@ -51,23 +51,6 @@ def _is_front_head(t, u_type):
     return False
 
 
-def _detect_cols(unified_list, W):
-    """页栏判定(增强): 优先用 _page_col_boundary(左边缘最大空隙法), 失败时退回页宽中点双栏试探。
-    返回 (boundary_x, ncols)。boundary_x=None 表示单栏。"""
-    b = _page_col_boundary({"w": W, "unified": unified_list})
-    if b is not None:
-        return b, 2
-    # 退回: 若内容块中心明显分居页宽两侧(且两侧各有块), 判双栏, 边界取中点
-    cxs = [(u["box"][0] + u["box"][2]) / 2.0 for u in _content_blocks(unified_list, W)]
-    if len(cxs) >= 4:
-        mid = W / 2.0
-        n_left = sum(1 for x in cxs if x < mid)
-        n_right = len(cxs) - n_left
-        if n_left >= 2 and n_right >= 2 and (max(cxs) - min(cxs)) > 0.40 * W:
-            return mid, 2
-    return None, 1
-
-
 def _front_zone_bottom(unified_list, W, H, ncols):
     """前区底界: 首个「正文节头」(非栏目名的 Section-header 出现在摘要/关键词之后) 或首个
     正文流块。无明确节头时用 FRONT_Y_MAX 兜底。返回前区下边界 y。"""
@@ -89,42 +72,106 @@ def _front_zone_bottom(unified_list, W, H, ncols):
     return front_bottom
 
 
+def _column_boundary_ja(unified_list, W):
+    """复刻 merge_out._column_boundary 的栏边界投票法(与 merge_out.order_blocks 对齐)。
+
+    只统计 Text/Footnote 且宽 <=0.60W、不贴页缘(0.08W~0.92W)的正文块, 在 0.30W~0.70W
+    区间找「左边结束块数 + 右边开始块数」最大且两侧各>=2 的竖线。宽块(跨栏标题/摘要/
+    作者)不参与投票, 避免像 _page_col_boundary 那样被宽块左边缘拉偏(40_10569 p1 实证:
+    旧法边界 429, 本法定为 620, 与 merge_out 一致)。"""
+    if not W or W <= 0:
+        return None
+    body = []
+    for u in unified_list:
+        if u["type"] not in CONTENT_TYPES:
+            continue
+        x0, x1 = u["box"][0], u["box"][2]
+        width = x1 - x0
+        if width <= 0 or width > 0.60 * W:
+            continue
+        if x1 <= 0.08 * W or x0 >= 0.92 * W:
+            continue
+        body.append((x0, x1))
+    if len(body) < 4:
+        return None
+    best = None
+    start, stop = int(0.30 * W), int(0.70 * W)
+    for x in range(start, stop + 1, 4):
+        left = sum(1 for x0, x1 in body if x1 <= x)
+        right = sum(1 for x0, x1 in body if x0 >= x)
+        if left < 2 or right < 2:
+            continue
+        score = (min(left, right), left + right, -abs(x - W / 2.0))
+        if best is None or score > best[0]:
+            best = (score, x)
+    return best[1] if best else None
+
+
+def _order_blocks_ja(unified_list, W, boundary):
+    """复刻 merge_out.order_blocks 的阅读序(与 merge_out 完全一致), 返回按序 uid 列表。
+
+    双栏页: 跨栏/页眉页脚/脚注/宽块(>0.65W)按 y 保持原位(full), 正文块按
+    「左栏 y 序 → 右栏 y 序」(body), 再按 y 把 body 交错插回 full。单栏页: 纯 (y, x)。
+    Section-header 非宽非跨栏时参与栏流(与 merge_out 一致, 旧逻辑把它全排最后是错的)。"""
+    if not unified_list:
+        return []
+    if boundary is None:
+        return [u["uid"] for u in sorted(unified_list, key=lambda b: (b["box"][1], b["box"][0]))]
+    full, cols = [], [[], []]
+    for u in unified_list:
+        x0, x1 = u["box"][0], u["box"][2]
+        width = x1 - x0
+        spans = x0 < boundary - 8 and x1 > boundary + 8
+        if u["type"] in ("Footnote", "Page-header", "Page-footer", "Page-number") \
+                or width > 0.65 * W or spans:
+            full.append(u)
+        else:
+            col = 0 if (x0 + x1) / 2.0 < boundary else 1
+            cols[col].append(u)
+    body = (sorted(cols[0], key=lambda b: (b["box"][1], b["box"][0]))
+            + sorted(cols[1], key=lambda b: (b["box"][1], b["box"][0])))
+    full.sort(key=lambda b: (b["box"][1], b["box"][0]))
+    out, i = [], 0
+    for f in full:
+        fy = f["box"][1]
+        while i < len(body) and body[i]["box"][1] < fy:
+            out.append(body[i])
+            i += 1
+        out.append(f)
+    out.extend(body[i:])
+    return [u["uid"] for u in out]
+
+
 def layout_page(unified_list, W, H, is_first_page=False):
     """单页日文版面旁路: 栏检测 + 前区分区 + 阅读序。返回 (annotated_list, summary)。
-    annotated_list 与输入同序, 每块追加 layout 标注(不新建/不删除块)。"""
-    boundary, ncols = _detect_cols(unified_list, W)
+    annotated_list 与输入同序, 每块追加 layout 标注(不新建/不删除块)。
+
+    阅读序(reading_order)复刻 merge_out.order_blocks, 保证与 merge 阶段排序 0 反转。
+    col/zone 作旁路标注: col 记栏号(full 跨栏块记 -1), zone 记前区/正文(仅首页)。"""
+    boundary = _column_boundary_ja(unified_list, W)
+    ncols = 2 if boundary is not None else 1
     front_bottom = _front_zone_bottom(unified_list, W, H, ncols) if is_first_page else 0.0
 
-    # 内容块(参与阅读序)与结构块(页眉/页脚/页码)分离
-    content = _content_blocks(unified_list, W)
-    content_ids = {u["uid"] for u in content}
+    ordered_uids = _order_blocks_ja(unified_list, W, boundary)
+    uid_to_u = {u["uid"]: u for u in unified_list}
+    # 块在 merge_out 排序里的栏归属(full 跨栏块 col=-1, 正文块 0/1)
+    col_map = {}
+    if boundary is not None:
+        for u in unified_list:
+            x0, x1 = u["box"][0], u["box"][2]
+            width = x1 - x0
+            spans = x0 < boundary - 8 and x1 > boundary + 8
+            if u["type"] in ("Footnote", "Page-header", "Page-footer", "Page-number") \
+                    or width > 0.65 * W or spans:
+                col_map[u["uid"]] = -1
+            else:
+                col_map[u["uid"]] = 0 if (x0 + x1) / 2.0 < boundary else 1
 
-    # 阅读序: 三段式。
-    # ① 前区块(front matter, 仅首页): 标题/作者/摘要, 按 y 自然序, 恒排最前。
-    # ② 正文流块(Text/Footnote): 双栏按「左栏自上而下 → 右栏自上而下」, 单栏按 y。
-    # ③ 其余块(Section-header/Picture/Page-header/Page-footer/Page-number 等):
-    #    不参与栏切分(标题/图表常横跨双栏), 按 y 排序附在正文流之后。
-    def _rank(u):
-        uid = u["uid"]
-        y0, y1, x0, x2 = u["box"][1], u["box"][3], u["box"][0], u["box"][2]
-        in_front = is_first_page and y0 < front_bottom and uid in content_ids
-        if in_front:
-            return (0, round(y0), round(x0))
-        if uid in content_ids:
-            if ncols == 2 and boundary is not None:
-                col = _col_of_b(u, boundary, W)
-                return (1, col, round(y0), round(x0))
-            return (1, 0, round(y0), round(x0))
-        return (2, round(y0), round(x0))
-
-    ordered = sorted(unified_list, key=_rank)
-
-    # 回写 layout 标注
     order_map = {}
-    for i, u in enumerate(ordered):
-        in_front = is_first_page and u["box"][1] < front_bottom and u["uid"] in content_ids
-        col = _col_of_b(u, boundary, W) if (ncols == 2 and boundary is not None
-                                            and u["uid"] in content_ids and not in_front) else 0
+    for i, uid in enumerate(ordered_uids):
+        u = uid_to_u[uid]
+        in_front = is_first_page and u["box"][1] < front_bottom
+        col = col_map.get(uid, 0)
         layout = {
             "detected": "double" if ncols == 2 else "single",
             "boundary": round(boundary, 1) if boundary is not None else None,
@@ -133,11 +180,11 @@ def layout_page(unified_list, W, H, is_first_page=False):
             "reading_order": i,
         }
         u["layout"] = layout
-        order_map[u["uid"]] = i
+        order_map[uid] = i
 
     summary = {"ncols": ncols, "boundary": round(boundary, 1) if boundary is not None else None,
                "front_bottom": round(front_bottom, 1) if is_first_page else None,
-               "n_blocks": len(unified_list), "n_content": len(content)}
+               "n_blocks": len(unified_list), "n_content": len(ordered_uids)}
     return unified_list, summary
 
 
