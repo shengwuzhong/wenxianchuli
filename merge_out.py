@@ -12,6 +12,97 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 CH = ("mineru", "dots", "paddle")
 
 
+def _box(b):
+    bb = b.get("box") or [0, 0, 0, 0]
+    try:
+        return [float(x) for x in bb[:4]]
+    except (TypeError, ValueError):
+        return [0.0, 0.0, 0.0, 0.0]
+
+
+def _column_boundary(blocks, W):
+    """Return the x coordinate of a two-column gutter, or None.
+
+    Find the vertical line that has the most body blocks ending on its left and
+    starting on its right. Full-width blocks (abstract/keywords/title) span the
+    line and therefore count for neither side, which keeps them out of the vote.
+    Requiring at least two blocks on each side avoids splitting single-column
+    pages that merely have an internal gap.
+    """
+    if not W or W <= 0:
+        return None
+    body = []
+    for b in blocks:
+        if b.get("cat") not in ("Text", "Footnote"):
+            continue
+        x0, _y0, x1, _y1 = _box(b)
+        width = x1 - x0
+        if width <= 0 or width > 0.60 * W:
+            continue
+        if x1 <= 0.08 * W or x0 >= 0.92 * W:
+            continue
+        body.append((x0, x1))
+    if len(body) < 4:
+        return None
+
+    best = None
+    start = int(0.30 * W)
+    stop = int(0.70 * W)
+    for x in range(start, stop + 1, 4):
+        left = sum(1 for x0, x1 in body if x1 <= x)
+        right = sum(1 for x0, x1 in body if x0 >= x)
+        if left < 2 or right < 2:
+            continue
+        score = (min(left, right), left + right, -abs(x - W / 2.0))
+        if best is None or score > best[0]:
+            best = (score, x)
+    return best[1] if best else None
+
+
+def order_blocks(blocks, W):
+    """Column-aware reading order for one page.
+
+    Two-column pages: full-width blocks (headings/abstract/footers) keep their
+    y position; body blocks are read left column top-to-bottom, then right
+    column top-to-bottom. Full-width blocks are interleaved at their y so a
+    title/abstract above the columns and a footer below them stay in place.
+    Single-column pages: plain (y, x) order, same as the legacy sort.
+    """
+    if not blocks:
+        return []
+    boundary = _column_boundary(blocks, W)
+    if boundary is None:
+        return sorted(blocks, key=lambda b: (_box(b)[1], _box(b)[0]))
+
+    full, cols = [], [[], []]
+    for b in blocks:
+        x0, _y0, x1, _y1 = _box(b)
+        width = x1 - x0
+        spans = x0 < boundary - 8 and x1 > boundary + 8
+        # Footnotes sit at the page bottom; headers/footers/pagenos are page
+        # furniture. Keep all of them out of the column flow.
+        if b.get("cat") in ("Footnote", "Page-header", "Page-footer", "Page-number") \
+                or width > 0.65 * W or spans:
+            full.append(b)
+        else:
+            col = 0 if (x0 + x1) / 2.0 < boundary else 1
+            cols[col].append(b)
+
+    body = (sorted(cols[0], key=lambda b: (_box(b)[1], _box(b)[0]))
+            + sorted(cols[1], key=lambda b: (_box(b)[1], _box(b)[0])))
+    full.sort(key=lambda b: (_box(b)[1], _box(b)[0]))
+
+    out, i = [], 0
+    for f in full:
+        fy = _box(f)[1]
+        while i < len(body) and _box(body[i])[1] < fy:
+            out.append(body[i])
+            i += 1
+        out.append(f)
+    out.extend(body[i:])
+    return out
+
+
 def adapt_channel(doc_dir, ch, sizes):
     """返回 (per_page dict 或 None, md_text 或 None, src)"""
     src = os.path.join(doc_dir, "raw", ch)
@@ -90,7 +181,7 @@ def merge_doc(doc, doc_dir, sizes=None, in_memory=None):
                     if b.get("xev"):
                         blk["xev"] = b["xev"]  # strong=文本证据 / layout=排版推断
                 blocks.append(blk)
-        blocks.sort(key=lambda x: (round(x["box"][1] / 18.0), x["box"][0]))  # 阅读序: 行聚合(18px 带)再按 x
+        blocks = order_blocks(blocks, W)  # 双栏: 栏内 y 序; 单栏: (y,x)
         io.open(os.path.join(merged_dir, "page_%d.json" % p), "w", encoding="utf-8").write(json.dumps({
             "doc": doc, "page": p + 1, "w": W, "h": H,
             "channels": {ch: [{"cat": b["cat"], "box": b["box"], "text": b["text"]}
