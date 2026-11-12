@@ -1,0 +1,39 @@
+{
+ "id": "T-20261112-WB-EN-ABS",
+ "title": "日文文献英文摘要残余修复（52/40/42_103）",
+ "priority": "P1",
+ "owner": "workbuddy",
+ "status": "claimed",
+ "depends_on": [
+  "T-20261112-WB-META2"
+ ],
+ "allowed_files": [
+  "metapy/abs.py",
+  "metapy/common.py"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/workbuddy/T-20261112-WB-EN-ABS",
+ "base_commit": "main",
+ "acceptance": [
+  "52_230725 abstract_en 为英文或 null（不得是日文）",
+  "40_10569 abstract_en 空值不得 confidence=high",
+  "42_103 Key words 后的英文摘要抽出或显式 null",
+  "test_pipeline 12/12",
+  "no canonical out/ writes",
+  "handoff with before/after"
+ ],
+ "handoff_to": "",
+ "created_at": "2026-11-12T07:04:29+00:00",
+ "updated_at": "2026-11-12T07:04:29+00:00"
+}

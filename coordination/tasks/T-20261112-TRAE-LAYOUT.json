@@ -1,0 +1,38 @@
+{
+ "id": "T-20261112-TRAE-LAYOUT",
+ "title": "查看器叠加日文 layout 标注",
+ "priority": "P1",
+ "owner": "trae",
+ "status": "review",
+ "depends_on": [
+  "T-20261112-WB-LAYOUTFIX"
+ ],
+ "allowed_files": [
+  "viewer.py",
+  "static/"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/trae/T-20261112-TRAE-LAYOUT",
+ "base_commit": "main",
+ "acceptance": [
+  "viewer_compare.html 有 layout 标记",
+  "双栏左右顺序与 merge_out.order_blocks 一致",
+  "unittest 12/12",
+  "正式 out 哈希不变",
+  "handoff 带截图/diff"
+ ],
+ "handoff_to": "deepseek",
+ "created_at": "2026-11-12T06:35:05+00:00",
+ "updated_at": "2026-11-12T06:43:28+00:00"
+}
