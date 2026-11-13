@@ -399,6 +399,10 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 .refexp button{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;padding:0 7px;font-size:11px;margin-left:5px;color:#1e3a8a}
 .refexp button:hover{background:#dbeafe;border-color:#2563eb}
 .refexp button:disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9}
+.mfx{float:right;margin:-1px 0 2px 8px}
+.mfx button{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;padding:0 7px;font-size:11px;color:#1e3a8a}
+.mfx button:hover{background:#dbeafe;border-color:#2563eb}
+.mfx button:disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9}
 .mfg table.cspt td{white-space:normal;word-break:break-word}   /* 引文句句子换行, 引文高亮不再被裁掉 */
 .mftag{display:inline-block;font-size:9px;color:#6b7280;border:1px solid #e5e7eb;border-radius:3px;padding:0 3px;margin-right:4px;vertical-align:1px}
 .mfwarn{display:inline-block;font-size:9px;color:#b91c1c;background:#fee2e2;border:1px solid #fca5a5;border-radius:3px;padding:0 4px;margin:0 4px 0 2px;vertical-align:1px}
@@ -707,6 +711,18 @@ document.addEventListener('click',function(e){
  var sec=t.closest('section');if(!sec)return;
  sec.querySelectorAll('rect[data-u="'+uid+'"]').forEach(function(r){r.classList.add('on');r.classList.add('cite-on');
   setTimeout(function(){r.classList.remove('on');r.classList.remove('cite-on');},1600);});});
+/* metadata JSON 导出(2026-11-13 T-20261113-TRAE-META-EXPORT): 纯前端 Blob, pretty JSON */
+function metaExport(btn){
+ var d={};
+ try{d=JSON.parse(btn.getAttribute('data-meta')||'{}');}catch(e){d={};}
+ var doc=d.doc||btn.getAttribute('data-doc')||'metadata';
+ var txt=JSON.stringify(d,null,2);
+ var blob=new Blob([txt],{type:'application/json;charset=utf-8'});
+ var a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);a.download=doc+'_metadata.json';
+ document.body.appendChild(a);a.click();
+ setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1200);
+}
 /* 逐页缩略图导航(2026-11-13 T-20261113-TRAE-THUMBNAIL-NAV): 点击定位 + scroll spy + 折叠 + lazy */
 (function(){
  var rail=document.getElementById('thumbrail'),tog=document.getElementById('thumbtoggle');
@@ -1464,13 +1480,44 @@ def _meta_overview(meta, audit=None):
             last = gname
         out.append(html_s)
     out.append("</div>" * len({g[0] for g in grp}))
-    return ('<div class="pane meta ov"><div class="ptitle ov">metadata 总览（全部抽取字段 · 明细按页见下方横带）</div>'
-            '<div class="mfw">%s</div><div class="pmask"></div></div>' % "".join(out))
+    return ('<div class="pane meta ov"><div class="ptitle ov">metadata 总览（全部抽取字段 · 明细按页见下方横带）'
+            '%s</div>'
+            '<div class="mfw">%s</div><div class="pmask"></div></div>' % (_meta_export_btn(meta), "".join(out)))
 
+
+
+_META_EXPORT_KEYS = ("doc", "title", "title_en", "authors", "affiliations", "abstract",
+                     "abstract_en", "journal", "journal_en", "year", "volume", "issue",
+                     "pages", "keywords", "body", "references", "citation_spans")
+
+
+def _meta_export_payload(meta):
+    """导出用元数据: 字段值解包(去掉 {value,confidence,page,uid} 外壳), 列表类保持原样。"""
+    out = {}
+    if not meta:
+        return out
+    for k in _META_EXPORT_KEYS:
+        if k not in meta:
+            continue
+        v = meta[k]
+        if k not in ("references", "citation_spans") and isinstance(v, dict) and "value" in v:
+            v = v.get("value")
+        out[k] = v
+    return out
+
+
+def _meta_export_btn(meta):
+    """metadata 总览右上「导出 JSON」按钮: 纯前端 Blob 下载; 无字段时 disabled。"""
+    payload = _meta_export_payload(meta)
+    data = html.escape(json.dumps(payload, ensure_ascii=False), quote=True)
+    doc = html.escape(str((meta or {}).get("doc") or ""), quote=True)
+    dis = "" if any(v not in (None, "", [], {}) for v in payload.values()) else " disabled"
+    return ('<span class="mfx"><button type="button" data-doc="%s" data-meta="%s"%s'
+            ' onclick="metaExport(this)" title="导出本篇完整 metadata(UTF-8, pretty JSON)">导出 JSON</button></span>'
+            % (doc, data, dis))
 
 
 _LAY_CONTENT = ("Text", "Footnote")
-
 
 def _layout_overlay(u_list, W, H):
     """layout_ja 标注(2026-11-12, T-20261112-TRAE-LAYOUT) -> (页顶条带 html, 原图叠加 svg)。
