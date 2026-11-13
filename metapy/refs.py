@@ -555,6 +555,67 @@ def _reference_fallback_fields(e, f):
     return {}
 
 
+_EN_NAME_SEG = re.compile(r"^[A-Z][A-Za-z'\-]*(?:\s+[A-Z][A-Za-z'\-]*){1,3}$")
+
+
+def _en_author_seg_ok(a):
+    """英文作者段形态校验: 逗号分段过半是「姓 名/首字母缩写」形态即认(防把句子当作者)。"""
+    a = re.sub(r"[\s,]*(?:et\s+al|etc)\.?$", "", (a or "").strip(), flags=re.I).strip()
+    if not a or len(a) > 220 or ";" in a:
+        return False
+    parts = [p.strip() for p in a.split(",") if p.strip()]
+    if not parts:
+        return False
+    ok = sum(1 for p in parts if _EN_NAME_SEG.match(p))
+    return ok >= max(1, (len(parts) + 1) // 2)
+
+
+def _en_vancouver_fields(e):
+    """英文编号条目「作者. 题名. 誌名. 年;巻:頁」字段回收(2026-11-13 T-20261113-WB-FREFS-REFS)。
+
+    旧 noquote 分支按逗号分段取次段作题名, 把第二作者当题名(42_185 15 条、42_93 多条、
+    40_10569 num16 'Watanabe S' 实证)。此处按句点分层: 作者段至 'et al:'/'et al.'/首句点,
+    题名至「首个年份前的最后一段」(誌名)。兼容题名含句点('Electrical charge. Its role in …')
+    与含冒号('…: a pioneer TF perspective')。仅「行首编号 + 纯英文 + 无引号/斜体」时接管,
+    日/韩条目与 authoryear 无编号条目不受影响。"""
+    if not LIST_MARK.match(e or ""):
+        return {}
+    if _japanese_ratio(e) > 0 or re.search(u"[一-鿿々〆가-힣]", e) or re.search(u"[“\"『「]", e):
+        return {}
+    body = NUM_MARK.sub("", LIST_MARK.sub("", e)).strip()
+    m_et = re.match(r"^(?P<a>[^:：]{6,220}?(?:et\s+al|etc)\.?)\s*[:：.]\s*", body, re.I)
+    if m_et:
+        auth, rest = m_et.group("a"), body[m_et.end():]
+    else:
+        i1 = body.find(". ")
+        if i1 < 0:
+            return {}
+        auth, rest = body[:i1], body[i1 + 2:]
+    if not _en_author_seg_ok(auth):
+        return {}
+    my2 = re.search(r"(?:19|20)\d{2}", rest)
+    pre = rest[:my2.start()] if my2 else rest
+    segs = [s.strip(" ,;") for s in re.split(r"\.\s+", pre) if s.strip(" ,;")]
+    if not segs:
+        return {}
+    if len(segs) == 1:
+        title, src = segs[0], None
+    else:
+        title, src = ". ".join(segs[:-1]), segs[-1]
+        if len(_fold(src)) > 90:      # 末段过长 → 不像誌名, 整段归题名
+            title, src = ". ".join(segs), None
+    title = re.sub(r"\s*[;:]\s*\d.*$", "", title).strip(" .,;")
+    if len(_fold(title)) < 8 or not re.search(r"[A-Za-z]{3,}", title):
+        return {}
+    if re.match(r"^(?:pp?\.|vol\.|\d)", title, re.I):
+        return {}
+    auth = auth.strip(" ,.")
+    return {"title": _norm_ws(title), "grammar": "noquote", "layout": "en_journal",
+            "source": _norm_ws(src) if src else None,
+            "authors_raw": auth or None,
+            "et_al": bool(re.search(r"\bet\s+al\.?|etc\.?$", auth, re.I))}
+
+
 def _extract_fields(entry, tailflow=False):
     """L3 正则抽取(候选+多策略, 每策略打语法类标):
     语法类: quoted(引号对) / italic(斜体) / remnant_quote(单侧缺引号的残余段) /
@@ -785,6 +846,12 @@ def _extract_fields(entry, tailflow=False):
         ja = _ja_reference_fields(e, f, myear)
         if ja:
             f.update(ja)
+    else:
+        # 英文编号条目「作者. 题名. 誌名」句点分层(2026-11-13 T-20261113-WB-FREFS-REFS)
+        van = _en_vancouver_fields(e)
+        if van:
+            van["authors"] = _split_authors(van.get("authors_raw") or "", latcorp=True)
+            f.update(van)
     # (2026-11-12 T-20261112-WB-REFS-JA) 语言三元: 含仮名→ja(日文条目汉字被旧 'ko/en' 二分类误标 ko,
     # 40_10569 '小林祥泰監修…' 实证); 否则维持原 'ko/en/?' 口径(英文/韩文条目语义不变)。
     if _japanese_ratio(e) > 0:
@@ -1205,8 +1272,54 @@ def selftest():
             n_ok += 1
         else:
             print("FAIL [fnote-dot-bare-footer] %s" % (nums,))
-    print("selftest: %d/%d PASS" % (n_ok, len(SELFTEST) + 6))
-    return n_ok == len(SELFTEST) + 6
+    # (2026-11-13 T-20261113-WB-FREFS-REFS) 英文编号条目「作者. 题名. 誌名」句点分层:
+    # 40_10569 num16 题名曾被填成第二作者 'Watanabe S'
+    f16 = _extract_fields(u"16) Tokunaga M, Watanabe S, Nakanishi R, et al: The influence of "
+                          u"stroke type, gender, and age on FIM improvement. "
+                          u"Jpn J Compr Rehabil Sci 5: 136-140, 2014")
+    if f16["title"].startswith("The influence of stroke type") \
+            and f16["authors_raw"] == "Tokunaga M, Watanabe S, Nakanishi R, et al" \
+            and f16["source"] == "Jpn J Compr Rehabil Sci 5: 136-140" \
+            and f16["layout"] == "en_journal":
+        n_ok += 1
+    else:
+        print("FAIL [en-vancouver-colon] %r" % (f16,))
+    # 末条粘尾页英文作者行: 切在 'Shoji Honda, M.D.' 前, 题名/来源不被污染(40_10569 num19)
+    _t19 = (u"19) 東平日出夫, 松岡哲也, 渡部広明ら: 日本外傷データバンクにおけるデータ欠損の特徴. "
+            u"日救急医会誌 22: 147-155, 2011 Shoji Honda, M.D., $ ^{1)} $ Makoto Tokunaga, M.D., "
+            u"$ ^{1)} $ Susumu Watanabe, M.D.")
+    _t19c = _trim_tail_author_run(_t19)
+    f19 = _extract_fields(_t19c)
+    if _t19c.endswith("2011") and f19["title"] == u"日本外傷データバンクにおけるデータ欠損の特徴" \
+            and f19["source"] == u"日救急医会誌 22: 147-155":
+        n_ok += 1
+    else:
+        print("FAIL [tail-author-run] %r / %r" % (_t19c[-40:], f19.get("title")))
+    # 页脚行首裸数字=同页页码 → 不收为编号脚注, 且给出适用性结论(42_93 实证)
+    with tempfile.TemporaryDirectory() as tmp:
+        udir = os.path.join(tmp, "pgnoise", "unified")
+        os.makedirs(udir)
+        units = [
+            {"uid": "u0_1", "type": "Page-number", "main_text": "94",
+             "box": [10, 900, 60, 924], "cross_page": {}, "members": {},
+             "confidence": {"level": "high"}, "review": False, "readings": []},
+            {"uid": "u0_2", "type": "Page-footer", "main_text": u"診断病理 2025, 42 (2)",
+             "box": [70, 900, 300, 924], "cross_page": {},
+             "members": {"dots": [{"text": u"94 診断病理 2025, 42 (2)", "box": [70, 900, 300, 924]}]},
+             "confidence": {"level": "high"}, "review": False, "readings": []},
+        ]
+        io.open(os.path.join(udir, "page_0.json"), "w", encoding="utf-8").write(
+            json.dumps({"doc": "pgnoise", "page": 1, "w": 400, "h": 1000,
+                        "in_ref": False, "unified": units}, ensure_ascii=False))
+        got = frefs_doc("pgnoise", tmp)
+        app = (got["footnote_ref_validation"] or {}).get("applicability") or {}
+        if got["footnote_refs"] == [] and app.get("status") == "none" \
+                and "页码" in (app.get("reason") or ""):
+            n_ok += 1
+        else:
+            print("FAIL [fnote-page-number-noise] %r %r" % (got["footnote_refs"], app))
+    print("selftest: %d/%d PASS" % (n_ok, len(SELFTEST) + 9))
+    return n_ok == len(SELFTEST) + 9
 
 
 def _split_authors(auth, corp=False, latcorp=False):
@@ -1727,7 +1840,8 @@ def refs_doc(doc, out_root):
     refs = []
     audits = []
     for e in entries:
-        f = _extract_fields(e["text"], tailflow=_manual_like(e["text"]))
+        etext = _trim_tail_author_run(e["text"])   # 末条粘尾页英文作者行→切齐(40_10569 num19)
+        f = _extract_fields(etext, tailflow=_manual_like(etext))
         # 校验独立层: 机械合法性(碎片题名/雷同/公告主题缺等), 错值抽出也会被拦下降级
         issues = _validate_fields(f)
         if any(k in issues for k in T_NULL_KEYS):
@@ -1736,7 +1850,7 @@ def refs_doc(doc, out_root):
         level, basis_str, review_str = _grade_entry(
             f, agree, e["block_review"], e["block_level"], umap.get(e["uid"]), issues)
         refs.append({
-            "num": e["num"], "style": style, "raw": e["text"], "page": e["page"],
+            "num": e["num"], "style": style, "raw": etext, "page": e["page"],
             "box": e["box"], "uid": e["uid"],
             "authors": f["authors"], "authors_raw": f["authors_raw"], "et_al": f.get("et_al"),
             "year": f["year"], "title": f["title"], "source": f["source"],
@@ -1813,6 +1927,25 @@ def refs_doc(doc, out_root):
 
 
 _TAIL_CITE = re.compile(u"\\(([^()]*(?:19|20)\\d{2}[a-z]?[^()]*)\\)\\s*[.。]?\\s*$", re.S)
+
+_MD_RUN = re.compile(r"\s+(?=[A-Z][A-Za-z'\-]+(?:\s+[A-Z][A-Za-z'\-]+)?,\s*M\.?D\.?[, ])")
+
+
+def _trim_tail_author_run(t):
+    """剥离并入条目的尾页英文作者行(2026-11-13 T-20261113-WB-FREFS-REFS)。
+
+    40_10569 num19 实证: 末条日文文献后粘着尾页英文作者串
+    '… 日救急医会誌 22: 147-155, 2011 Shoji Honda, M.D., $ ^{1)} $ Makoto Tokunaga, M.D., …',
+    不切会让题名变 'Shoji Honda'、authors/source 全被污染。只认「姓名 + M.D.」密集形态(≥2 处),
+    且切点前须已有年份/页码, 防正文/单条文献误切。"""
+    m = _MD_RUN.search(t or "")
+    if not m or t[m.start():].count("M.D") < 2:
+        return t
+    head = t[:m.start()].rstrip(" ,.")
+    if not re.search(r"(?:19|20)\d{2}|pp?\.\s*\d|\d+\s*[-–]\s*\d+", head[-60:]):
+        return t
+    return head
+
 
 def _unwrap_tail_cite(t):
     """句尾括注引文解包: '…하였다.(김택균(1983), 제목, 출처)' → 只取括内引文本体(1632041 #18 实证)。"""
@@ -1986,19 +2119,42 @@ def frefs_doc(doc, out_root):
     doc_heads = _doc_heads(pdata, pages)
     ref_pages = set(p for p in pages if pdata[p].get("in_ref"))
     blocks, colb = [], {}
+    n_foot = 0        # Footnote 块数(适用性结论)
+    n_pf_noise = 0    # 页脚块被判为页码噪声的块数(适用性结论)
+    # (2026-11-13 T-20261113-WB-FREFS-REFS) 同页页码集合: 页脚回退路径里「行首裸数字」若等于本页
+    # Page-number 块文本, 那是页码不是脚注号(42_93 u1_6 dots 读法 '94 診断病理 2025, 42 (2)' 实证)。
+    page_nums = {p: {(u["main_text"] or "").strip() for u in pdata[p]["unified"]
+                     if u["type"] == "Page-number"} for p in pages}
 
-    def _footer_marked_text(u):
+    def _footer_marked_text(u, pnums=()):
         """Page-footer 型脚注回退: 渠道把部分页底脚注(上标号)判为 Page-footer(13563525 u8_8
         '17 김은혜…' 实证, 主读法丢号但 dots 成员带号)。主读法有行首标记用主读法; 否则用
-        第一个带行首标记的成员读法。无标记返回 None(普通页脚不收)。"""
-        t = (u.get("main_text") or "")
-        if any(FN_CITE_X.match(ln.strip()) for ln in t.split("\n") if ln.strip()):
-            return t.strip()
+        第一个带行首标记的成员读法。无标记返回 None(普通页脚不收)。
+        (2026-11-13) 行首裸数字若等于本页页码 → 视为页脚/页码噪声, 跳过该行; 全被跳过则整块不收。"""
+
+        def _marked(text):
+            out = []
+            for ln in (text or "").split("\n"):
+                s = ln.strip()
+                if not s:
+                    continue
+                m = FN_CITE_X.match(s)
+                if not m:
+                    continue
+                tok = m.group(1).strip()
+                if re.fullmatch(r"\d{1,3}", tok) and tok in pnums:
+                    continue   # 页码(点集读法把 Page-number 并进页脚), 非脚注号
+                out.append(s)
+            return "\n".join(out)
+
+        t = _marked(u.get("main_text") or "")
+        if t:
+            return t
         for members in (u.get("members") or {}).values():
             for m in members:
-                mt = (m.get("text") or "")
-                if any(FN_CITE_X.match(ln.strip()) for ln in mt.split("\n") if ln.strip()):
-                    return mt.strip()
+                mt = _marked(m.get("text") or "")
+                if mt:
+                    return mt
         return None
 
     for p in pages:
@@ -2009,9 +2165,26 @@ def frefs_doc(doc, out_root):
             if u.get("cross_page", {}).get("role") == "head":
                 continue
             t = (u["main_text"] or "").strip()
+            if u["type"] == "Footnote":
+                n_foot += 1
             if u["type"] != "Footnote":
                 if u["type"] == "Page-footer":
-                    ft = _footer_marked_text(u)
+                    ft = _footer_marked_text(u, page_nums.get(p, set()))
+                    if ft is None:
+                        # 诊断: 页脚块行首裸数字=本页页码 → 计为噪声剔除(适用性结论用)
+                        _cands = [u.get("main_text") or ""]
+                        for _ms in (u.get("members") or {}).values():
+                            _cands += [x.get("text") or "" for x in _ms]
+                        for _c in _cands:
+                            _hit = False
+                            for _ln in _c.split("\n"):
+                                _m = FN_CITE_X.match(_ln.strip())
+                                if _m and _m.group(1).strip() in page_nums.get(p, set()):
+                                    _hit = True
+                                    break
+                            if _hit:
+                                n_pf_noise += 1
+                                break
                     if ft:
                         if p not in colb:
                             colb[p] = _page_col_boundary(j)
@@ -2073,6 +2246,18 @@ def frefs_doc(doc, out_root):
                         "review_comment": review_str})
     fval = {"entry_count": len(frefs),
             "per_page": dict(collections.Counter(e["page"] for e in frefs))}
+    # (2026-11-13 T-20261113-WB-FREFS-REFS) 适用性结论: 明确「本篇为何 0 条」, 免得 0 被当成漏抽
+    if frefs:
+        _app = {"status": "ok", "reason": "行首编号脚注 %d 条" % len(frefs)}
+    elif n_pf_noise:
+        _app = {"status": "none",
+                "reason": "页脚仅页码/刊名 running footer(%d 块, 行首数字=本页页码), 无编号脚注" % n_pf_noise}
+    elif n_foot:
+        _app = {"status": "none",
+                "reason": "Footnote 块 %d 个, 无行首编号标记(机构/DOI/受付日期脚注), 非引文" % n_foot}
+    else:
+        _app = {"status": "none", "reason": "无 Footnote/带号 Page-footer 块, 本篇不适用编号脚注"}
+    fval["applicability"] = _app
     # 1.11: 对账诊断——每页 脚注号全集(markers) vs 已收(collected), 缺口=未收(附录B reconciliation 原料)
     mk_pages = collections.defaultdict(list)
     for b in blocks:
