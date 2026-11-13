@@ -445,6 +445,9 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 #citepanel.hide{display:none}
 #citebar{padding:6px 8px;border-bottom:1px solid #e2e8f0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 #citebar label{cursor:pointer;color:#334155}
+#citebar button{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;padding:0 7px;font-size:11px;color:#1e3a8a}
+#citebar button:hover{background:#dbeafe;border-color:#2563eb}
+#citebar button:disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9}
 #citecnt{color:#64748b;margin-left:auto}
 #citelist{overflow-y:auto;padding:4px 6px}
 .cirow{padding:5px 6px;border-bottom:1px dashed #e2e8f0;cursor:pointer}
@@ -547,7 +550,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 <nav id="thumbrail" aria-label="页面缩略图">@@THUMBS@@</nav>
 <button id="citetoggle" type="button" title="打开/关闭全文档引文索引">引文索引</button>
 <aside id="citepanel" class="hide" aria-label="引文索引">
-<div id="citebar"><label><input type="checkbox" id="cionly"> 仅未回链</label><span id="citecnt"></span></div>
+<div id="citebar"><label><input type="checkbox" id="cionly"> 仅未回链</label><span id="citecnt"></span>@@CITEEXP@@</div>
 <div id="citelist"></div>
 </aside>
 <script type="application/json" id="citedata">@@CITEDATA@@</script>
@@ -903,6 +906,23 @@ function metaExport(btn){
   if(!q.contains(ev.target)&&!box.contains(ev.target)){box.classList.add('hide');}
  });
 })();
+/* 引文索引 CSV 导出(2026-11-13 T-20261113-TRAE-CITE-EXPORT): 全量导出, 不受"仅未回链"过滤影响 */
+window.citeExport=function(btn){
+ var rows=[];
+ try{rows=JSON.parse(btn.getAttribute('data-cite')||'[]');}catch(e){rows=[];}
+ if(!rows.length){return;}
+ function q(v){return '"'+String(v===null||v===undefined?'':v).replace(/"/g,'""')+'"';}
+ var head=['page','uid','confidence','citation_text','sentence','linked_nums','linked_titles','unlinked'];
+ var lines=[head.map(q).join(',')],i;
+ for(i=0;i<rows.length;i++){lines.push(rows[i].map(q).join(','));}
+ var eol=String.fromCharCode(13,10);
+ var doc=btn.getAttribute('data-doc')||'doc';
+ var blob=new Blob([lines.join(eol)+eol],{type:'text/csv;charset=utf-8'});
+ var a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);a.download=doc+'_citation_spans.csv';
+ document.body.appendChild(a);a.click();
+ setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1200);
+};
 </script>
 <div id="citepop"><div id="citepoptitle">原图块定位</div><svg id="citesvg" preserveAspectRatio="xMidYMid meet"></svg></div>
 </body></html>"""
@@ -1089,6 +1109,31 @@ def _cite_index_json(meta):
                      s.get("confidence") or "", 0 if links else 1])
     rows.sort(key=lambda x: (x[0], x[1]))
     return json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
+
+
+def _cite_export_btn(meta):
+    """引文索引「导出 CSV」按钮: 全量 cspan, 空 cspan 时 disabled。
+
+    列: page,uid,confidence,citation_text,sentence,linked_nums,linked_titles,unlinked
+    """
+    refs = {r.get("uid"): r for r in ((meta or {}).get("references") or []) if r.get("uid")}
+    rows = []
+    for s in ((meta or {}).get("citation_spans") or []):
+        links = s.get("linked_refs") or []
+        nums, titles = [], []
+        for l in links:
+            r = refs.get(l.get("uid")) or {}
+            nums.append(str(l.get("num") or r.get("num") or l.get("index") or ""))
+            titles.append((r.get("title") or "").strip())
+        rows.append([s.get("page") or "", s.get("uid") or "", s.get("confidence") or "",
+                     s.get("citation_text") or "", " ".join((s.get("sentence") or "").split()),
+                     ";".join(nums), ";".join(titles), 0 if links else 1])
+    dis = "" if rows else " disabled"
+    doc = html.escape(str((meta or {}).get("doc") or ""), quote=True)
+    data = html.escape(json.dumps(rows, ensure_ascii=False), quote=True)
+    return ('<button type="button" id="citecsv" data-doc="%s" data-cite="%s"%s'
+            ' onclick="citeExport(this)" title="导出本篇全部引文(csv)">导出 CSV</button>'
+            % (doc, data, dis))
 
 
 # ============ 日文元数据面板(2026-11-12, T-20261112-TRAE-VIEWER) ============
@@ -1885,6 +1930,7 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
     v = v.replace("@@THUMBS@@", thumbs)
     v = v.replace("@@CITEDATA@@", _cite_index_json(meta))
     v = v.replace("@@SEARCHDATA@@", _search_index_json(meta))
+    v = v.replace("@@CITEEXP@@", _cite_export_btn(meta))
     v = v.replace("@@LAYOUTBTN@@", ('<button id="layoutbtn" class="on" title="显示/隐藏 layout 叠加(阅读序序号 + 双栏分界; 只读, 不改数据)">'
                                     "layout 标注</button>") if lay_any else "")
     v = v.replace("@@LAYBTN@@", ('<button id="laybtn" title="块边界诊断: 叠加显示全部统一对象框(只读叠加, 不切换布局)">'
