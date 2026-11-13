@@ -56,6 +56,12 @@ _PAGE_OF = re.compile(r"Page\s+(\d{1,4})\s+of\s+\d{1,4}", re.I)
 _DOI = re.compile(r"10\.\d{4,}/[^\s\"”’]+", re.I)
 _DOI_YV = re.compile(r"\.((?:19|20)\d{2})\.(\d{1,3})\.")
 _DOI_VIY = re.compile(r"(?<!\d)(\d{1,3})\.(\d{1,3})\.((?:19|20)\d{2})\d{0,2}\.")
+# J-STAGE 型 DOI「/jpros.5.2_55」(刊名缩写.卷.期_起始页, 2026-11-13 日文期刊): 卷+期+首页
+_DOI_VIP = re.compile(r"\.(\d{1,3})\.(\d{1,3})_(\d{1,4})(?![0-9])")
+# DOI 前缀 → 日文期刊名(闭合小表; 页眉只有拉丁刊名时用 DOI 定 journal, 不靠 doc/page 硬编码)
+_DOI_JOURNAL = {"10.14889": u"Proteome Letters"}
+# 日文页眉「刊名 N号」(「活断層研究 63号 1~17 2025」): 裸数字+号=通巻号→卷
+_JP_GO = re.compile(u"(?<![第\\dA-Za-z])(\\d{1,4})\\s*号")
 # 刊名前缀截断: 最早出现的卷期/页码/括号年/BMC 卷:文号/季节词之前
 _BOUNDARY = re.compile(
     r"제\s*\d+\s*[권호]|제?\s*\d{1,4}\s*집|(?<![A-Za-z])Vol\.?\s*\d|(?<![A-Za-z])No\.?\s*\d|"
@@ -63,6 +69,7 @@ _BOUNDARY = re.compile(
     r"(?<![A-Za-z])(?:19|20)\d{2}\s*[;:]|"  # 2026-11-11 裸年份+分号/冒号边界(英文国际期刊页眉 'Proteome Letters 2020 ; 5 : 55-63')
     r"(?<![A-Za-z])(?:19|20)\d{2}\s*,\s*\d{1,3}(?=\s*[\(\s])|"  # 2026-11-12 日文页眉「刊名 年, 卷 (期)」边界('診断病理 2025, 42 (2)')
     r"(?<![\dA-Za-z])\d{1,3}\s*:\s*\d"  # 2026-11-12 日文页眉「卷:页」边界('脳卒中 40: 343-349' 的 '40: 343')
+    r"|(?<![第\dA-Za-z])\d{1,4}\s*号"   # 2026-11-13 日文页眉「刊名 N号」边界('活断層研究 63号 1~17 2025')
     r"|AUTUMN|SPRING|SUMMER|WINTER|FALL", re.I)
 _ENKEY = re.compile(r"Journal|Review|Quarterly|Bulletin|Annals|Proceedings|Studies|Research|Letters")
 _FUNC = {"of", "and", "the", "for", "in", "on", "de", "des", "la", "le", "y", "di", "del", "&", "et"}
@@ -203,6 +210,7 @@ def extract(source, n_pages, excluded_folds):
     source: [(page, uid, line)]; excluded_folds: 本篇标题/作者的折叠集合(守卫);
     n_pages: 物理页数。返回结果 dict(含 audit 段)。"""
     journal, journal_en = {}, {}
+    journal_doi = {}
     year, vol_kwan, vol_vol, vol_jip, issue, pages_pp, pages_bare = {}, {}, {}, {}, {}, {}, {}
     tongkwan, bmc_art = [], []
     for page, uid, s in source:
@@ -265,6 +273,11 @@ def extract(source, n_pages, excluded_folds):
             v = int(m.group(1))
             if 1 <= v <= 999:
                 _add(issue, v, page)
+        # 日文页眉「刊名 N号」(「活断層研究 63号 1~17 2025」的 63, 通巻号当卷)
+        for m in _JP_GO.finditer(s):
+            v = int(m.group(1))
+            if 1 <= v <= 999:
+                _add(vol_vol, v, page)
         # 页
         for m in _PP.finditer(s):
             a, b = int(m.group(1)), int(m.group(2))
@@ -283,6 +296,18 @@ def extract(source, n_pages, excluded_folds):
                 _add(vol_vol, int(m.group(1)), page)
                 _add(issue, int(m.group(2)), page)
                 _add(year, int(m.group(3)), page)
+            # J-STAGE 型 DOI(刊名缩写.卷.期_首页) 与 DOI 前缀→刊名(日文期刊页眉只有拉丁名时兜底)
+            for dm in _DOI.finditer(s):
+                doi = dm.group(0)
+                mp = re.match(r"(10\.\d{4,})/", doi)
+                if mp and mp.group(1) in _DOI_JOURNAL:
+                    _add(journal_doi, _DOI_JOURNAL[mp.group(1)], page)
+                for m in _DOI_VIP.finditer(doi):
+                    v, iss = int(m.group(1)), int(m.group(2))
+                    if 1 <= v <= 999:
+                        _add(vol_vol, v, page)
+                    if 1 <= iss <= 999:
+                        _add(issue, iss, page)
     # —— 定 winners ——
     # 刊名: 首页行(阅读序首个) > 全语料投票; ko/en 各自独立定(纯英文刊名 BMC 型无 ko 字段)
     p0list = [v for v, ps in journal.items() if 0 in ps]
@@ -291,6 +316,10 @@ def extract(source, n_pages, excluded_folds):
         j_sup = [0]
     else:
         j_w, j_sup = _vote(journal, 0)
+    j_src = "regex"
+    if j_w is None and journal_doi:     # 页眉只有拉丁刊名时, DOI 前缀定 journal(日文期刊)
+        j_w, j_sup = _vote(journal_doi, 0)
+        j_src = "doi"
     p0en = [v for v, ps in journal_en.items() if 0 in ps]
     if p0en:
         j_en_w = p0en[0]
@@ -308,13 +337,18 @@ def extract(source, n_pages, excluded_folds):
             vol_w, vol_sup = _vote(grp, 0)
             break
     i_w, i_sup = _vote(issue, 0)
+    # 「刊名 63号」与英文页眉「No. 63」同号: 号已入 volume, 期不再重复取同值(单页级证据才丢)
+    i_dropped = None
+    if i_w is not None and vol_w is not None and i_w == vol_w and len(i_sup) < len(vol_sup):
+        i_dropped = i_w
+        i_w, i_sup = None, []
     pg_w, pg_sup = None, []
     if pages_pp:
         pg_w, pg_sup = _vote(pages_pp, 0)
     elif pages_bare:
         pg_w, pg_sup = _vote(pages_bare, 0)
     res = {
-        "journal": {"value": j_w, "confidence": {"level": _lvl(j_sup), "source": "regex"}},
+        "journal": {"value": j_w, "confidence": {"level": _lvl(j_sup), "source": j_src}},
         "journal_en": {"value": j_en_w, "confidence": {"level": _lvl(j_en_sup), "source": "regex"}},
         "year": {"value": y_w, "confidence": {"level": _lvl(y_sup), "source": "regex"}},
         "volume": {"value": vol_w, "confidence": {"level": _lvl(vol_sup), "source": "regex"}},
@@ -324,6 +358,8 @@ def extract(source, n_pages, excluded_folds):
     }
     audit = {"journal_candidates": {k: sorted(v) for k, v in journal.items()},
              "journal_en_candidates": {k: sorted(v) for k, v in journal_en.items()},
+             "journal_doi_candidates": {k: sorted(v) for k, v in journal_doi.items()},
+             "issue_dropped_same_as_volume": i_dropped,
              "year_candidates": {str(k): sorted(v) for k, v in year.items()},
              "volume_candidates": dict(
                  [("kwan:%d" % k, sorted(v)) for k, v in vol_kwan.items()]
@@ -387,10 +423,15 @@ def issue_doc(doc, out_root):
     doc_dir = os.path.join(out_root, doc)
     udir = os.path.join(doc_dir, "unified")
     meta_fp = os.path.join(doc_dir, "metadata.json")
-    if not os.path.isdir(udir) or not os.path.exists(meta_fp):
-        print("跳过 issue %s: 缺 unified/metadata" % doc)
+    if not os.path.isdir(udir):
+        print("跳过 issue %s: 缺 unified" % doc)
         return None
-    meta = json.load(io.open(meta_fp, encoding="utf-8"))
+    if os.path.exists(meta_fp):
+        meta = json.load(io.open(meta_fp, encoding="utf-8"))
+    else:
+        # front/abs 未跑(个别篇目)时仍产出 issue 字段: 不补空 title/authors, 只落本篇刊头信息
+        meta = {}
+        print("注意 issue %s: 缺 metadata.json, 仅落 issue 字段" % doc)
     pages = sorted(int(re.match(r"page_(\d+)\.json$", f).group(1))
                    for f in os.listdir(udir) if re.match(r"page_\d+\.json$", f))
     pdata = {p: json.load(io.open(os.path.join(udir, "page_%d.json" % p), encoding="utf-8"))
@@ -640,14 +681,41 @@ def _selftest():
     r = extract([(0, "u0", "診断病理 2025, 42 (2)")], 1, set())
     ok21 = (r["journal"]["value"] == u"診断病理" and r["volume"]["value"] == 42
             and r["issue"]["value"] == 2 and r["year"]["value"] == 2025)
+    # 22) 日文页眉「刊名 N号 页 年」(「活断層研究 63号 1~17 2025」, 2026-11-13): 卷=63(通巻号),
+    #     英名行「Active Fault Research, No. 63, P. 1~17, 2025」→ journal_en; 同号不再重复记期
+    src = [(p, "u%d" % p, u"活断層研究 63号 1~17 2025") for p in (0, 1, 2)] + \
+          [(0, "u9", "Active Fault Research, No. 63, P. 1~17, 2025")]
+    r = extract(src, 3, set())
+    ok22 = (r["journal"]["value"] == u"活断層研究"
+            and r["journal_en"]["value"] == "Active Fault Research"
+            and r["volume"]["value"] == 63 and r["issue"]["value"] is None
+            and r["year"]["value"] == 2025 and r["pages"]["value"] == "1-17")
+    # 23) J-STAGE 型 DOI 补期号(Proteome Letters 2020 ; 5 : 55-63 / Doi:10.14889/jpros.5.2_55):
+    #     页眉只有拉丁刊名 → DOI 前缀定 journal, jpros.5.2_55 → 卷5/期2
+    r = extract([(0, "u0", "Proteome Letters 2020 ; 5 : 55-63 / Doi:10.14889/jpros.5.2_55")], 1, set())
+    ok23 = (r["journal"]["value"] == "Proteome Letters" and r["volume"]["value"] == 5
+            and r["issue"]["value"] == 2 and r["year"]["value"] == 2020
+            and r["pages"]["value"] == "55-63")
+    # 24) 同型 9_1: jpros.9.1_1 → 卷9/期1, 页 1-11
+    r = extract([(0, "u0", "Proteome Letters 2024 ; 9 : 1-11 / Doi:10.14889/jpros.9.1_1")], 1, set())
+    ok24 = (r["journal"]["value"] == "Proteome Letters" and r["volume"]["value"] == 9
+            and r["issue"]["value"] == 1 and r["pages"]["value"] == "1-11")
+    # 25) 日文关键词独占一行 + 次行为词条(2025_1 实证): 4 条; 英文 Key words 只进 keywords_en, 不反推日文
+    kl = [u"キーワード",
+          u"奈良盆地東縁断層帯，地中レーダ，スタッキング処理，群列ボーリング掘削調査",
+          u"The eastern marginal faults, GPR, Stacking, Arrayed boring"]
+    got = _kw_parse(kl[0], kl, 0)
+    ok25 = bool(got) and got[0] is False and got[1] == [
+        u"奈良盆地東縁断層帯", u"地中レーダ", u"スタッキング処理", u"群列ボーリング掘削調査"] \
+        and _kw_parse("Key words: a, b", ["Key words: a, b"], 0)[0] is True
     for i, ok in enumerate((ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10, ok11, ok12, ok13,
-                            ok14, ok15, ok16, ok17, ok18, ok19, ok20, ok21), 1):
+                            ok14, ok15, ok16, ok17, ok18, ok19, ok20, ok21, ok22, ok23, ok24, ok25), 1):
         if ok:
             n_ok += 1
         else:
             print("FAIL [issue case %d]" % i)
-    print("issue selftest: %d/21 PASS" % n_ok)
-    return n_ok == 21
+    print("issue selftest: %d/25 PASS" % n_ok)
+    return n_ok == 25
 
 
 if __name__ == "__main__":
