@@ -1,0 +1,27 @@
+{
+ "task": "T-20261113-WB-CSPAN-JA",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_out_writes": true,
+  "full_corpus_exact": true,
+  "2025_1_floor": true,
+  "52_230725_unlinked": true
+ },
+ "metrics": {
+  "total": 384,
+  "exact": 374,
+  "partial": 5,
+  "unlinked": 5,
+  "exact_rate": 0.974,
+  "2025_1": {"spans": 46, "exact": 46, "unlinked": 0},
+  "52_230725": {"spans": 8, "exact": 8, "unlinked": 0},
+  "old_total": 332
+ },
+ "notes": "Approved. 384 spans; exact 374 (97.4%), partial 5, unlinked 5. 2025_1 0→46 all exact; 52_230725 6 unlinked→0. Removed 9 false spans (8 numeric superscripts from no-number refs + 1 al. fragment), no exact regression. Tests 18/18, unittest 12/12, out hash unchanged.",
+ "reviewed_at": "2026-11-13T12:55:00+08:00"
+}
