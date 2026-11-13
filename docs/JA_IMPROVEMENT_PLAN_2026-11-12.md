@@ -19,7 +19,7 @@
 | 验证缺口 | 真值复核推翻旧基线：18 个旧“单栏”中 17 页实为双栏，仅 `43_10814 p3` 单栏，`42_103 p13` ambiguous；旧 51/48 验收无效 |
 | 评测缺口 | GT 已建：11 篇文档字段/摘要、3 篇 61 条 refs；其余 8 篇 refs 仍 pending；基线见 `eval/reports/baseline_current.md` |
 | 交付缺口 | 正式 `out/` 是旧预览：摘要 4/10 有值，而当前代码 8/11；52/40/42_103 的英文摘要修复只在代码里，不在 `out/` |
-| 等权工程完成度 | 15 项等权约 **60%**（100+80+90+75+100+100+45+60+15+100+80+60+0+0+0）/15 = 60.3% |
+| 等权工程完成度 | 15 项等权约 **62%**（100+80+90+90+100+100+45+60+15+100+90+60+0+0+0）/15 = 62.0% |
 
 ---
 
@@ -32,14 +32,14 @@
 | P0-1 | 日文摘要抽取（`要旨：` 内联 + 无头首段） | P0 | 已完成 | 100% | `metapy/abs.py:122` `_collect_jp_inline`；`:151` `_collect_jp_headingless`；`:223` `abstract_doc`；merge `2db9c43` |
 | P0-2 | 日文作者切分 / 机构关联 | P0 | 已完成（核心） | 80% | `metapy/front.py:7` `_BARE_SUP`；`:64` `_parse_author_line`；`:180` `front_doc`；`metapy/common.py:425` `EN_AFFIL_STRONG`；merge `8d1ecd6` |
 | P0-3 | 英文摘要 / 英文标题残余修复 | P0 | 已完成（残余 1 篇） | 90% | `metapy/abs.py:12` `_AUTHOR_ROW`；`:17` `_is_en_abstract_start`；`:41` `_collect_abstract`；merge `45a4b0e` |
-| P0-4 | `layout_ja` 栏检测 / 前区 / 阅读序实现 | P0 | 进行中（V2 72/85） | 75% | `metapy/layout_ja.py:75` `_column_boundary_ja`；`:99` `_order_blocks_ja`；`:145` `layout_page`；对齐 `merge_out.py:62` `order_blocks`；merge `71c1d05` |
+| P0-4 | `layout_ja` 栏检测 / 前区 / 阅读序实现 | P0 | 检测完成，阅读序待验 | 90% | `metapy/layout_ja.py:75` `_column_boundary_ja`；`:99` `_order_blocks_ja`；`:145` `layout_page`；对齐 `merge_out.py:62` `order_blocks`；merge `71c1d05` |
 | P0-5 | 查看器日文标签、字段警告、版面叠加 | P0 | 已完成 | 100% | `viewer.py:782` `_META_LABELS`；`:806` `_meta_is_ja`；`:825` `_meta_warnings`；`:1097` `_meta_overview`；merge `31e8098`；验证 tag `verify-T-20261112-TRAE-LAYOUT` |
 | P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 已完成 | 100% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；WorkBuddy `810de5a`；review `coordination/reviews/T-20261112-WB-REFS-JA.md` |
 | P1-2 | 引文句（cspan）日文化：全角括号、日文作者-年份、回链 | P1 | 进行中 | 45% | `metapy/cspan.py:35` `NARR`（仅 ASCII 括号）；`:274` `_ref_pages`；`:288` `cspan_doc` |
 | P1-3 | 本篇来源（`issue`）日文刊名 / 关键词 | P1 | 进行中 | 60% | `metapy/issue.py:133` `_jname_from_line`；`:201` `extract`；`:385` `issue_doc` |
 | P1-4 | 脚注文献（frefs）日文适用性 | P1 | 未开始 | 15% | `metapy/refs.py:1706` `frefs_doc` |
 | P1-5 | `layout_ja` 全量回归（11 篇 99 页） | P1 | 已完成 | 100% | Trae `T-20261112-TRAE-LAYOUT-FULL`：99 页逐页表、39 双栏页 0 反转、12 单栏差异判定；`coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.md` |
-| P1-6 | `layout_ja` 双栏欠检修复（按 99 页真值） | P1 | 进行中（V2 72/85） | 80% | 30 页 audited：28 double / 1 single（`43_10814 p3`）/ 1 ambiguous（`42_103 p13`）；39 个已知双栏不变；旧 51/48 作废 |
+| P1-6 | `layout_ja` 双栏欠检修复（按 99 页真值） | P1 | 检测 85/85，阅读序待验 | 90% | truth99：85 double / 13 single / 1 ambiguous；V2 检测 85/85、0 FP；42_185 p1 double、43_10814 p3 single；阅读序待 Trae |
 | P2-1 | 日文金标准与字段准确率评测 | P2 | 进行中 | 60% | `eval/ja_gold.json`（11 篇字段/摘要，3 篇 61 条 refs）；`eval/gold_eval.py`；`eval/validate_gold.py`；基线 `eval/reports/baseline_current.md` |
 | P2-2 | 文本规范化 / 术语统一 | P2 | 未开始 | 0% | 无实现；`metapy/common.py:80` 只有兼容字 NFKC 折叠，不是全文规范化 |
 | P2-3 | 翻译（日→中） | P2 | 未开始 | 0% | 无实现、无规格 |
@@ -78,7 +78,7 @@
 - 残余：`2025_1` 的 `abstract_en` 末尾混入 1 行日文（“して東側が…”，共 11 个假名）。原因见 §2.4。
 - 残余：`_AUTHOR_ROW` 现在要求括号内至少 2 个纯字母词，单字罗马化作者行可能回归；尚无对应测试。
 
-#### P0-4 `layout_ja` 实现 — 75%
+#### P0-4 `layout_ja` 实现 — 90%
 
 - 复刻 `merge_out.order_blocks` 的“full 块按 y 交错、body 块左栏后右栏”逻辑，替换旧的左边缘最大空隙法。
 - `40_10569` p1 的栏边界从错误的 429 纠正为 620；`52_230725` p0 从误判双栏纠正为单栏。
@@ -144,7 +144,7 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
 - 截图 12 张（6 页整页 + 6 页放大）；正式 `out/` 未写，哈希仍 `09a8820b…`。
 - 报告：`coordination/tasks/T-20261112-TRAE-LAYOUT-FULL/handoff.md`；review：`coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.md`。
 
-#### P1-6 `layout_ja` 双栏欠检修复 — 80%（V2 进行中）
+#### P1-6 `layout_ja` 双栏欠检修复 — 90%（检测通过，阅读序待验）
 
 - 真值（WorkBuddy + Trae 独立判读一致）：
   - 12 个目标页全为双栏；
@@ -152,11 +152,10 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
   - `42_103 p13` 为 sparse 尾页，允许 double/ambiguous。
 - 99 页真值（Trae truth99）：**85 double / 13 single / 1 ambiguous**；旧 51/48 彻底作废。
 - `43_10814 p3` 是唯一单栏；`42_185 p1` double；`42_103 p13` ambiguous。
-- V2（WorkBuddy `d369015`，代码 `c5c2972`）：
-  - 30 页 audited 29 double / 1 single；42_185 p1 double、43_10814 p3 single；
-  - 全量 73 double / 26 single；对 truth99 **72/85 真双栏，recall 0.847，0 假阳性，漏 13 页**；
-  - 漏判：`2025_1 p6/p17`、`40_10569 p3`、`42_103 p12`、`42_185 p7`、`42_93 p1/p4/p6/p9`、`52_230302 p1/p6`、`52_230725 p1`、`5_55 p4`；
-  - 代码可复用，需补这 13 页后合并。
+- V2 follow-up（WorkBuddy `026e60e`，代码 `cf385d0`）：
+  - 检测 **85/85 double，0 假阳性**；42_185 p1 double、43_10814 p3 single、42_103 p13 double（允许）；
+  - `layout_eval --min-recall 1.0 --max-fp 0` exit 0；
+  - 99 页阅读序仍待 Trae 复测；通过后再合并。
 - 新版金标准：`eval/layout_gold_99.csv`；比对工具：`eval/layout_eval.py`。
 
 #### P2-1 金标准 — 60%
