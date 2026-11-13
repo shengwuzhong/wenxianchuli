@@ -72,7 +72,7 @@ def _front_zone_bottom(unified_list, W, H, ncols):
     return front_bottom
 
 
-def _column_boundary_ja(unified_list, W, H=None, is_first_page=False):
+def _column_boundary_ja(unified_list, W, H=None, is_first_page=False, in_ref=False):
     """投票法为主；投票无结果时，在连续正文带内做左右分离的几何兜底。"""
     if not W or W <= 0:
         return None
@@ -108,8 +108,10 @@ def _column_boundary_ja(unified_list, W, H=None, is_first_page=False):
         for u in sorted(unified_list, key=lambda b: b["box"][1]):
             text = (u.get("main_text") or "").strip()
             if u["type"] == "Section-header" and re.match(
-                    r"^(?:[0-9０-９]+[.．、]?\s*)?(?:はじめに|緒言|序論|対象と方法|方法)", text):
-                front_bottom = u["box"][1]
+                    r"^(?:(?:[0-9０-９]+|[IVX]+)[.．、]?\s*)?(?:はじめに|緒言|序論|対象と方法|方法)",
+                    re.sub(r"\s+", "", text)):
+                # 明确节头只能把前区底界前移，避免固定比例排除起始正文块。
+                front_bottom = min(front_bottom, u["box"][1])
                 break
 
     candidates = []
@@ -124,11 +126,11 @@ def _column_boundary_ja(unified_list, W, H=None, is_first_page=False):
             continue
         if y0 < front_bottom:
             continue
-        # OCR 有时把图下缩略语标成 Text；短且贴近所属图片的块不进入正文带。
+        # OCR 有时把图/表下缩略语标成 Text；短且贴近所属图/表的块不进入正文带。
         picture_note = False
         if H and u["type"] == "Text":
             for pic in unified_list:
-                if pic["type"] != "Picture":
+                if pic["type"] not in ("Picture", "Table"):
                     continue
                 px0, py0, px1, py1 = pic["box"]
                 height, pic_height = y1 - y0, py1 - py0
@@ -158,7 +160,108 @@ def _column_boundary_ja(unified_list, W, H=None, is_first_page=False):
         score = (gap, -abs(x - W / 2.0))
         if fallback is None or score > fallback[0]:
             fallback = (score, x)
-    return fallback[1] if fallback else None
+    if fallback:
+        return fallback[1]
+
+    def pair_boundary(items, visual=False, align=False):
+        """成员子块或图/表混排的保守判定：必须存在真实重叠的左右块对。"""
+        best_pair = None
+        for x in range(start, stop + 1, 4):
+            left = [u for u in items if u["box"][2] <= x]
+            right = [u for u in items if u["box"][0] >= x]
+            if not left or not right:
+                continue
+            pairs = []
+            for l in left:
+                for r in right:
+                    if min(l["box"][3], r["box"][3]) <= max(l["box"][1], r["box"][1]):
+                        continue
+                    types = {l["type"], r["type"]}
+                    if visual:
+                        if "Text" not in types or not types.intersection(("Picture", "Table")):
+                            continue
+                    elif l["type"] != "Text" or r["type"] != "Text":
+                        continue
+                    pairs.append((l, r))
+            if not pairs:
+                continue
+            if align and not any(abs(l["box"][1] - r["box"][1]) <= 0.05 * H
+                                 for l, r in pairs):
+                continue
+            gap = min(u["box"][0] for u in right) - max(u["box"][2] for u in left)
+            if gap < 20:
+                continue
+            if visual:
+                wrapped = False
+                for l, r in pairs:
+                    pic = l if l["type"] in ("Picture", "Table") else r
+                    for w in unified_list:
+                        if w["type"] not in ("Text", "Footnote"):
+                            continue
+                        wx0, wy0, wx1, wy1 = w["box"]
+                        if (wx1 - wx0 > 0.60 * W and wy0 >= pic["box"][1]
+                                and wy0 <= pic["box"][3] + 0.05 * H):
+                            wrapped = True
+                            break
+                    if wrapped:
+                        break
+                if wrapped:
+                    continue
+            score = (gap, -abs(x - W / 2.0))
+            if best_pair is None or score > best_pair[0]:
+                best_pair = (score, x)
+        return best_pair[1] if best_pair else None
+
+    # OCR 合并的跨线 Text：优先使用各渠道 members 中保留的子块坐标恢复左右栏。
+    recovered = list(candidates)
+    for u in unified_list:
+        if u["type"] not in ("Text", "Footnote"):
+            continue
+        ux0, uy0, ux1, uy1 = u["box"]
+        if ux1 - ux0 <= 0.60 * W:
+            continue
+        for blocks in (u.get("members") or {}).values():
+            for b in blocks:
+                if b.get("cat") not in ("Text", "Footnote"):
+                    continue
+                box = b.get("box") or []
+                if len(box) != 4:
+                    continue
+                x0, y0, x1, y1 = box
+                if not (0 < x1 - x0 <= 0.60 * W):
+                    continue
+                if x1 <= 0.08 * W or x0 >= 0.92 * W or y0 < front_bottom:
+                    continue
+                recovered.append({"uid": u["uid"] + ":member", "type": b["cat"],
+                                  "box": box, "main_text": b.get("text") or ""})
+    boundary = pair_boundary(recovered, align=not in_ref)
+    if boundary is not None:
+        return boundary
+
+    # 一栏正文、另一栏图/表：排除两侧均非 Text，以及浮图后的单栏绕排。
+    visuals = list(candidates)
+    for u in unified_list:
+        if u["type"] not in ("Picture", "Table"):
+            continue
+        x0, y0, x1, y1 = u["box"]
+        if (0 < x1 - x0 <= 0.60 * W and x1 > 0.08 * W and x0 < 0.92 * W
+                and y0 >= front_bottom):
+            visuals.append(u)
+    boundary = pair_boundary(visuals, visual=True)
+    if boundary is not None:
+        return boundary
+
+    # 无子块时只在文献页使用中线，且必须有多个行首编号或作者—年份证据。
+    if in_ref:
+        for u in unified_list:
+            if u["type"] != "Text" or u["box"][2] - u["box"][0] <= 0.60 * W:
+                continue
+            text = u.get("main_text") or ""
+            heads = re.findall(r"(?:^|\n)\s*(?:\d+\s*[)）]|[A-Z][A-Za-zÀ-ž'-]+,\s+[A-Z]\.)", text)
+            years = re.findall(r"[，,]\s*(?:19|20)\d{2}[，,]", text)
+            if len(heads) >= 2 or len(years) >= 2:
+                return W / 2.0
+    return None
 
 
 def _order_blocks_ja(unified_list, W, boundary):
@@ -196,13 +299,13 @@ def _order_blocks_ja(unified_list, W, boundary):
     return [u["uid"] for u in out]
 
 
-def layout_page(unified_list, W, H, is_first_page=False):
+def layout_page(unified_list, W, H, is_first_page=False, in_ref=False):
     """单页日文版面旁路: 栏检测 + 前区分区 + 阅读序。返回 (annotated_list, summary)。
     annotated_list 与输入同序, 每块追加 layout 标注(不新建/不删除块)。
 
     阅读序(reading_order)复刻 merge_out.order_blocks, 保证与 merge 阶段排序 0 反转。
     col/zone 作旁路标注: col 记栏号(full 跨栏块记 -1), zone 记前区/正文(仅首页)。"""
-    boundary = _column_boundary_ja(unified_list, W, H, is_first_page=is_first_page)
+    boundary = _column_boundary_ja(unified_list, W, H, is_first_page=is_first_page, in_ref=in_ref)
     ncols = 2 if boundary is not None else 1
     front_bottom = _front_zone_bottom(unified_list, W, H, ncols) if is_first_page else 0.0
 
@@ -258,7 +361,8 @@ def layout_ja_doc(doc, out_root):
         j = json.load(io.open(fp, encoding="utf-8"))
         # 语言判定: 本页日文比例(仅首页用 front 分区; 全页都做栏检测+阅读序)
         is_first = (p == min(pages))
-        unified_list, s = layout_page(j["unified"], j["w"], j["h"], is_first_page=is_first)
+        unified_list, s = layout_page(j["unified"], j["w"], j["h"], is_first_page=is_first,
+                                      in_ref=bool(j.get("in_ref")))
         j["unified"] = unified_list
         io.open(fp, "w", encoding="utf-8").write(json.dumps(j, ensure_ascii=False))
         stats["pages"] += 1
