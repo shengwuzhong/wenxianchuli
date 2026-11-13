@@ -3,7 +3,7 @@
  "title": "日文issue刊名关键词",
  "priority": "P1",
  "owner": "workbuddy",
- "status": "review",
+ "status": "done",
  "depends_on": [],
  "allowed_files": [
   "metapy/issue.py"
@@ -23,7 +23,7 @@
  "branch": "agent/workbuddy/T-20261113-WB-ISSUE-JA",
  "base_commit": "main",
  "acceptance": [],
- "handoff_to": "workbuddy",
+ "handoff_to": "deepseek",
  "created_at": "2026-11-13T05:14:27+00:00",
- "updated_at": "2026-11-13T05:17:22+00:00"
+ "updated_at": "2026-11-13T13:22:00+08:00"
 }

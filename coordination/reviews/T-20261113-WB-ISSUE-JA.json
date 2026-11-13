@@ -1,0 +1,24 @@
+{
+ "task": "T-20261113-WB-ISSUE-JA",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_out_writes": true,
+  "journal_11_of_11": true,
+  "year_pages_unchanged": true,
+  "keywords_ok": true,
+  "direct_main_commit": true
+ },
+ "metrics": {
+  "journal": "11/11",
+  "journal_en": "11/11",
+  "2025_1": {"journal": "活断層研究", "year": 2025, "volume": 63, "issue": null, "pages": "1-17", "keywords": 4},
+  "5_55": {"journal": "Proteome Letters", "volume": 5, "issue": 2, "pages": "55-63"},
+  "9_1": {"journal": "Proteome Letters", "volume": 9, "issue": 1, "pages": "1-11"},
+  "year_pages": "all unchanged"
+ },
+ "notes": "Approved. journal 11/11; 5_55 issue=2, 9_1 issue=1 via J-STAGE DOI; 2025_1 volume=63, issue null (No.63 dedupe); keywords 4 for 2025_1 only. Tests 25/25, 12/12; out hash unchanged. Code was committed on the worktree's main branch (issue branch) then cherry-picked to main; branch reset, process exception noted.",
+ "reviewed_at": "2026-11-13T13:22:00+08:00"
+}

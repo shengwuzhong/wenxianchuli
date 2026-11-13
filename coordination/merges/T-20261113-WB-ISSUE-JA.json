@@ -1,0 +1,15 @@
+{
+ "task": "T-20261113-WB-ISSUE-JA",
+ "title": "日文 issue 刊名/关键词",
+ "branch": "agent/workbuddy/T-20261113-WB-ISSUE-JA",
+ "commit": "4203e83",
+ "code_commit": "4203e83",
+ "merge_commit": "c37fb31",
+ "tag": "verify-T-20261113-WB-ISSUE-JA",
+ "merged_at": "2026-11-13T13:22:00+08:00",
+ "integrator": "deepseek",
+ "tests": "issue 25/25; unittest 12/12; compileall OK",
+ "review": "coordination/reviews/T-20261113-WB-ISSUE-JA.json",
+ "handoff": "coordination/tasks/T-20261113-WB-ISSUE-JA/handoff.md",
+ "note": "journal 11/11; 2025_1 活断層研究 vol 63 issue null keywords 4; 5_55 issue 2; 9_1 issue 1. Code committed on worktree main then cherry-picked; process exception. out hash unchanged."
+}
