@@ -89,7 +89,12 @@ def _split_entries_block(t, style):
                 m = NUM_MARK.match(ln) or LIST_MARK.match(ln)
                 buf = (int(m.group(1)) if m else None, ln)
             elif buf:
-                # 续行(DOI/URL/AGERS 或跨行题名尾): 并入上一条
+                # AGERS 是上一页 Sumirah 的续行, 不得粘到当前日文引号条目;
+                # 本块无法回接上一页条目时丢弃, 保留 Sumirah 自身的 2018 年。
+                if (re.match(r"^(?:Electronics and Remote Sensing Technology \(AGERS\)|Doi:10\.1109/AGERS)", ln)
+                        and re.search(u"[「『][^」』]+[」』]", buf[1])):
+                    continue
+                # 其余续行(DOI/URL 或跨行题名尾): 并入上一条
                 buf = (buf[0], buf[1] + " " + ln)
             # 其余(无 buf 的散行, 如页眉/孤行)跳过
         if buf:
@@ -797,6 +802,24 @@ def _ja_reference_fields(e, f, myear):
     式A/B 的 title 冒号前缀、source 串位在旧 ko/en 通用分支里被切坏, 这里按标点角色回填。
     未命中返回 {}。"""
     e0 = NUM_MARK.sub("", LIST_MARK.sub("", (e or "").strip())).strip()
+    # —— 式C: '著者1，著者2，…，年，「題名」…' —— 题名前全部作者段, 最近年份为出版年
+    segs = [s.strip() for s in re.split(u"[,，]", e0) if s.strip()]
+    for ti, seg in enumerate(segs):
+        mq = re.fullmatch(u"「([^」]+)」|『([^』]+)』", seg)
+        if not mq:
+            continue
+        years = [(i, YEAR_RE.fullmatch(s)) for i, s in enumerate(segs[:ti])
+                 if YEAR_RE.fullmatch(s)]
+        if not years:
+            break
+        yi, ym = years[-1]
+        auth0 = u"，".join(s for i, s in enumerate(segs[:ti]) if i != yi).strip()
+        title = (mq.group(1) or mq.group(2)).strip()
+        if auth0 and len(_fold(title)) >= 2:
+            return {"grammar": "quoted", "title": title, "authors_raw": auth0,
+                    "authors": _split_authors(auth0.replace(u"，", ","), corp=True, latcorp=True),
+                    "year": ym.group(0), "year_suffix": ym.group(0)[4:] or None}
+        break
     # —— 式A: '著者(年): 題名...' —— 年份在作者后括号内, 后随冒号
     m_py = re.match(u"^(.*?)\\((?:19|20)\\d{2}[a-z]?\\)\\s*[:：]\\s*(.+)$", e0)
     if m_py:
