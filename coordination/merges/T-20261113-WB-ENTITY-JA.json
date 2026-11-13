@@ -1,0 +1,15 @@
+{
+ "task": "T-20261113-WB-ENTITY-JA",
+ "title": "日文实体提取 v2（funding/software/datasets）",
+ "branch": "agent/workbuddy/T-20261113-WB-ENTITY-JA",
+ "commit": "07a0206",
+ "code_commit": "07a0206",
+ "merge_commit": "07a0206",
+ "tag": "verify-T-20261113-WB-ENTITY-JA",
+ "merged_at": "2026-11-13T13:16:00+08:00",
+ "integrator": "deepseek",
+ "tests": "entity 10/10; unittest 12/12; compileall OK",
+ "review": "coordination/reviews/T-20261113-WB-ENTITY-JA.json",
+ "handoff": "coordination/tasks/T-20261113-WB-ENTITY-JA/handoff.md",
+ "note": "Direct main commit (process exception, kept because scoped/tested). Before 1/3/2 → after 2/5/2. Handoff summary says datasets 2→3 but actual is 2. Evidence present; 42_93/43_10814 R false positives removed. out hash unchanged."
+}

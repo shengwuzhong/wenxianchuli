@@ -1,0 +1,15 @@
+{
+ "task": "T-20261113-TRAE-CITATION-INDEX",
+ "title": "查看器文档级引文索引",
+ "branch": "agent/trae/T-20261113-TRAE-CITATION-INDEX",
+ "commit": "5d4c5e8",
+ "code_commit": "5d4c5e8",
+ "merge_commit": "d192bef",
+ "tag": "merge-T-20261113-TRAE-CITATION-INDEX",
+ "merged_at": "2026-11-13T13:16:00+08:00",
+ "integrator": "deepseek",
+ "tests": "unittest 12/12; compileall viewer.py OK",
+ "review": "coordination/reviews/T-20261113-TRAE-CITATION-INDEX.json",
+ "handoff": "coordination/tasks/T-20261113-TRAE-CITATION-INDEX/handoff.md",
+ "note": "Citation panel: 2025_1 46, 52_230725 8, 42_93 59; unlinked filter 59→1; click scroll/highlight; console 0 error. Rebased onto main after thumbnail/refs fixes. out hash unchanged."
+}
