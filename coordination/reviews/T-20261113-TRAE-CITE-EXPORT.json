@@ -1,0 +1,20 @@
+{
+ "task": "T-20261113-TRAE-CITE-EXPORT",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_viewer_only": true,
+  "tests_pass": true,
+  "no_out_writes": true,
+  "csv_rows": true,
+  "csv_columns": true,
+  "empty_safe": true
+ },
+ "metrics": {
+  "2025_1": {"rows": 46, "cols": 8},
+  "42_93": {"rows": 59, "cols": 8},
+  "52_230725": {"rows": 8, "cols": 8}
+ },
+ "notes": "Approved. Citation index CSV export with 8 columns, full document regardless of unlinked filter; csv.reader parses all rows; empty cspan disabled; console 0 error; 12/12; out hash unchanged.",
+ "reviewed_at": "2026-11-13T13:44:00+08:00"
+}

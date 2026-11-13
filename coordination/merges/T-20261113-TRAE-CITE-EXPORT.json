@@ -1,0 +1,15 @@
+{
+ "task": "T-20261113-TRAE-CITE-EXPORT",
+ "title": "引文索引 CSV 导出",
+ "branch": "agent/trae/T-20261113-TRAE-CITE-EXPORT",
+ "commit": "3ce162e",
+ "code_commit": "3ce162e",
+ "merge_commit": "6581e5f",
+ "tag": "merge-T-20261113-TRAE-CITE-EXPORT",
+ "merged_at": "2026-11-13T13:45:00+08:00",
+ "integrator": "deepseek",
+ "tests": "unittest 12/12; compileall viewer.py OK",
+ "review": "coordination/reviews/T-20261113-TRAE-CITE-EXPORT.json",
+ "handoff": "coordination/tasks/T-20261113-TRAE-CITE-EXPORT/handoff.md",
+ "note": "CSV 8 columns; 2025_1 46, 42_93 59, 52 8; full export unaffected by unlinked filter; empty disabled; out hash unchanged."
+}

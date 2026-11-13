@@ -19,7 +19,7 @@
 | 验证缺口 | 真值复核推翻旧基线：18 个旧“单栏”中 17 页实为双栏，仅 `43_10814 p3` 单栏，`42_103 p13` ambiguous；旧 51/48 验收无效 |
 | 评测缺口 | GT 已建：11 篇文档字段/摘要、3 篇 61 条 refs；其余 8 篇 refs 仍 pending；基线见 `eval/reports/baseline_current.md` |
 | 交付缺口 | 正式 `out/` 是旧预览：摘要 4/10 有值，而当前代码 8/11；52/40/42_103 的英文摘要修复只在代码里，不在 `out/` |
-| 等权工程完成度 | 20 项等权约 **83%**（100+100+100+100+100+100+100+60+15+100+100+100+70+0+0+100+100+100+100+100）/20 = 83.2% |
+| 等权工程完成度 | 21 项等权约 **88%**（100+100+100+100+100+100+100+60+100+100+100+100+70+0+0+100+100+100+100+100+100）/21 = 88.0% |
 
 ---
 
@@ -37,7 +37,7 @@
 | P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 已完成 | 100% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；WorkBuddy `810de5a`；review `coordination/reviews/T-20261112-WB-REFS-JA.md` |
 | P1-2 | 引文句（cspan）日文化：全角括号、日文作者-年份、回链 | P1 | 已完成 | 100% | `metapy/cspan.py` 已合并 `f40d2a0`：384 spans，exact 97.4%，2025_1 46，52_230725 unlinked 0 |
 | P1-3 | 本篇来源（`issue`）日文刊名 / 关键词 | P1 | 进行中 | 60% | `metapy/issue.py:133` `_jname_from_line`；`:201` `extract`；`:385` `issue_doc` |
-| P1-4 | 脚注文献（frefs）日文适用性 | P1 | 未开始 | 15% | `metapy/refs.py:1706` `frefs_doc` |
+| P1-4 | 脚注文献（frefs）日文适用性 | P1 | 已完成 | 100% | `frefs_doc` 增加 applicability；42_93 3 条页脚页码假阳性已剔除；11 篇均给出适用性结论 |
 | P1-5 | `layout_ja` 全量回归（11 篇 99 页） | P1 | 已完成 | 100% | Trae `T-20261112-TRAE-LAYOUT-FULL`：99 页逐页表、39 双栏页 0 反转、12 单栏差异判定；`coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.md` |
 | P1-6 | `layout_ja` 双栏欠检修复（按 99 页真值） | P1 | 已完成 | 100% | truth99：85 double / 13 single / 1 ambiguous；V2 检测 85/85、0 FP；42_185 p1 double、43_10814 p3 single；阅读序待 Trae |
 | P2-1 | 日文金标准与字段准确率评测 | P2 | 进行中 | 60% | `eval/ja_gold.json`（11 篇字段/摘要，3 篇 61 条 refs）；`eval/gold_eval.py`；`eval/validate_gold.py`；基线 `eval/reports/baseline_current.md` |
@@ -133,11 +133,11 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
 | `journal` | **11/11** | 2025_1 活断層研究；5_55/9_1 Proteome Letters（DOI 10.14889） |
 | `keywords` | 4 条 / 1 篇 | 2025_1 4 个日文关键词；其余原文只有英文 Key words，不反推 |
 
-#### P1-4 frefs — 15%
+#### P1-4 frefs — 100%
 
-- 全语料只有 `42_93` 抽出 3 条脚注文献，其余 10 篇为 0。
-- 日文论文多数用“参考文献”而不是编号脚注，0 条可能是正确结果；但此前记录过 `42_93` 页脚误报，尚未系统复核。
-- **需你确认**：日文语料是否要求 frefs（脚注引文）能力，还是只保留 refs。若不需要，本项目应明确“frefs 对日文语料不适用”，避免用 0 条误判为缺陷。
+- 42_93 原 3 条实为页脚页码/刊名 running footer（`94/96/98 診断病理 2025, 42 (2)`），不是脚注文献；修复后 **3 → 0**。
+- 11 篇新增 `footnote_ref_validation.applicability`：均无行首编号脚注；日文语料 frefs 不适用，0 条为正确结果。
+- 不再要求全量结构化 frefs；附录性噪声守卫保留。
 
 #### P1-5 `layout_ja` 全量回归 — 100%
 
@@ -293,6 +293,7 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
 | P1 | `T-20261113-TRAE-CITATION-INDEX` | 查看器文档级引文索引 | Trae | cspan 已合并 | **已完成并合并** `d192bef`：2025_1 46、52 8、42_93 59；未回链过滤；12/12 |
 | P1 | `T-20261113-TRAE-META-EXPORT` | 查看器元数据 JSON 导出 | Trae | 无 | **已完成并合并** `0d3ea73`：17 字段；40/52 全量、2025_1 partial；JSON 可解析；12/12 |
 | P1 | `T-20261113-TRAE-GLOBAL-SEARCH` | 查看器全局搜索 | Trae | 无 | **已完成并合并** `9490016`：metadata/refs/cspan 三源；40 index 80、2025 81、52 20；12/12 |
+| P1 | `T-20261113-TRAE-CITE-EXPORT` | 引文索引 CSV 导出 | Trae | 无 | **已完成并合并** `6581e5f`：8 列；2025_1 46、42_93 59、52 8；12/12 |
 | P1 | `T-20261113-WB-LAYOUT-V2` | 双栏欠检修复 V2（按 99 页真值） | WorkBuddy | Trae truth99 | **已完成并合并** `4e872c7`：检测 85/85、0 FP；13 页顺序另修 |
 | P1 | `T-20261113-WB-LAYOUT-ORDER` | 13 个新增双栏页阅读序修复 | WorkBuddy | Trae V2 verify | 13 页块级反转清零；39 个已知双栏不变；检测仍 85/85 |
 | P1 | `T-20261112-WB-ISSUE-JA` | 日文刊名/关键词 | WorkBuddy | 无 | `journal` 11/11；有日文关键词的篇目不漏；无回归 |
