@@ -9,19 +9,19 @@
 | 3 | [project-structure.md](project-structure.md) | 想找代码/目录 |
 | 4 | [architecture.md](architecture.md) | 想理解主流程 |
 | 5 | [channels.md](channels.md) / [calibration.md](calibration.md) | 要接 OCR 渠道、校坐标 |
-| 6 | [../eval/](../eval/) | 要评测字段/版面准确率 |
+| 6 | [../eval/](../eval/) / [evaluation/ja-gold.md](evaluation/ja-gold.md) | 要评测字段/版面准确率 |
 | 7 | [changes-since-baseline.md](changes-since-baseline.md) | 想知道相对原版新增了什么 |
 
 ## 开发/内部记录
 
 | 文档 | 内容 |
 | --- | --- |
-| [rules.md](rules.md) | 工作规则 |
-| [review-log.md](review-log.md) | 历史评审记录 |
-| [review-metadata-anomalies.md](review-metadata-anomalies.md) | 元数据异常案例 |
-| [task-ner.md](task-ner.md) | NER 任务说明 |
-| [ja-gold.md](ja-gold.md) | 日文金标准说明 |
-| [ja-improvement-plan.md](ja-improvement-plan.md) | 日文改进计划 |
+| [internal/rules.md](internal/rules.md) | 工作规则 |
+| [internal/review-log.md](internal/review-log.md) | 历史评审记录 |
+| [internal/review-metadata-anomalies.md](internal/review-metadata-anomalies.md) | 元数据异常案例 |
+| [internal/task-ner.md](internal/task-ner.md) | NER 任务说明 |
+| [internal/ja-improvement-plan.md](internal/ja-improvement-plan.md) | 日文改进计划 |
+| [evaluation/ja-gold.md](evaluation/ja-gold.md) | 日文金标准说明 |
 | [../coordination/README.md](../coordination/README.md) | 多工具协作协议与任务记录 |
 
 ## 命名和格式

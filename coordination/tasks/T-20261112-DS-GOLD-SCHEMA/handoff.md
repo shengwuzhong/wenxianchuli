@@ -13,8 +13,8 @@
 | `eval/gold_eval.py` | 只读比对 `out/<doc>/metadata.json`；输出 Markdown + JSON |
 | `eval/validate_gold.py` | GT 结构校验（必填字段、refs 字段、年份格式、重复 num） |
 | `eval/reports/baseline_current.md` / `.json` | 当前代码基线（临时副本 `out_llm_trial/ja_status_1112`） |
-| `docs/ja-gold.md` | GT 配置说明、计数、口径、基线、限制 |
-| `docs/ja-improvement-plan.md` | 进度/规划更新（GT 60%、用户决策、优先级） |
+| `docs/evaluation/ja-gold.md` | GT 配置说明、计数、口径、基线、限制 |
+| `docs/internal/ja-improvement-plan.md` | 进度/规划更新（GT 60%、用户决策、优先级） |
 
 ## 二、GT 计数
 

@@ -53,12 +53,14 @@ multidoc-ocr-compare/
 │  ├─ architecture.md            架构
 │  ├─ channels.md                渠道配置
 │  ├─ calibration.md             坐标标定
-│  ├─ rules.md                   工作规则
-│  ├─ review-log.md              开发评审记录
-│  ├─ review-metadata-anomalies.md 元数据异常记录
-│  ├─ task-ner.md                NER 任务说明
-│  ├─ ja-gold.md                日文金标准说明
-│  └─ ja-improvement-plan.md    日文改进计划
+│  ├─ evaluation/
+│  │  └─ ja-gold.md              日文金标准说明
+│  └─ internal/
+│     ├─ rules.md                工作规则
+│     ├─ review-log.md           开发评审记录
+│     ├─ review-metadata-anomalies.md 元数据异常记录
+│     ├─ task-ner.md             NER 任务说明
+│     └─ ja-improvement-plan.md  日文改进计划
 │
 ├─ examples/                     可直接打开的示例产物
 │  └─ 13625974/                  11 页韩文期刊示例

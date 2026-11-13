@@ -1,4 +1,4 @@
-# 相对基线的变更清单
+﻿# 相对基线的变更清单
 
 ## 判断依据
 
@@ -37,8 +37,8 @@ git diff --stat baseline-2026-11-12..HEAD
 
 | 文件 | 用途 | 标注 |
 | --- | --- | --- |
-| `docs/ja-gold.md` | 日文金标准说明（原名 `JA_GOLD_2026-11-12.md`） | **新增/重命名** |
-| `docs/ja-improvement-plan.md` | 日文改进计划（原名 `JA_IMPROVEMENT_PLAN_2026-11-12.md`） | **新增/重命名** |
+| `docs/evaluation/ja-gold.md` | 日文金标准说明（原名 `JA_GOLD_2026-11-12.md`） | **新增/重命名** |
+| `docs/internal/ja-improvement-plan.md` | 日文改进计划（原名 `JA_IMPROVEMENT_PLAN_2026-11-12.md`） | **新增/重命名** |
 | `docs/project-structure.md` | 目录结构与用途 | **新增** |
 | `docs/features.md` | 当前功能清单 | **新增** |
 | `docs/changes-since-baseline.md` | 本文件 | **新增** |
@@ -49,12 +49,12 @@ git diff --stat baseline-2026-11-12..HEAD
 
 | 原名 | 新名 |
 | --- | --- |
-| `docs/RULES.md` | `docs/rules.md` |
-| `docs/REVIEW.md` | `docs/review-log.md` |
-| `docs/REVIEW_METADATA_ANOMALIES.md` | `docs/review-metadata-anomalies.md` |
-| `docs/TASK_NER.md` | `docs/task-ner.md` |
-| `docs/JA_GOLD_2026-11-12.md` | `docs/ja-gold.md` |
-| `docs/JA_IMPROVEMENT_PLAN_2026-11-12.md` | `docs/ja-improvement-plan.md` |
+| `docs/RULES.md` | `docs/internal/rules.md` |
+| `docs/REVIEW.md` | `docs/internal/review-log.md` |
+| `docs/REVIEW_METADATA_ANOMALIES.md` | `docs/internal/review-metadata-anomalies.md` |
+| `docs/TASK_NER.md` | `docs/internal/task-ner.md` |
+| `docs/JA_GOLD_2026-11-12.md` | `docs/evaluation/ja-gold.md` |
+| `docs/JA_IMPROVEMENT_PLAN_2026-11-12.md` | `docs/internal/ja-improvement-plan.md` |
 
 ## 新增/增强功能
 
