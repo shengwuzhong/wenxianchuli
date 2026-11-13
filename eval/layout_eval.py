@@ -38,6 +38,10 @@ def main():
     ap.add_argument("--pred", required=True)
     ap.add_argument("--json", default=None)
     ap.add_argument("--md", default=None)
+    ap.add_argument("--min-recall", type=float, default=None,
+                    help="低于该 recall 时退出码为 1")
+    ap.add_argument("--max-fp", type=int, default=None,
+                    help="假阳性超过该值时退出码为 1")
     a = ap.parse_args()
     gold = load_gold(a.gold)
     pred = load_pred(a.pred)
@@ -96,12 +100,20 @@ def main():
         lines.append("- `%s` p%d：pred=%s（允许 double/single）" % (x[0], x[1], x[2] or "missing"))
     md = "\n".join(lines) + "\n"
     print(md)
+    failed = False
+    if a.min_recall is not None and (recall is None or recall < a.min_recall):
+        print("FAIL: recall %.4f < %.4f" % (recall or 0.0, a.min_recall))
+        failed = True
+    if a.max_fp is not None and len(fp) > a.max_fp:
+        print("FAIL: false_positives %d > %d" % (len(fp), a.max_fp))
+        failed = True
     if a.md:
         os.makedirs(os.path.dirname(os.path.abspath(a.md)), exist_ok=True)
         io.open(a.md, "w", encoding="utf-8").write(md)
     if a.json:
         os.makedirs(os.path.dirname(os.path.abspath(a.json)), exist_ok=True)
         json.dump({"gold": a.gold, "pred": a.pred,
+                   "thresholds": {"min_recall": a.min_recall, "max_fp": a.max_fp},
                    "summary": {"pages": len(gold), "gold_double": gd, "gold_single": gs,
                                "gold_ambiguous": ga, "pred_double": pd, "pred_single": ps,
                                "recall": recall, "precision": precision,
@@ -110,7 +122,7 @@ def main():
                    "rows": rows}, io.open(a.json, "w", encoding="utf-8"),
                   ensure_ascii=False, indent=1)
         print("json ->", a.json)
-    return 0
+    return 1 if failed else 0
 
 if __name__ == "__main__":
     sys.exit(main())
