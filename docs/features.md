@@ -1,4 +1,4 @@
-﻿# 功能清单
+# 功能清单
 
 > 目标：围绕实体抽取的准确性与精度，明确保留、可选和已移除的功能。  
 > 标注 `[新增]` 表示相对基线 `baseline-2026-11-12` 新增或实质增强。
@@ -61,7 +61,11 @@
 | 文档编号 | `docid.py` | 统一文档 ID 解析 |
 | 上游示例元数据 | `examples/13625974/metadata*.json` | 查看器示例的 metadata/audit |
 
-注意：这些模块可以独立运行，但上游对 `pipeline.py`、`webapp.py`、`metadata.py`、`viewer.py` 等核心文件的重构与本地日文改动存在直接冲突；当前合并采用**本地核心优先**，没有用上游版本覆盖本地主链。
+注意：这些模块可以独立运行。当前合并采用**分层策略**：
+
+- `pipeline.py`、`webapp.py`、`metadata.py`、`pipeline_io.py`、`unify.py`、`app.js` 采用上游新版本；
+- `metapy/` 的日文抽取模块（`front/abs/refs/issue/cspan`、`layout_ja`、`entity`、`normalize`）和 `viewer.py` 保留本地版本；
+- 因此本地日文能力和复核队列不被上游覆盖。
 
 ## 4. 当前查看器保留的交互
 

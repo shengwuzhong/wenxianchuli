@@ -100,7 +100,12 @@ git diff --stat baseline-2026-11-12..HEAD
 | `metapy/audit_value.py` | 字段值后验审计 | **上游新增** |
 | `examples/13625974/metadata*.json` | 示例 metadata/audit | **上游新增** |
 
-**未直接采用**上游对 `pipeline.py`、`webapp.py`、`metadata.py`、`viewer.py` 等核心文件的重构，因为这些文件与本地日文抽取、复核队列、normalizer 改动直接冲突；当前保留本地主链，上游新增模块作为独立工具合入。
+**当前合并策略（2026-11-13）**：
+
+- 采用上游：`pipeline.py`、`webapp.py`、`metadata.py`、`pipeline_io.py`、`unify.py`、`app.js`；
+- 保留本地：`metapy/front.py`、`abs.py`、`refs.py`、`issue.py`、`cspan.py`、`layout_ja.py`、`entity.py`、`normalize.py`、`normalize_meta.py`、`viewer.py`；
+- 结果：新上游编排/阶段/GUI/质检能力已可用，本地日文抽取和复核队列保留；
+- 未采用上游 `metapy` 核心改写，避免覆盖本地日文规则。
 
 ## 当前剔除的功能
 
