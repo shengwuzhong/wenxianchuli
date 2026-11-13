@@ -1,4 +1,4 @@
-﻿# 相对基线的变更清单
+# 相对基线的变更清单
 
 ## 判断依据
 
@@ -39,6 +39,7 @@ git diff --stat baseline-2026-11-12..HEAD
 | --- | --- | --- |
 | `docs/evaluation/ja-gold.md` | 日文金标准说明（原名 `JA_GOLD_2026-11-12.md`） | **新增/重命名** |
 | `docs/internal/ja-improvement-plan.md` | 日文改进计划（原名 `JA_IMPROVEMENT_PLAN_2026-11-12.md`） | **新增/重命名** |
+| `docs/README.md` | 文档导航 | **新增** |
 | `docs/project-structure.md` | 目录结构与用途 | **新增** |
 | `docs/features.md` | 当前功能清单 | **新增** |
 | `docs/changes-since-baseline.md` | 本文件 | **新增** |
