@@ -264,39 +264,116 @@ def _column_boundary_ja(unified_list, W, H=None, is_first_page=False, in_ref=Fal
     return None
 
 
+def _iou(a, b):
+    """两个 [x0,y0,x1,y1] 框的交并比。"""
+    ix0, iy0 = max(a[0], b[0]), max(a[1], b[1])
+    ix1, iy1 = min(a[2], b[2]), min(a[3], b[3])
+    if ix1 <= ix0 or iy1 <= iy0:
+        return 0.0
+    inter = (ix1 - ix0) * (iy1 - iy0)
+    union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _merge_sort_units(unified_list):
+    """阅读序的排序单元: 优先取 mineru 子块, 无子块时退回块自身。
+
+    layout 复刻的是 merge 阶段的排序, 而 merge 只对 mineru 块排序; unified 块常由多块
+    合并而来, 直接用合并框排序会和 merge 差一截。子块选择先按与块框的 IoU>=0.5 过滤
+    (排除同页重复/越界子块), 再取 IoU 最大者, 近似该块在 merge 里的起始单元。"""
+    units = []
+    for u in unified_list:
+        members = [b for b in (u.get("members") or {}).get("mineru") or [] if b.get("box")]
+        cat, box = u["type"], list(u["box"])
+        if members:
+            ub = [float(x) for x in u["box"][:4]]
+            near = [b for b in members
+                    if _iou(ub, [float(x) for x in b["box"][:4]]) >= 0.5] or members
+            best = max(near, key=lambda b: (_iou(ub, [float(x) for x in b["box"][:4]]),
+                                            -b["box"][1], -b["box"][0]))
+            cat, box = best.get("cat") or cat, list(best["box"])
+        units.append({"uid": u["uid"], "cat": cat, "box": box})
+    return units
+
+
+def _merge_boundary_ja(unified_list, W):
+    """用各块的 mineru 子块复算 merge_out._column_boundary 的投票结果。
+
+    阅读序必须与 merge 阶段同栏: merge 在 mineru 块上分不出栏的页面(单块占满一栏、
+    图表为主的页面), 本函数的返回值为 None, 阅读序随之退回 y 序, 避免出现
+    「左栏下段先于右栏上段」的块级反转。"""
+    blocks = [{"cat": b.get("cat"), "box": b["box"]}
+              for u in unified_list
+              for b in (u.get("members") or {}).get("mineru") or [] if b.get("box")]
+    if not blocks:
+        return None
+    body = []
+    for b in blocks:
+        if b["cat"] not in CONTENT_TYPES:
+            continue
+        x0, x1 = b["box"][0], b["box"][2]
+        width = x1 - x0
+        if width <= 0 or width > 0.60 * W:
+            continue
+        if x1 <= 0.08 * W or x0 >= 0.92 * W:
+            continue
+        body.append((x0, x1))
+    if len(body) < 4:
+        return None
+    best = None
+    for x in range(int(0.30 * W), int(0.70 * W) + 1, 4):
+        left = sum(1 for x0, x1 in body if x1 <= x)
+        right = sum(1 for x0, x1 in body if x0 >= x)
+        if left < 2 or right < 2:
+            continue
+        score = (min(left, right), left + right, -abs(x - W / 2.0))
+        if best is None or score > best[0]:
+            best = (score, x)
+    return best[1] if best else None
+
+
 def _order_blocks_ja(unified_list, W, boundary):
-    """复刻 merge_out.order_blocks 的阅读序(与 merge_out 完全一致), 返回按序 uid 列表。
+    """复刻 merge_out.order_blocks 的阅读序(与 merge_out 对齐), 返回按序 uid 列表。
 
     双栏页: 跨栏/页眉页脚/脚注/宽块(>0.65W)按 y 保持原位(full), 正文块按
-    「左栏 y 序 → 右栏 y 序」(body), 再按 y 把 body 交错插回 full。单栏页: 纯 (y, x)。
+    「左栏 y 序 → 右栏 y 序」(body)。与 merge_out 的差别只有两处, 都是为了按 merge
+    的排序单元对齐: ①用 mineru 子块坐标排序; ②full 块按 y 切成带, 带内先左栏后右栏
+    (merge 的单队列法会被左栏靠下的小块堵住, 把右栏靠上的正文挤到图片之后)。
+    单栏页: 纯 (y, x)。
     Section-header 非宽非跨栏时参与栏流(与 merge_out 一致, 旧逻辑把它全排最后是错的)。"""
     if not unified_list:
         return []
-    if boundary is None:
-        return [u["uid"] for u in sorted(unified_list, key=lambda b: (b["box"][1], b["box"][0]))]
+    units = _merge_sort_units(unified_list)
+    has_members = any((u.get("members") or {}).get("mineru") for u in unified_list)
+    # 阅读序的栏边界以 merge 阶段为准; 无 mineru 子块时才用本页检测结果。
+    order_bnd = _merge_boundary_ja(unified_list, W) if has_members else boundary
+    if order_bnd is None:
+        return [b["uid"] for b in sorted(units, key=lambda b: (b["box"][1], b["box"][0]))]
     full, cols = [], [[], []]
-    for u in unified_list:
-        x0, x1 = u["box"][0], u["box"][2]
+    for b in units:
+        x0, x1 = b["box"][0], b["box"][2]
         width = x1 - x0
-        spans = x0 < boundary - 8 and x1 > boundary + 8
-        if u["type"] in ("Footnote", "Page-header", "Page-footer", "Page-number") \
+        spans = x0 < order_bnd - 8 and x1 > order_bnd + 8
+        if b["cat"] in ("Footnote", "Page-header", "Page-footer", "Page-number") \
                 or width > 0.65 * W or spans:
-            full.append(u)
+            full.append(b)
         else:
-            col = 0 if (x0 + x1) / 2.0 < boundary else 1
-            cols[col].append(u)
-    body = (sorted(cols[0], key=lambda b: (b["box"][1], b["box"][0]))
-            + sorted(cols[1], key=lambda b: (b["box"][1], b["box"][0])))
+            cols[0 if (x0 + x1) / 2.0 < order_bnd else 1].append(b)
+    for c in cols:
+        c.sort(key=lambda b: (b["box"][1], b["box"][0]))
     full.sort(key=lambda b: (b["box"][1], b["box"][0]))
-    out, i = [], 0
+    out, i0, i1 = [], 0, 0
     for f in full:
         fy = f["box"][1]
-        while i < len(body) and body[i]["box"][1] < fy:
-            out.append(body[i])
-            i += 1
+        while i0 < len(cols[0]) and cols[0][i0]["box"][1] < fy:
+            out.append(cols[0][i0])
+            i0 += 1
+        while i1 < len(cols[1]) and cols[1][i1]["box"][1] < fy:
+            out.append(cols[1][i1])
+            i1 += 1
         out.append(f)
-    out.extend(body[i:])
-    return [u["uid"] for u in out]
+    out.extend(cols[0][i0:] + cols[1][i1:])
+    return [b["uid"] for b in out]
 
 
 def layout_page(unified_list, W, H, is_first_page=False, in_ref=False):
@@ -419,7 +496,24 @@ def _selftest():
     lst3, s3 = layout_page(blocks3, W, H, is_first_page=False)
     order3 = {u["uid"]: u["layout"]["reading_order"] for u in lst3}
     ok_fallback = s3["ncols"] == 2 and order3["left"] < order3["right"]
-    ok = ok_cols and ok_order and ok_single and ok_fallback
+    # 跨栏图片把页面切成上下两带: 带内先左后右, 右栏上部块不得被压到图片之后。
+    blocks4 = [
+        {"uid": "l1", "box": [100, 100, 600, 300], "type": "Text",
+         "main_text": "左栏上段", "cross_page": {"role": None}},
+        {"uid": "r1", "box": [632, 100, 1132, 200], "type": "Text",
+         "main_text": "右栏上段", "cross_page": {"role": None}},
+        {"uid": "f", "box": [100, 400, 1132, 700], "type": "Picture",
+         "main_text": "跨栏图", "cross_page": {"role": None}},
+        {"uid": "l2", "box": [100, 720, 600, 900], "type": "Text",
+         "main_text": "左栏下段", "cross_page": {"role": None}},
+        {"uid": "r2", "box": [632, 720, 1132, 900], "type": "Text",
+         "main_text": "右栏下段", "cross_page": {"role": None}},
+    ]
+    lst4, s4 = layout_page(blocks4, W, H, is_first_page=False)
+    order4 = {u["uid"]: u["layout"]["reading_order"] for u in lst4}
+    ok_band = (s4["ncols"] == 2 and order4["l1"] < order4["r1"] < order4["f"]
+               < order4["l2"] < order4["r2"])
+    ok = ok_cols and ok_order and ok_single and ok_fallback and ok_band
     print("layout_ja selftest: %s" % ("PASS" if ok else "FAIL"))
     return ok
 
