@@ -1,0 +1,26 @@
+{
+ "id": "T-20261113-DS-NORMALIZER",
+ "title": "日文 normalizer 核心模块（NFKC/新旧字体/送假名/保护/映射）",
+ "priority": "P1",
+ "owner": "deepseek",
+ "status": "done",
+ "depends_on": [],
+ "allowed_files": ["metapy/normalize.py"],
+ "forbidden": [
+  "metapy/m3.py", "unify.py", "out/", "uploads/", "inbox/",
+  "out_llm_trial/previews/", "channels.local.json"
+ ],
+ "allow_frozen": [],
+ "branch": "main",
+ "base_commit": "04c2b9a",
+ "acceptance": [
+  "normalize_text 提供 raw/normalized/segments/双向 span 映射",
+  "NFKC、新旧字体、送假名规则可用",
+  "DOI/KAKENHI/术语表词汇原样保护",
+  "python -m metapy.normalize 自检 PASS",
+  "不接入主链路，不写 out/"
+ ],
+ "handoff_to": "deepseek",
+ "created_at": "2026-11-13T11:16:00+08:00",
+ "updated_at": "2026-11-13T11:16:00+08:00"
+}
