@@ -424,6 +424,21 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 #thumbrail a.on{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.35)}
 #thumbrail a.on .tn{background:#2563eb}
 #thumbtoggle{position:fixed;top:8px;left:10px;z-index:61;font-size:11px;padding:2px 7px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer;white-space:nowrap}
+/* 文档级引文索引(2026-11-13 T-20261113-TRAE-CITATION-INDEX): 纯前端, 点击定位+高亮, 可过滤未回链 */
+#citetoggle{position:fixed;top:8px;right:10px;z-index:61;font-size:11px;padding:2px 8px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer}
+#citepanel{position:fixed;top:34px;right:10px;bottom:10px;width:360px;z-index:61;background:#fff;border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 8px 24px rgba(15,23,42,.18);display:flex;flex-direction:column;font-size:12px}
+#citepanel.hide{display:none}
+#citebar{padding:6px 8px;border-bottom:1px solid #e2e8f0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#citebar label{cursor:pointer;color:#334155}
+#citecnt{color:#64748b;margin-left:auto}
+#citelist{overflow-y:auto;padding:4px 6px}
+.cirow{padding:5px 6px;border-bottom:1px dashed #e2e8f0;cursor:pointer}
+.cirow:hover{background:#eff6ff}
+.cirow.unlinked{background:#fff7ed}
+.cih{color:#1d4ed8;font-weight:600}
+.cis{color:#334155;margin-top:2px}
+.cil{color:#0f766e;margin-top:2px;font-size:11px}
+.cirow.unlinked .cil{color:#b45309}
 body.thumbs .wrap{padding-left:132px}
 body.thumbs #thumbtoggle{left:124px}
 @media(max-width:900px){#thumbrail{width:96px}#thumbtoggle{left:10px}body.thumbs .wrap{padding-left:0}body.thumbs #thumbtoggle{left:104px}}
@@ -514,6 +529,12 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 </header>
 <button id="thumbtoggle" type="button" title="显示/隐藏逐页缩略图栏">‹ 缩略图</button>
 <nav id="thumbrail" aria-label="页面缩略图">@@THUMBS@@</nav>
+<button id="citetoggle" type="button" title="打开/关闭全文档引文索引">引文索引</button>
+<aside id="citepanel" class="hide" aria-label="引文索引">
+<div id="citebar"><label><input type="checkbox" id="cionly"> 仅未回链</label><span id="citecnt"></span></div>
+<div id="citelist"></div>
+</aside>
+<script type="application/json" id="citedata">@@CITEDATA@@</script>
 @@BODY@@
 <script>
 var META=@@DATA@@, pinned=null;
@@ -736,6 +757,53 @@ document.addEventListener('click',function(e){
  window.addEventListener('load',spy);
  spy();
 })();
+/* 文档级引文索引(2026-11-13 T-20261113-TRAE-CITATION-INDEX): 纯前端, 行点击定位+高亮, 可过滤未回链 */
+(function(){
+ var dataEl=document.getElementById('citedata'),panel=document.getElementById('citepanel');
+ var btn=document.getElementById('citetoggle'),only=document.getElementById('cionly');
+ var list=document.getElementById('citelist'),cnt=document.getElementById('citecnt');
+ if(!dataEl||!panel||!btn||!list){return;}
+ var rows=[];
+ try{rows=JSON.parse(dataEl.textContent||'[]')||[];}catch(e){rows=[];}
+ function hl(uid){
+  var t=document.querySelectorAll('[data-u="'+uid+'"]');
+  for(var i=0;i<t.length;i++){
+   t[i].classList.add('on');t[i].classList.add('cite-on');
+   (function(el){setTimeout(function(){el.classList.remove('on');el.classList.remove('cite-on');},2400);})(t[i]);
+  }
+ }
+ function go(r){
+  var sec=document.getElementById('p'+(r[0]-1));
+  if(sec){sec.scrollIntoView({behavior:'smooth',block:'start'});}
+  setTimeout(function(){hl(r[1]);},260);
+ }
+ function render(){
+  var show=[],i;
+  for(i=0;i<rows.length;i++){if(only&&only.checked&&!rows[i][6]){continue;}show.push(rows[i]);}
+  list.textContent='';
+  for(i=0;i<show.length;i++){
+   (function(r){
+    var d=document.createElement('div');
+    d.className='cirow'+(r[6]?' unlinked':'');
+    var h=document.createElement('div');h.className='cih';
+    h.textContent='p'+r[0]+' · '+(r[4]||'(无引文串)')+' · '+(r[5]||'?');
+    var s=document.createElement('div');s.className='cis';s.textContent=r[3]||'';
+    var l=document.createElement('div');l.className='cil';l.textContent=r[2]?'→ '+r[2]:'未回链';
+    d.appendChild(h);d.appendChild(s);d.appendChild(l);
+    d.addEventListener('click',function(){go(r);});
+    list.appendChild(d);
+   })(show[i]);
+  }
+  if(!rows.length){list.textContent='本篇无引文(cspan 为空)';}
+  if(cnt){cnt.textContent=show.length+' / '+rows.length+' 条';}
+ }
+ if(only){only.addEventListener('change',render);}
+ btn.addEventListener('click',function(){
+  panel.classList.toggle('hide');
+  btn.textContent=panel.classList.contains('hide')?'引文索引':'关闭索引';
+ });
+ render();
+})();
 </script>
 <div id="citepop"><div id="citepoptitle">原图块定位</div><svg id="citesvg" preserveAspectRatio="xMidYMid meet"></svg></div>
 </body></html>"""
@@ -891,11 +959,37 @@ def _evidence_member_box(u, item):
 
 
 def _cspan_sentence_groups(cspans):
+    """按(页, 块, 句)把引文 span 归组, 供每页引文句展示。"""
     groups = {}
     for span in cspans:
         key = (span.get("page"), span.get("uid"), span.get("sentence") or "")
         groups.setdefault(key, []).append(span)
     return list(groups.values())
+
+
+def _cite_index_json(meta):
+    """全文档引文索引载荷: [page, uid, 回链目标, 句片段, 引文串, confidence, 未回链?]。
+
+    只读 meta["citation_spans"] 与 meta["references"], 供 viewer_compare 纯前端渲染。
+    """
+    if not meta:
+        return "[]"
+    refs = {r.get("uid"): r for r in (meta.get("references") or []) if r.get("uid")}
+    rows = []
+    for s in (meta.get("citation_spans") or []):
+        links = s.get("linked_refs") or []
+        names = []
+        for l in links:
+            r = refs.get(l.get("uid")) or {}
+            num = l.get("num") or r.get("num") or l.get("index")
+            title = (r.get("title") or "")[:36]
+            names.append(("%s %s" % (num, title)).strip())
+        sent = " ".join((s.get("sentence") or "").split())[:90]
+        rows.append([s.get("page") or 0, s.get("uid") or "",
+                     "; ".join(names), sent, s.get("citation_text") or "",
+                     s.get("confidence") or "", 0 if links else 1])
+    rows.sort(key=lambda x: (x[0], x[1]))
+    return json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
 
 
 # ============ 日文元数据面板(2026-11-12, T-20261112-TRAE-VIEWER) ============
@@ -1619,6 +1713,7 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
         secs.append('<section id="p%d"><h2>第 %d 页%s <span class="stat" id="st_p%d"></span></h2>%s<div class="grid">%s%s%s</div></section>' % (p, p + 1, flag, p, lay_strip, ov_cell, img_cell, ch_cells))
     v = COMPARE_TMPL.replace("@@TITLE@@", title).replace("@@NAV@@", nav)
     v = v.replace("@@THUMBS@@", thumbs)
+    v = v.replace("@@CITEDATA@@", _cite_index_json(meta))
     v = v.replace("@@LAYOUTBTN@@", ('<button id="layoutbtn" class="on" title="显示/隐藏 layout 叠加(阅读序序号 + 双栏分界; 只读, 不改数据)">'
                                     "layout 标注</button>") if lay_any else "")
     v = v.replace("@@LAYBTN@@", ('<button id="laybtn" title="块边界诊断: 叠加显示全部统一对象框(只读叠加, 不切换布局)">'
