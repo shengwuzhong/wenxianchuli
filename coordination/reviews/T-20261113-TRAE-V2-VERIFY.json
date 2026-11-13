@@ -1,0 +1,25 @@
+{
+ "task": "T-20261113-TRAE-V2-VERIFY",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "layout_eval_pass": true,
+  "no_false_positive": true,
+  "known_double_stable": true,
+  "new_page_order_zero": false,
+  "screenshots_present": true,
+  "no_code_changes": true,
+  "out_hash_unchanged": true
+ },
+ "metrics": {
+  "gold": {"double": 85, "single": 13, "ambiguous": 1},
+  "pred": {"double": 86, "single": 13},
+  "recall": 1.0,
+  "false_positives": 0,
+  "known_double_inversions": "unchanged vs baseline; 5 pages have pre-existing nonzero",
+  "new_double_pages_with_inversions": 13,
+  "screenshots": 6
+ },
+ "notes": "Verification approved for detection. 85/85, 0 FP, 39 known double unchanged; 13 newly-double pages have block-level reading-order inversions (no whole-column inversion), tracked separately as T-20261113-WB-LAYOUT-ORDER. No code changes; out hash unchanged.",
+ "reviewed_at": "2026-11-13T11:12:00+08:00"
+}
