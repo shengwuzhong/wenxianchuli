@@ -1,0 +1,25 @@
+{
+ "task": "T-20261113-WB-LAYOUT-ORDER",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_out_writes": true,
+  "thirteen_pages_zero": true,
+  "known_39_no_increase": true,
+  "detection_still_85": true
+ },
+ "metrics": {
+  "thirteen_pages_before": 36,
+  "thirteen_pages_after": 0,
+  "full_99_before": 43,
+  "full_99_after": 5,
+  "known_39": "34 zero; 2025_1 p8/p14, 9_1 p3 remain baseline 1; 2025_1 p16, 42_103 p6 improved 1/3→0",
+  "detection": {"double": 85, "single": 13, "ambiguous": 1, "false_positive": 0}
+ },
+ "notes": "Approved. 13 pages 36→0; 39 known pages no increase; detection 85/85, 0 FP. Residual non-gate: 2025_1 p13 and 42_103 p8 0→1, due unify dropping a mineru sub-block; not in 13/39 lists. Tests 12/12; out hash unchanged.",
+ "reviewed_at": "2026-11-13T11:32:00+08:00"
+}

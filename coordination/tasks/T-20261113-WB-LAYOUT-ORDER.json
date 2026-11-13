@@ -3,12 +3,24 @@
  "title": "13 个新增双栏页阅读序修复",
  "priority": "P1",
  "owner": "workbuddy",
- "status": "pending",
- "depends_on": ["T-20261113-WB-LAYOUT-V2", "T-20261113-TRAE-V2-VERIFY"],
- "allowed_files": ["metapy/layout_ja.py"],
+ "status": "review",
+ "depends_on": [
+  "T-20261113-WB-LAYOUT-V2",
+  "T-20261113-TRAE-V2-VERIFY"
+ ],
+ "allowed_files": [
+  "metapy/layout_ja.py"
+ ],
  "forbidden": [
-  "metapy/m3.py", "out/", "uploads/", "inbox/", "out_llm_trial/",
-  "channels.local.json", "_server.lock", ".workbuddy/", "__pycache__/"
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
  ],
  "allow_frozen": [],
  "branch": "agent/workbuddy/T-20261113-WB-LAYOUT-ORDER",
@@ -23,5 +35,5 @@
  ],
  "handoff_to": "deepseek",
  "created_at": "2026-11-13T11:15:00+08:00",
- "updated_at": "2026-11-13T11:15:00+08:00"
+ "updated_at": "2026-11-13T11:32:00+08:00"
 }
