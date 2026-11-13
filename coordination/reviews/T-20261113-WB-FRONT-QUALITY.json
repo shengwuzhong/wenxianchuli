@@ -1,0 +1,22 @@
+{
+ "task": "T-20261113-WB-FRONT-QUALITY",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_out_writes": true,
+  "author_clean": true,
+  "abstract_en_clean": true,
+  "non_target_unchanged": true,
+  "direct_branch_exception": true
+ },
+ "metrics": {
+  "2025_1_authors": {"before": 5, "after": 5, "leading_middot": 0, "dagger": 0},
+  "2025_1_abstract_en_kana": {"before": 11, "after": 0, "chars": [1446, 1396]},
+  "authors_total": {"before": 51, "after": 51},
+  "non_target_docs_changed": 0
+ },
+ "notes": "Approved. 2025_1 authors cleaned (no leading ・/dagger), count 5→5; abstract_en kana 11→0; 10 non-target docs identical to out_base; front 10/10, abs 6/6, 12/12; out hash unchanged. Residual: 2025_1 affiliations still empty (pre-existing marker 1) vs *1 mismatch). Code committed on worktree main then cherry-picked; process exception noted.",
+ "reviewed_at": "2026-11-13T13:33:00+08:00"
+}

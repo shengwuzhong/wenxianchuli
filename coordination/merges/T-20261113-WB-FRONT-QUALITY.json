@@ -1,0 +1,15 @@
+{
+ "task": "T-20261113-WB-FRONT-QUALITY",
+ "title": "作者清洗与英文摘要残留",
+ "branch": "agent/workbuddy/T-20261113-WB-FRONT-QUALITY",
+ "commit": "0caec2d",
+ "code_commit": "0caec2d",
+ "merge_commit": "ccb0c59",
+ "tag": "verify-T-20261113-WB-FRONT-QUALITY",
+ "merged_at": "2026-11-13T13:33:00+08:00",
+ "integrator": "deepseek",
+ "tests": "front 10/10; abs 6/6; unittest 12/12; compileall OK",
+ "review": "coordination/reviews/T-20261113-WB-FRONT-QUALITY.json",
+ "handoff": "coordination/tasks/T-20261113-WB-FRONT-QUALITY/handoff.md",
+ "note": "2025_1 authors 5→5 cleaned, abstract_en kana 11→0; 10 non-target docs unchanged vs out_base. Residual affiliations empty pre-existing. Code committed on worktree main then cherry-picked; out hash unchanged."
+}
