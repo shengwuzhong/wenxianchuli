@@ -72,13 +72,8 @@ def _front_zone_bottom(unified_list, W, H, ncols):
     return front_bottom
 
 
-def _column_boundary_ja(unified_list, W):
-    """复刻 merge_out._column_boundary 的栏边界投票法(与 merge_out.order_blocks 对齐)。
-
-    只统计 Text/Footnote 且宽 <=0.60W、不贴页缘(0.08W~0.92W)的正文块, 在 0.30W~0.70W
-    区间找「左边结束块数 + 右边开始块数」最大且两侧各>=2 的竖线。宽块(跨栏标题/摘要/
-    作者)不参与投票, 避免像 _page_col_boundary 那样被宽块左边缘拉偏(40_10569 p1 实证:
-    旧法边界 429, 本法定为 620, 与 merge_out 一致)。"""
+def _column_boundary_ja(unified_list, W, H=None, is_first_page=False):
+    """投票法为主；投票无结果时，在连续正文带内做左右分离的几何兜底。"""
     if not W or W <= 0:
         return None
     body = []
@@ -92,19 +87,78 @@ def _column_boundary_ja(unified_list, W):
         if x1 <= 0.08 * W or x0 >= 0.92 * W:
             continue
         body.append((x0, x1))
-    if len(body) < 4:
-        return None
     best = None
     start, stop = int(0.30 * W), int(0.70 * W)
-    for x in range(start, stop + 1, 4):
-        left = sum(1 for x0, x1 in body if x1 <= x)
-        right = sum(1 for x0, x1 in body if x0 >= x)
-        if left < 2 or right < 2:
+    if len(body) >= 4:
+        for x in range(start, stop + 1, 4):
+            left = sum(1 for x0, x1 in body if x1 <= x)
+            right = sum(1 for x0, x1 in body if x0 >= x)
+            if left < 2 or right < 2:
+                continue
+            score = (min(left, right), left + right, -abs(x - W / 2.0))
+            if best is None or score > best[0]:
+                best = (score, x)
+        if best:
+            return best[1]
+
+    # 几何兜底只使用正文带。首页前区以明确的正文节头为准，无节头时沿用前区底界。
+    front_bottom = 0.0
+    if is_first_page and H:
+        front_bottom = _front_zone_bottom(unified_list, W, H, 1)
+        for u in sorted(unified_list, key=lambda b: b["box"][1]):
+            text = (u.get("main_text") or "").strip()
+            if u["type"] == "Section-header" and re.match(
+                    r"^(?:[0-9０-９]+[.．、]?\s*)?(?:はじめに|緒言|序論|対象と方法|方法)", text):
+                front_bottom = u["box"][1]
+                break
+
+    candidates = []
+    for u in unified_list:
+        if u["type"] not in ("Text", "Footnote"):
             continue
-        score = (min(left, right), left + right, -abs(x - W / 2.0))
-        if best is None or score > best[0]:
-            best = (score, x)
-    return best[1] if best else None
+        x0, y0, x1, y1 = u["box"]
+        width = x1 - x0
+        if width <= 0 or width > 0.60 * W:
+            continue
+        if x1 <= 0.08 * W or x0 >= 0.92 * W:
+            continue
+        if y0 < front_bottom:
+            continue
+        # OCR 有时把图下缩略语标成 Text；短且贴近所属图片的块不进入正文带。
+        picture_note = False
+        if H and u["type"] == "Text":
+            for pic in unified_list:
+                if pic["type"] != "Picture":
+                    continue
+                px0, py0, px1, py1 = pic["box"]
+                height, pic_height = y1 - y0, py1 - py0
+                if (py1 <= y0 and y0 - py1 <= max(2 * height, 0.05 * H)
+                        and x0 >= px0 - 8 and x1 <= px1 + 8
+                        and height <= 0.25 * pic_height):
+                    picture_note = True
+                    break
+        if not picture_note:
+            candidates.append(u)
+
+    fallback = None
+    for x in range(start, stop + 1, 4):
+        left = [u for u in candidates if u["box"][2] <= x]
+        right = [u for u in candidates if u["box"][0] >= x]
+        if not any(u["type"] == "Text" for u in left) \
+                or not any(u["type"] == "Text" for u in right):
+            continue
+        gap = min(u["box"][0] for u in right) - max(u["box"][2] for u in left)
+        if gap < 20:
+            continue
+        # 左右块的 y 包络形成连续正文带；前区及跨线图表块不参与，也不要求全页划分。
+        band_top = max(min(u["box"][1] for u in left), min(u["box"][1] for u in right))
+        band_bottom = min(max(u["box"][3] for u in left), max(u["box"][3] for u in right))
+        if band_bottom <= band_top:
+            continue
+        score = (gap, -abs(x - W / 2.0))
+        if fallback is None or score > fallback[0]:
+            fallback = (score, x)
+    return fallback[1] if fallback else None
 
 
 def _order_blocks_ja(unified_list, W, boundary):
@@ -148,7 +202,7 @@ def layout_page(unified_list, W, H, is_first_page=False):
 
     阅读序(reading_order)复刻 merge_out.order_blocks, 保证与 merge 阶段排序 0 反转。
     col/zone 作旁路标注: col 记栏号(full 跨栏块记 -1), zone 记前区/正文(仅首页)。"""
-    boundary = _column_boundary_ja(unified_list, W)
+    boundary = _column_boundary_ja(unified_list, W, H, is_first_page=is_first_page)
     ncols = 2 if boundary is not None else 1
     front_bottom = _front_zone_bottom(unified_list, W, H, ncols) if is_first_page else 0.0
 
@@ -251,7 +305,17 @@ def _selftest():
     ]
     lst2, s2 = layout_page(blocks2, W, H, is_first_page=False)
     ok_single = (s2["ncols"] == 1)
-    ok = ok_cols and ok_order and ok_single
+    # 几何兜底：每栏仅 1 个 Text，x 分离、gap>=20 且 y 重叠。
+    blocks3 = [
+        {"uid": "left", "box": [100, 300, 600, 700], "type": "Text",
+         "main_text": "左栏单块", "cross_page": {"role": None}},
+        {"uid": "right", "box": [632, 320, 1132, 720], "type": "Text",
+         "main_text": "右栏单块", "cross_page": {"role": None}},
+    ]
+    lst3, s3 = layout_page(blocks3, W, H, is_first_page=False)
+    order3 = {u["uid"]: u["layout"]["reading_order"] for u in lst3}
+    ok_fallback = s3["ncols"] == 2 and order3["left"] < order3["right"]
+    ok = ok_cols and ok_order and ok_single and ok_fallback
     print("layout_ja selftest: %s" % ("PASS" if ok else "FAIL"))
     return ok
 
