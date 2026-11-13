@@ -415,6 +415,18 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 .laychip.c0{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
 .laychip.c1{background:#fef3c7;border-color:#fbbf24;color:#b45309}
 .laychip:hover{box-shadow:0 0 0 2px rgba(37,99,235,.2)}
+/* 逐页缩略图导航(2026-11-13 T-20261113-TRAE-THUMBNAIL-NAV): 固定左侧栏, 点击定位/滚动高亮/可折叠/lazy */
+#thumbrail{position:fixed;left:0;top:0;bottom:0;width:118px;z-index:60;background:#0b1220;overflow-y:auto;overflow-x:hidden;padding:6px 6px 42px;box-sizing:border-box;scrollbar-width:thin}
+#thumbrail.hide{display:none}
+#thumbrail a{display:block;position:relative;margin:0 0 6px;border:2px solid transparent;border-radius:5px;background:#1e293b;line-height:0}
+#thumbrail a img{width:100%;display:block;border-radius:3px;background:#111827;min-height:18px}
+#thumbrail a .tn{position:absolute;right:2px;bottom:2px;font-size:9px;color:#e5e7eb;background:rgba(15,23,42,.85);padding:0 3px;border-radius:3px;line-height:13px}
+#thumbrail a.on{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.35)}
+#thumbrail a.on .tn{background:#2563eb}
+#thumbtoggle{position:fixed;top:8px;left:10px;z-index:61;font-size:11px;padding:2px 7px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer;white-space:nowrap}
+body.thumbs .wrap{padding-left:132px}
+body.thumbs #thumbtoggle{left:124px}
+@media(max-width:900px){#thumbrail{width:96px}#thumbtoggle{left:10px}body.thumbs .wrap{padding-left:0}body.thumbs #thumbtoggle{left:104px}}
 .layg circle{fill:#fff;fill-opacity:.9;stroke-width:3}
 .layg text{font-size:30px;font-weight:bold;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .layg .front circle{stroke:#7c3aed}.layg .front text{fill:#6d28d9}
@@ -500,6 +512,8 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 <header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYBTN@@@@LAYOUTBTN@@
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
 </header>
+<button id="thumbtoggle" type="button" title="显示/隐藏逐页缩略图栏">‹ 缩略图</button>
+<nav id="thumbrail" aria-label="页面缩略图">@@THUMBS@@</nav>
 @@BODY@@
 <script>
 var META=@@DATA@@, pinned=null;
@@ -546,9 +560,11 @@ document.addEventListener('mouseout',function(e){
  if(mf&&(!e.relatedTarget||!mf.contains(e.relatedTarget)))citeHover(mf,false);
 });
 /* refs 导出(2026-11-13 T-20261113-TRAE-REFS-EXPORT): 纯前端，CSV/BibTeX，无后端接口 */
+/* 模板是普通 Python 字符串(非 raw)，反斜杠/换行会被吃掉，故统一用 fromCharCode 常量 */
+var _RXBS=String.fromCharCode(92), _RXNL=String.fromCharCode(10), _RXEOL=String.fromCharCode(13,10);
 function _rxVal(v){return (v===null||v===undefined)?'':String(v);}
 function _rxEsc(s){
- return _rxVal(s).replace(/\\/g,'\\textbackslash{}').replace(/([{}%&_#$])/g,'\\$1');
+ return _rxVal(s).split(_RXBS).join(_RXBS+'textbackslash{}').replace(/([{}%&_#$])/g,_RXBS+'$1');
 }
 function _rxCsv(v){return '"'+_rxVal(v).replace(/"/g,'""')+'"';}
 function _rxKey(doc,num,idx){
@@ -576,7 +592,7 @@ function refsExport(btn,fmt){
     _rxVal(r.container_title||r.source), _rxVal(r.volume), _rxVal(r.issue), _rxVal(r.pages),
     _rxVal(r.doi)].map(_rxCsv).join(','));
   }
-  _rxSave(doc+'_references.csv',lines.join('\r\n')+'\r\n','text/csv');
+  _rxSave(doc+'_references.csv',lines.join(_RXEOL)+_RXEOL,'text/csv');
  }else{
   for(i=0;i<refs.length;i++){
    r=refs[i];
@@ -592,9 +608,9 @@ function refsExport(btn,fmt){
    if(r.pages){body.push('  pages = {'+_rxEsc(r.pages)+'},');}
    if(r.doi){body.push('  doi = {'+_rxEsc(r.doi)+'},');}
    if(book&&r.publisher){body.push('  publisher = {'+_rxEsc(r.publisher)+'},');}
-   lines.push('@'+(book?'book':'article')+'{'+_rxKey(doc,r.num,i+1)+',\n'+body.join('\n')+'\n}');
+   lines.push('@'+(book?'book':'article')+'{'+_rxKey(doc,r.num,i+1)+','+_RXNL+body.join(_RXNL)+_RXNL+'}');
   }
-  _rxSave(doc+'_references.bib',lines.join('\n\n')+'\n','application/x-bibtex');
+  _rxSave(doc+'_references.bib',lines.join(_RXNL+_RXNL)+_RXNL,'application/x-bibtex');
  }
 }
 document.addEventListener('mouseover',function(e){
@@ -670,6 +686,56 @@ document.addEventListener('click',function(e){
  var sec=t.closest('section');if(!sec)return;
  sec.querySelectorAll('rect[data-u="'+uid+'"]').forEach(function(r){r.classList.add('on');r.classList.add('cite-on');
   setTimeout(function(){r.classList.remove('on');r.classList.remove('cite-on');},1600);});});
+/* 逐页缩略图导航(2026-11-13 T-20261113-TRAE-THUMBNAIL-NAV): 点击定位 + scroll spy + 折叠 + lazy */
+(function(){
+ var rail=document.getElementById('thumbrail'),tog=document.getElementById('thumbtoggle');
+ if(!rail){return;}
+ var links=[].slice.call(rail.querySelectorAll('a[data-p]'));
+ function setRail(on){
+  if(on){document.body.classList.add('thumbs');rail.classList.remove('hide');}
+  else{document.body.classList.remove('thumbs');rail.classList.add('hide');}
+  if(tog){tog.textContent=on?'‹ 缩略图':'› 缩略图';}
+  try{localStorage.setItem('viewer_thumbs',on?'1':'0');}catch(e){}
+ }
+ if(tog){
+  var saved='1';try{saved=localStorage.getItem('viewer_thumbs')||'1';}catch(e){}
+  if(window.innerWidth<=700){
+   document.body.classList.remove('thumbs');rail.classList.add('hide');tog.textContent='› 缩略图';
+  }else{setRail(saved!=='0');}
+  tog.addEventListener('click',function(){setRail(!document.body.classList.contains('thumbs'));});
+ }else{setRail(false);}
+ for(var i=0;i<links.length;i++){
+  links[i].addEventListener('click',function(ev){
+   ev.preventDefault();
+   var s=document.getElementById('p'+this.getAttribute('data-p'));
+   if(s){s.scrollIntoView({behavior:'smooth',block:'start'});setCur(this.getAttribute('data-p'));}
+  });
+ }
+ var secs=[].slice.call(document.querySelectorAll('section[id^="p"]'));
+ function setCur(pid){
+  for(var k=0;k<links.length;k++){
+   if(links[k].getAttribute('data-p')===pid){links[k].classList.add('on');}
+   else{links[k].classList.remove('on');}
+  }
+ }
+ var tick=false;
+ function spy(){
+  tick=false;
+  if(!secs.length){return;}
+  var cur=secs[0];
+  for(var k=0;k<secs.length;k++){
+   if(secs[k].getBoundingClientRect().top<=150){cur=secs[k];}
+  }
+  var de=document.documentElement;
+  if(window.innerHeight+window.scrollY>=de.scrollHeight-6){cur=secs[secs.length-1];}
+  setCur(String(cur.id).replace(/^p/,''));
+ }
+ window.addEventListener('scroll',function(){if(!tick){tick=true;setTimeout(spy,60);}},{passive:true});
+ document.addEventListener('scroll',function(){if(!tick){tick=true;setTimeout(spy,60);}},true);
+ window.addEventListener('resize',spy);
+ window.addEventListener('load',spy);
+ spy();
+})();
 </script>
 <div id="citepop"><div id="citepoptitle">原图块定位</div><svg id="citesvg" preserveAspectRatio="xMidYMid meet"></svg></div>
 </body></html>"""
@@ -1412,6 +1478,11 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
     两套判据叠加会把归一化层判定无分歧的块又点亮一批, 复检队列被人为放大。"""
     n = len(sizes)
     nav = "".join('<a href="#p%d">%d</a>' % (i, i + 1) for i in range(n))
+    # 缩略图导航(复用 pages/page_N.jpg, 不新增静态资源; lazy load)
+    thumbs = "".join(
+        '<a href="#p%d" data-p="%d" title="第 %d 页"><img src="pages/page_%d.jpg" loading="lazy"'
+        ' decoding="async" alt="第 %d 页"><span class="tn">%d</span></a>'
+        % (i, i, i + 1, i, i + 1, i + 1) for i in range(n))
     secs, data, groups_json = [], {}, {}
     chs = ("mineru", "dots", "paddle")
     lay_any = False
@@ -1547,6 +1618,7 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
             flag += ' <a class="empf jump" data-t="emp_%s" title="跳到本页首个空块">空块×%d</a>' % (first_emp, nemp)
         secs.append('<section id="p%d"><h2>第 %d 页%s <span class="stat" id="st_p%d"></span></h2>%s<div class="grid">%s%s%s</div></section>' % (p, p + 1, flag, p, lay_strip, ov_cell, img_cell, ch_cells))
     v = COMPARE_TMPL.replace("@@TITLE@@", title).replace("@@NAV@@", nav)
+    v = v.replace("@@THUMBS@@", thumbs)
     v = v.replace("@@LAYOUTBTN@@", ('<button id="layoutbtn" class="on" title="显示/隐藏 layout 叠加(阅读序序号 + 双栏分界; 只读, 不改数据)">'
                                     "layout 标注</button>") if lay_any else "")
     v = v.replace("@@LAYBTN@@", ('<button id="laybtn" title="块边界诊断: 叠加显示全部统一对象框(只读叠加, 不切换布局)">'
