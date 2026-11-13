@@ -1,0 +1,21 @@
+{
+ "task": "T-20261113-TRAE-META-EXPORT",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_viewer_only": true,
+  "tests_pass": true,
+  "no_out_writes": true,
+  "json_parses": true,
+  "fields": true,
+  "empty_safe": true
+ },
+ "metrics": {
+  "2025_1": {"keys": 3, "refs": 35, "cspan": 46},
+  "40_10569": {"keys": 17, "refs": 19, "cspan": 44},
+  "52_230725": {"keys": 17, "refs": 7, "cspan": 8},
+  "screenshot": 1
+ },
+ "notes": "Approved. Adds metadata JSON export button; 17-field payload; 2025_1 partial metadata exports safely; JSON parses for all three; console 0 error; 12/12; out hash unchanged. Viewer-only, no new assets.",
+ "reviewed_at": "2026-11-13T13:22:00+08:00"
+}

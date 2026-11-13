@@ -1,0 +1,15 @@
+{
+ "task": "T-20261113-TRAE-META-EXPORT",
+ "title": "查看器元数据 JSON 导出",
+ "branch": "agent/trae/T-20261113-TRAE-META-EXPORT",
+ "commit": "74ce3b4",
+ "code_commit": "74ce3b4",
+ "merge_commit": "0d3ea73",
+ "tag": "merge-T-20261113-TRAE-META-EXPORT",
+ "merged_at": "2026-11-13T13:23:00+08:00",
+ "integrator": "deepseek",
+ "tests": "unittest 12/12; compileall viewer.py OK",
+ "review": "coordination/reviews/T-20261113-TRAE-META-EXPORT.json",
+ "handoff": "coordination/tasks/T-20261113-TRAE-META-EXPORT/handoff.md",
+ "note": "17-field metadata JSON export; 40_10569/52_230725 full, 2025_1 partial (3 keys); JSON parses; console 0 error. viewer-only; out hash unchanged."
+}
