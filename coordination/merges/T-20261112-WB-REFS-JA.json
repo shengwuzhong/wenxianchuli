@@ -1,0 +1,15 @@
+{
+ "task": "T-20261112-WB-REFS-JA",
+ "title": "日文参考文献抽取修复（含混合关键词/页脚块、日文多作者、英文 title 串位）",
+ "branch": "agent/workbuddy/main",
+ "commit": "ed01fc0",
+ "code_commit": "ddd8621",
+ "merge_commit": "6b9d1f2",
+ "tag": "merge-T-20261112-WB-REFS-JA",
+ "merged_at": "2026-11-13T09:45:00+08:00",
+ "integrator": "deepseek",
+ "tests": "refs 48/48; unittest 12/12; ner_lite OK; compileall OK",
+ "review": "coordination/reviews/T-20261112-WB-REFS-JA.json",
+ "handoff": "coordination/tasks/T-20261112-WB-REFS-JA/handoff.md",
+ "note": "独立复测：2025_1 35 条/34 唯一，recall 1.000，title_ok 0.912，author_ok 1.000，author 为空 0；#24 西岡 5 作者/year 2001/raw 无 AGERS；#25 尾崎 7 作者/year 2000。52_230725 7/7；40_10569 18/19（#16 非阻塞）。42_185 18、42_93 49、5_55 33、52_230302 43 不变。正式 out/ 哈希 09a8820b… 未变。"
+}
