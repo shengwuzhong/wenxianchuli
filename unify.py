@@ -61,6 +61,24 @@ def _median(vals):
     return s[len(s) // 2] if s else 0.0
 
 
+# 行首"脚注号"判据(只给 _main_key 用)。刻意比 refs.FN_CITE_X 宽: 那边判"这条行是不是脚注条目",
+# 要卡次 token 形态; 这边只判"这段读法的开头有没有一个号", 判错的代价只是选了另一家读法,
+# 而那两家文本 dice≥0.95 —— 正文本来就一样。
+_FN_HEAD = re.compile(r"^\s*[(（\[]?\d{1,3}\s*[)）\].．、]?\s*(?=[^\d\s])")
+
+
+def _main_key(t, typ):
+    """互证对内部的主读法排序键: 脚注块"行首带号"优先, 其后才比空格质量。
+
+    为什么(2026-11-13, 13563538 p4 实证): 原来平手时 `min()` 按 CH 顺序取第一个, mineru 永远
+    赢——而那一块恰是 mineru 读丢了行首 '7 '。丢了号的脚注段落在下游是"无主散文", 按规则
+    丢弃, 整条脚注就漏抽了。结构信息(有没有号)在排序里根本不存在, 这才是根因。
+    只在"两家已互证是同一段话"(dice≥0.95)的对内启用, 离群读法进不了这个分支。
+    """
+    q = _space_quality(t)
+    return (0 if (typ == "Footnote" and _FN_HEAD.match((t or "").strip())) else 1, q[0], q[1])
+
+
 def _dice_dir(small, big):
     """方向包含相似度: 较短文本的 bigram 在较长文本(全文)中的命中率。
     1:N 包含匹配的文本判据(_gdice 只取前 80 字, 子块落在大块中后段时归零, 故需此方向版)。
@@ -252,8 +270,13 @@ def make_unified(g, pno, W, H, in_ref, uid, h_line=None):
     ch_cat = {}
     for c in present:
         cats = [u["cat"] for u in g[c]]
-        ch_cat[c] = max(set(cats), key=cats.count)
-    type_c = max(set(ch_cat.values()), key=list(ch_cat.values()).count)
+        # 平票必须可复现(2026-11-13): 原来写 max(set(cats), key=cats.count), 而 set 的遍历顺序
+        # 受 PYTHONHASHSEED 影响 —— 同一份 merged/ 在两个进程里能投出不同的类型。类型是下游
+        # 收不收这块的依据(Footnote→refs, Text→丢弃), 于是"重跑一次脚注就少几条"。实测
+        # 13563594 两个种子下 16 个块的 type 不一致。Counter.most_common 平票按首次出现,
+        # 即按渠道原顺序, 确定性。
+        ch_cat[c] = collections.Counter(cats).most_common(1)[0][0]
+    type_c = collections.Counter(ch_cat[c] for c in present).most_common(1)[0][0]
     # 成员文本(同渠道多单元换行拼接)与主读法:
     # 存在 >=0.95 互证对时在该对内取空格质量更好者(离群读法不可能当选); 否则全体候选中取空格质量最好者(留档)
     texts = {c: "\n".join((u["text"] or "").strip() for u in g[c] if (u["text"] or "").strip())
@@ -267,7 +290,9 @@ def make_unified(g, pno, W, H, in_ref, uid, h_line=None):
             if d0 > pair_best:
                 pair_best, pair = d0, (fc[x], fc[y])
     if pair and pair_best >= DICE_HIGH:
-        main_c = min(pair, key=lambda c: _space_quality(filled[c]))
+        # 对内排序: 脚注块行首带号优先, 再比空格质量(见 _main_key)。两家已互证同一段话,
+        # 差别只在"谁多读了行首编号"这种结构信息上, 不该由 CH 顺序(平手)决定。
+        main_c = min(pair, key=lambda c: _main_key(filled[c], type_c))
     else:
         main_c = min(filled, key=lambda c: _space_quality(filled[c])) if filled else None
     main_t = filled.get(main_c, "")
@@ -410,6 +435,33 @@ def make_unified(g, pno, W, H, in_ref, uid, h_line=None):
 
 # ---------- 文档级 ----------
 
+def _mark_dup_covered(unified):
+    """coverage 孤儿块回扫(2026-11-11): 单渠道孤儿的文本若已出现于另一 unified 块的成员
+    文本(折叠前缀包含), 说明两块检的是同一内容(13563527 u1_9 vs u1_7.dots 成员实证)——
+    标 dup_covered 供下游(refs 阶段去重择优/viewer 出眼)识别抑制, 不合并、不删块(留证)。"""
+    def _fx(t):
+        t = re.sub(r"</?(?:sub|sup|i|b|em|span)>", "", t or "", flags=re.I)
+        return re.sub(r"\s+", "", _fold_sym(t))
+    for u in unified:
+        if u.get("divergence", {}).get("kind") != "coverage":
+            continue
+        pf = _fx(u.get("main_text"))
+        if len(pf) < 12:
+            continue
+        anchor = pf[:20]
+        for v in unified:
+            if v is u:
+                continue
+            hay = "".join(_fx(m.get("text"))
+                          for ms in (v.get("members") or {}).values() for m in ms)
+            hit = anchor in hay if len(pf) >= 20 else pf in hay
+            if hit:
+                u["dup_covered"] = True
+                u["divergence"]["detail"] = (u["divergence"].get("detail") or "") \
+                    + "; 内容已被 %s 成员覆盖" % v["uid"]
+                break
+
+
 def ref_region(doc_dir, n):
     """参考文献区页范围(任一渠道最后一个 참고문헌 类 Section-header 起, 至 Abstract/초록 止)。"""
     ref_from = None
@@ -430,7 +482,8 @@ def ref_region(doc_dir, n):
         j = json.load(io.open(fp, encoding="utf-8"))
         for b in j["merged"]:
             if b.get("cat") == "Section-header" and regress.ABSTRACT_HEAD.search(b.get("text") or ""):
-                # Abstract 与文献尾条同页时, 该页仍属文献区(日文文献常见: 正文→文献→英文Abstract同页收尾)
+                # Abstract 与文献头同页(尾页左文献/右摘要形态, 13563529 实证): 该页仍计入
+                # 文献区——ref_to==ref_from 会把区间塌成空集; 页内文献/摘要分栏由 refs/abs 栏逻辑切
                 return ref_from, max(p, ref_from + 1)
     return ref_from, n
 
@@ -453,10 +506,9 @@ def unify_doc(doc, out_root):
         j0 = json.load(io.open(os.path.join(doc_dir, "merged", "page_%d.json" % p), encoding="utf-8"))
         H = j0["h"]
         heights = sorted(max(1.0, b["box"][3] - b["box"][1]) for b in j0["merged"])
-        # 行高估算统一 P20(小高度分位): 正文/脚注行块是页面里数量最多的小盒, 中位数会被大段块
-        # 推高, 导致 intra_group 的续接/挂靠间距阈值(CONT_GAP/CAP_GAP 倍行高)过宽、误把不相邻
-        # 块粘成一段(1632041 实况: 中位数当行高把"3 行脚注装进 166px"误判成溢出, 误伤率>80%)。
-        # 故 intra_group 与 make_unified 统一用同一 P20 行高, 不再保留中位数口径。
+        h_line = heights[len(heights) // 2] if heights else 18.0
+        # 行高估算是 P20(小高度分位): 正文/脚注行块是页面里数量最多小盒, 中位数会被大段块推高,
+        # 用中位数当行高会把"3 行脚注装进 166px"误判成溢出(1632041 实况, 误伤率>80%)
         line_h = heights[min(len(heights) - 1, int(len(heights) * 0.2))] if heights else 18.0
         # 重新按渠道归组(与 load_page_units 同路径, 避免读两遍)
         ch_units, n_raw = {}, 0
@@ -464,7 +516,7 @@ def unify_doc(doc, out_root):
             blks = [dict(b) for b in j0["merged"] if b.get("ch") == ch]
             n_raw += len(blks)
             if blks:
-                ch_units[ch] = intra_group(blks, line_h)
+                ch_units[ch] = intra_group(blks, h_line)
         stats["raw_blocks"] += n_raw
         groups = cross_align(ch_units)
         in_ref = ref_from is not None and ref_from <= p < (ref_to if ref_to is not None else len(pages))
@@ -491,6 +543,7 @@ def unify_doc(doc, out_root):
             else:
                 stats["mapped_blocks"] += n_blk
         unified.sort(key=lambda u: (round(u["box"][1] / 18.0), u["box"][0]))
+        _mark_dup_covered(unified)
         io.open(os.path.join(udir, "page_%d.json" % p), "w", encoding="utf-8").write(json.dumps({
             "doc": doc, "page": p + 1, "w": j0["w"], "h": H, "in_ref": in_ref,
             "unified": unified}, ensure_ascii=False))
