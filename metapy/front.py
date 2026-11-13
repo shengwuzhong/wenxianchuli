@@ -12,6 +12,16 @@ _JP_DOT = u"・"                       # U+30FB 中黒(日文作者行惯用分�
 _MID_SEP = u" ·•,，․\t"               # 作者名首尾可剥的分隔/标点集合(含中黒)
 _SKIP_CH = set(u" \t\ue000\ue001$^{}*\\†‡,，")
 
+# (2026-11-13) 日文机构头补充: 现有 JP_AFFIL_HEAD 不含「ミュージアム/美術館/…」, 2025_1 脚注
+# '*4 ふじのくに地球環境史ミュージアム' 因此被整体丢弃(第 4 作者 affiliation 空)。仅本地扩展, 不改 common。
+_JP_AFFIL_EXTRA = re.compile(u"ミュージアム|美術館|図書館|博物館|資料館|研究所|事務所|機構|大学共同利用機関")
+
+
+def _marker_key(mk):
+    """上标标记 → 归一编号键: '*1' / '1)' / '1' 都归成 '1'; 裸 '*' 归成 ''。
+    (2026-11-13) 日文作者上标用 '*1', 机构脚注写 '1) 同志社…', 两套编号同一体系(2025_1 实证)。"""
+    return (mk or "").strip().rstrip(")").lstrip("*")
+
 
 def _clean_marker(mk):
     """上标标记清洗: 去 LaTeX 匕首(\\dagger/\\ddagger)、†‡、$ 与花括号残留, 保留 '*1'/'1,2' 语义。"""
@@ -310,6 +320,7 @@ def front_doc(doc, out_root):
     if t_en is not None:
         zone_lines += [z for z in _zone(t_en) if z not in zone_lines]
     affil_notes = {}      # marker -> affiliation(来自脚注)
+    affil_notes_all = []  # (2026-11-13) 同号多值保留: 同一编号常有日/英两套脚注(2025_1 实证), dict 会被后者覆盖
     affil_foot_all = []   # (2026-11-11) 机构脚注去重列表(供无上标关联时的日文/机构兜底)
 
     def _affil_marker_line(s):
@@ -323,10 +334,15 @@ def front_doc(doc, out_root):
             _bare = re.match(r"^\^\{\s*([\*\d,，\)]+)\s*\}(\s*)", s)
             if _bare:
                 s = _bare.group(1).rstrip(")") + ") " + s[_bare.end():].strip()
+        # (2026-11-13) 星号+数字编号: '$ ^{*1} $同志社…' 归一成 '*1) 同志社…' 后被 MARKER_LINE 的
+        # '\*{1,4}' 只吃到 '*' 就断, 机构文本被污染成 '1) 同志社…'(2025_1 实证, 5 人 affiliation 全空)。
+        m2 = re.match(u"^\\*{1,4}\\s*\\d{1,2}\\)?\\s*(.+)$", s, re.S)
+        if m2:
+            return re.match(u"^(\\*{1,4}\\s*\\d{1,2})", s).group(1).replace(" ", ""), m2.group(1).strip()
         m = MARKER_LINE.match(s)
-        if not m:
-            return None
-        return m.group(1).strip(), m.group(2)
+        if m:
+            return m.group(1).strip(), m.group(2)
+        return None
 
     # 机构脚注收集: 保留对「普通 Footnote」的跨页过滤, 但机构标记行('* 東京大学…' / '$ ^{1)} $熊本…')即使在
     # 跨页脚注块(cross_page.role='tail')里也应收录(日文综述机构常在跨页脚注, 52_230302/40_10569 实证)。
@@ -334,14 +350,15 @@ def front_doc(doc, out_root):
         if u["type"] != "Footnote":
             continue
         if u.get("cross_page", {}).get("role") and not any(
-                (AFFIL_HEAD.search(ln) or JP_AFFIL_HEAD.search(ln)) and _affil_marker_line(ln.strip())
+                (AFFIL_HEAD.search(ln) or JP_AFFIL_HEAD.search(ln) or _JP_AFFIL_EXTRA.search(ln))
+                and _affil_marker_line(ln.strip())
                 for ln in (u["main_text"] or "").split("\n")):
             continue
         for ln in (u["main_text"] or "").split("\n"):
             s = ln.strip()
             hit = _affil_marker_line(s)
             if hit and (AFFIL_HEAD.search(hit[1]) or JP_AFFIL_HEAD.search(hit[1])
-                        or ROLE_WORDS.search(hit[1])):
+                        or _JP_AFFIL_EXTRA.search(hit[1]) or ROLE_WORDS.search(hit[1])):
                 val = hit[1].strip()
                 # (2026-11-11 精确性) 机构行截断: 'Corresponding author' 之后常粘入正文
                 # (unify 把正文误并入 Footnote 块, 52_230302 实证: '...E-mail: xxx, Corresponding
@@ -351,6 +368,7 @@ def front_doc(doc, out_root):
                     # 保留 'Corresponding author' 前的机构主体; 若含 E-mail 则截到 E-mail
                     val = val[:cut.start()].rstrip(" ,·•")
                 affil_notes[hit[0]] = val
+                affil_notes_all.append((hit[0], val))
                 if val not in affil_foot_all:
                     affil_foot_all.append(val)
     # 解析作者行(行内有 2-4 音节韩文名/日文名/罗马锚/上标残留 才算)
@@ -405,15 +423,27 @@ def front_doc(doc, out_root):
 
     for a in authors:
         _marker_nums = []
+        _seen = {}
         for mk in a["markers"]:
-            key = mk.strip().rstrip(")")
+            # (2026-11-13) 星号前缀归一: 日文作者上标 '*1' 与机构脚注 '1) 同志社…' 是同一编号体系
+            # (2025_1 实证: 作者 '*1..*5' vs 脚注 '1)..5)' 直接全等比较不命中, 5 人 affiliation 全空)。
+            raw_mk = mk.strip()
+            key = _marker_key(raw_mk)
             _marker_nums += [int(x) for x in re.findall(r"\d+", key)]
-            for nk, nv in affil_notes.items():
-                nk0 = nk.rstrip(")")
-                if nk0 == key or (key.isdigit() and nk0 == key) or (nk0 == "*" and key == "*"):
-                    mrole = ROLE_WORDS.search(nv)
-                    a["affiliation"] = a["affiliation"] or ROLE_WORDS.sub("", nv).strip(" ,·•")
-                    a["role"] = a["role"] or (mrole.group(1) if mrole else None)
+            for _i, (nk, nv) in enumerate(affil_notes_all):
+                nk1 = nk.strip()
+                nk0 = _marker_key(nk1)
+                # 第三项用原始 '*' 判定: lstrip 后裸 '*' 会变成空串, 与只写 '*' 的脚注('* 東京大学…')失配
+                if (key and nk0 == key) or (key.isdigit() and nk0 == key) \
+                        or (nk1 == "*" and raw_mk == "*"):
+                    _seen[nv] = _i     # 同值取最后一次出现(与旧 dict 覆盖语义一致)
+        if _seen:
+            # 同一编号常有日/英两套脚注('*1 同志社…' 与 '*1 Graduate School…'), 取文档中后出现者
+            # (2025_1 的日文脚注在后 → 得日文机构; 52_230302 的英文脚注在后 → 保持原英文结果不变)。
+            _pick = sorted(_seen.items(), key=lambda t: -t[1])[0][0]
+            mrole = ROLE_WORDS.search(_pick)
+            a["affiliation"] = a["affiliation"] or ROLE_WORDS.sub("", _pick).strip(" ,·•")
+            a["role"] = a["role"] or (mrole.group(1) if mrole else None)
         if a["affiliation"] is None and affils_zone:
             # (2026-11-11 扩展日文) 机构在正文而非脚注时(5_55 实证), 从 affils_zone 按上标前缀匹配:
             # 作者 marker '1'/'1,2'/'*1,2,3' 的每个数字 → 机构行 '^{n} ' 前缀。
@@ -633,11 +663,14 @@ def _selftest():
     # 名尾匕首残留直接剥离
     jd = _parse_author_line(u"山田 太郎†", None, {})
     ok10 = len(jd) == 1 and jd[0]["name"] == u"山田 太郎"
-    oks = (ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10)
+    # (2026-11-13) 标记编号归一: '*1'/'1)'/'1' 同键, 裸 '*'(脚注只写星号)另算
+    ok11 = (_marker_key(u"*1") == _marker_key(u"1)") == _marker_key(u"1") == u"1"
+            and _marker_key(u"*") == u"" and _marker_key(u"*1\\dagger") == u"1\\dagger")
+    oks = (ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10, ok11)
     for i, ok in enumerate(oks, 1):
         if not ok:
             print("FAIL [front case %d]" % i)
-    print("front selftest: %d/10 PASS" % sum(oks))
+    print("front selftest: %d/%d PASS" % (sum(oks), len(oks)))
     return all(oks)
 
 
