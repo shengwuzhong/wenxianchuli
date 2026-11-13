@@ -1,0 +1,15 @@
+{
+ "task": "T-20261113-WB-FREFS-REFS",
+ "title": "frefs 日文适用性 + refs 残余补齐",
+ "branch": "agent/workbuddy/T-20261113-WB-FREFS-REFS",
+ "commit": "5d3f83c",
+ "code_commit": "5d3f83c",
+ "merge_commit": "fde7098",
+ "tag": "verify-T-20261113-WB-FREFS-REFS",
+ "merged_at": "2026-11-13T13:44:00+08:00",
+ "integrator": "deepseek",
+ "tests": "refs 51/51; unittest 12/12; compileall OK",
+ "review": "coordination/reviews/T-20261113-WB-FREFS-REFS.json",
+ "handoff": "coordination/tasks/T-20261113-WB-FREFS-REFS/handoff.md",
+ "note": "42_93 frefs 3→0 (page-number footer noise, revised acceptance); 40_10569 refs 19/19; 42_185 18/18; 133 title fixes, suspicious=0. Applicability added. out hash unchanged."
+}

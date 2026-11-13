@@ -1,0 +1,24 @@
+{
+ "task": "T-20261113-WB-FREFS-REFS",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_out_writes": true,
+  "frefs_false_positive_removed": true,
+  "refs_40_10569_19": true,
+  "refs_42_185_18": true,
+  "title_corrections_safe": true,
+  "acceptance_revised": true
+ },
+ "metrics": {
+  "42_93_frefs": {"before": 3, "after": 0, "reason": "page-number running footer, not footnote refs"},
+  "40_10569_refs": "19/19",
+  "42_185_refs": "18/18",
+  "title_corrections": 133,
+  "suspicious_titles": 0
+ },
+ "notes": "Approved with revised acceptance: 42_93's 3 frefs are page-number footer noise, so 0 is correct; task's original frefs=3 target was based on a false premise. Applicability metadata added for 11 docs. 40_10569 19/19, 42_185 18/18; 133 English numbered-title corrections; refs 51/51; 12/12; out hash unchanged. Direct branch/worktree issue as before, cherry-picked to main.",
+ "reviewed_at": "2026-11-13T13:44:00+08:00"
+}
