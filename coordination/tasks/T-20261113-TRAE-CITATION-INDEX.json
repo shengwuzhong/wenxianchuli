@@ -1,0 +1,29 @@
+{
+ "id": "T-20261113-TRAE-CITATION-INDEX",
+ "title": "查看器引文索引",
+ "priority": "P1",
+ "owner": "trae",
+ "status": "review",
+ "depends_on": [],
+ "allowed_files": [
+  "viewer.py"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/trae/T-20261113-TRAE-CITATION-INDEX",
+ "base_commit": "main",
+ "acceptance": [],
+ "handoff_to": "deepseek",
+ "created_at": "2026-11-13T04:55:59+00:00",
+ "updated_at": "2026-11-13T13:15:00+08:00"
+}

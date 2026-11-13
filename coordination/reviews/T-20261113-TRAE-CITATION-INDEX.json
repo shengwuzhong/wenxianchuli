@@ -1,0 +1,22 @@
+{
+ "task": "T-20261113-TRAE-CITATION-INDEX",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_viewer_only": true,
+  "tests_pass": true,
+  "no_out_writes": true,
+  "counts": true,
+  "click_highlight": true,
+  "unlinked_filter": true,
+  "console_clean": true
+ },
+ "metrics": {
+  "2025_1": {"spans": 46, "rows": 46, "unlinked": 0},
+  "52_230725": {"spans": 8, "rows": 8, "unlinked": 0},
+  "42_93": {"spans": 59, "rows": 59, "unlinked": 1},
+  "screenshots": 2
+ },
+ "notes": "Approved. Fixed right-side citation index, click scroll+highlight, unlinked-only filter (59→1 in 42_93), console 0 error. Branch rebased onto main after thumbnail/refs fixes; 12/12; out hash unchanged.",
+ "reviewed_at": "2026-11-13T13:15:00+08:00"
+}
