@@ -19,7 +19,7 @@
 | 验证缺口 | 真值复核推翻旧基线：18 个旧“单栏”中 17 页实为双栏，仅 `43_10814 p3` 单栏，`42_103 p13` ambiguous；旧 51/48 验收无效 |
 | 评测缺口 | GT 已建：11 篇文档字段/摘要、3 篇 61 条 refs；其余 8 篇 refs 仍 pending；基线见 `eval/reports/baseline_current.md` |
 | 交付缺口 | 正式 `out/` 是旧预览：摘要 4/10 有值，而当前代码 8/11；52/40/42_103 的英文摘要修复只在代码里，不在 `out/` |
-| 等权工程完成度 | 16 项等权约 **72%**（100+80+90+100+100+100+100+60+15+100+100+60+50+0+0+100）/16 = 72.2% |
+| 等权工程完成度 | 16 项等权约 **74%**（100+80+90+100+100+100+100+60+15+100+100+60+70+0+0+100）/16 = 73.4% |
 
 ---
 
@@ -41,7 +41,7 @@
 | P1-5 | `layout_ja` 全量回归（11 篇 99 页） | P1 | 已完成 | 100% | Trae `T-20261112-TRAE-LAYOUT-FULL`：99 页逐页表、39 双栏页 0 反转、12 单栏差异判定；`coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.md` |
 | P1-6 | `layout_ja` 双栏欠检修复（按 99 页真值） | P1 | 已完成 | 100% | truth99：85 double / 13 single / 1 ambiguous；V2 检测 85/85、0 FP；42_185 p1 double、43_10814 p3 single；阅读序待 Trae |
 | P2-1 | 日文金标准与字段准确率评测 | P2 | 进行中 | 60% | `eval/ja_gold.json`（11 篇字段/摘要，3 篇 61 条 refs）；`eval/gold_eval.py`；`eval/validate_gold.py`；基线 `eval/reports/baseline_current.md` |
-| P2-2 | 文本规范化 / 术语统一 | P2 | 进行中 | 50% | `metapy/normalize.py` + `metapy/normalize_meta.py`：NFKC/新旧字体/送假名/保护/双向 span；metadata sidecar 已可生成，未接主链路 |
+| P2-2 | 文本规范化 / 术语统一 | P2 | 进行中 | 70% | `metapy/normalize.py` + `normalize_meta.py`：sidecar 与 `metadata.py --stage normalize` 已接入；尚未接 viewer/主字段 |
 | P2-3 | 翻译（日→中） | P2 | 未开始 | 0% | 无实现、无规格 |
 | P2-4 | 正式 `out/` 重生成 / `2025_1` 元数据补跑 | P2 | 未开始（按决定冻结） | 0% | `coordination/previews/T-20261112-WB-ABS-preview.json`；`out_manifest.tsv`；正式 `out/` 1151 文件 |
 
@@ -170,7 +170,7 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
 - 未完成：其余 8 篇 refs GT 仍 pending；第 12 篇文件未找到；title/author 相似度阈值与重复条目口径需最终确认。
 - 影响：refs 任务现在有可量化的 recall/title/author 验收，不再用“条数”当代理指标。
 
-#### P2-2 规范化 / 术语 — 50%
+#### P2-2 规范化 / 术语 — 70%
 
 - 已实现核心模块 `metapy/normalize.py`：
   - NFKC、常见旧字体→新字体、常见送假名统一；
@@ -182,6 +182,7 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
   - 覆盖 title/title_en/journal/year/pages/abstract/abstract_en/authors/affiliations/keywords/body/references；
   - 每个字段保留 raw/normalized/段级 map，不修改 canonical metadata；
   - `py -m metapy.normalize_meta --selfcheck` PASS。
+- 已接入 metadata CLI：`py metadata.py <doc> --out <dir> --stage normalize`（含 `--stage=normalize`），生成同一 sidecar；不写 canonical `metadata.json`。
 - 尚未把 normalized 值接回主链路/查看器；全量回归与字段切换是下一步。
 - 用户已确认范围：NFKC + 新旧字体统一 + 送假名标准化；作用字段 title/author/abstract/body/refs；DOI、KAKENHI、术语表词汇强保护；保留 `raw_text` 与 `normalized_text` 双向映射。
 
