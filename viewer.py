@@ -140,7 +140,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .lg{display:inline-block;margin-left:14px;font-size:12px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px;vertical-align:-1px}
 .fullmd{padding:14px 18px;font-size:14px;line-height:1.9;max-width:1100px;margin:0 auto;background:#fff;min-height:600px}
 </style></head><body>
-<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYBTN@@@@LAYOUTBTN@@
+<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYOUTBTN@@
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
 </header>
 @@BODY@@
@@ -348,7 +348,6 @@ def build_viewer(out_fp, title, sizes, per_page=None, md_text=None, calib_note=N
     else:
         body_html = '<div class="fullmd">%s</div>' % md2html(md_text)
     v = VIEWER_TMPL.replace("@@TITLE@@", title).replace("@@NAV@@", nav)
-    v = v.replace("@@LAYBTN@@", "")
     v = v.replace("@@LAYOUTBTN@@", "")   # layout 叠加仅 1:3 对照查看器有(unified 产物)
     v = v.replace("@@BODY@@", body_html).replace("@@DATA@@", json.dumps(data, ensure_ascii=False))
     if calib_note:
@@ -372,9 +371,8 @@ section{margin:20px 0}h2{font-size:15px;color:#374151;border-left:4px solid #256
 .pane.meta{grid-column:1/-1}   /* 元数据横带: 原第5格(窄列折行+右侧死白)改整行贯穿 */
 .pane.meta.ov .ptitle{background:#7c3aed}   /* 第1页总览横带: 紫头与普通横带(灰头)区分 */
 .mfw{font-size:12px;padding:6px 8px}
-body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LAYBTN 降为框叠加诊断——只读叠加, 不切换布局/不藏渠道栏 */
-#laybtn,#layoutbtn{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:5px;padding:1px 8px;font-size:12px;margin-left:8px}
-#laybtn.on,#layoutbtn.on{background:#dbeafe;border-color:#2563eb}
+#layoutbtn{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:5px;padding:1px 8px;font-size:12px;margin-left:8px}
+#layoutbtn.on{background:#dbeafe;border-color:#2563eb}
 .mfh{font-size:11px;color:#6b7280;font-weight:bold;margin:6px 0 3px;border-top:1px solid #e5e7eb;padding-top:5px}
 .mfg:first-child .mfh{border-top:none;margin-top:0;padding-top:0}
 .mf{padding:3px 6px;margin:2px 0;border-radius:5px;cursor:pointer;background:#fafafa;border-left:3px solid #e5e7eb}
@@ -521,9 +519,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .eye.ll{background:rgba(220,38,38,.92);border-color:#fecaca}.eye.ll:hover,.eye.ll.pin{background:#ef4444}
 .eye.lc{background:rgba(124,58,237,.92);border-color:#ddd6fe}.eye.lc:hover,.eye.lc.pin{background:#8b5cf6}
 .eye.lo{background:rgba(37,99,235,.92);border-color:#bfdbfe}.eye.lo:hover,.eye.lo.pin{background:#3b82f6}
-/* 共识框默认隐藏, 由 #laybtn 的 body.boxov 打开(2026-11-13 修复: 原先默认 .85/.9 常显,
-   boxov 只把透明度抬到 1, 肉眼几乎无差别 → 按钮看着"没反应")。
-   .on/.cite-on/.flash 例外: 点 metadata 行跳转时的单框高亮仍需可见。 */
+/* 共识框默认隐藏; .on/.cite-on/.flash 例外: 点 metadata 行跳转时的单框高亮仍需可见。 */
 .r.um{fill:none;stroke:#111827;stroke-width:3;stroke-dasharray:10 5;opacity:0;pointer-events:none;transition:opacity .12s}
 .r.umb{fill:none;stroke:#fff;stroke-width:6;opacity:0;pointer-events:none;transition:opacity .12s}
 .r.umb.on,.r.umb.cite-on,.r.um.on,.r.um.cite-on,.r.flash{opacity:1!important}
@@ -556,7 +552,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .dot.m{background:#60a5fa}.dot.d{background:#fbbf24}.dot.p{background:#34d399}
 .lg{display:inline-block;margin-left:14px;font-size:12px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px;vertical-align:-1px}
 </style></head><body>
-<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYBTN@@@@LAYOUTBTN@@
+<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYOUTBTN@@
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
 <span id="qwrap"><input id="q" type="search" placeholder="搜索标题/作者/文献/引文" autocomplete="off"><div id="qres" class="hide"></div></span>
 <button id="langtoggle" type="button" title="切换中文译文/原文">中文</button>
@@ -731,9 +727,6 @@ document.addEventListener('click',function(e){
   var rs=sec.querySelectorAll('rect[data-u="'+mf.dataset.u+'"]');
   rs.forEach(function(r){r.classList.add('on');r.classList.add('cite-on');
    setTimeout(function(){r.classList.remove('on');r.classList.remove('cite-on');},1600);});}});
-var lb=document.getElementById('laybtn');
-if(lb){lb.onclick=function(){document.body.classList.toggle('boxov');lb.classList.toggle('on');};
- if(location.hash==='#meta'){document.body.classList.add('boxov');lb.classList.add('on');}}
 var lbt=document.getElementById('layoutbtn');
 if(lbt){lbt.onclick=function(){document.body.classList.toggle('layoff');lbt.classList.toggle('on');};}
 document.addEventListener('click',function(e){
@@ -1146,6 +1139,49 @@ def _cspan_sentence_groups(cspans):
     return list(groups.values())
 
 
+def _cite_row(group, refs):
+    """一组同(页,块,句)的 citation_spans -> 一行索引/CSV 数据。
+
+    同一句里 `^1`、`1`、`^2` 等会被 cspan 拆成多个 span；这里按句聚合，
+    引文串/回链目标取并集去重，避免同一句在索引里重复出现。
+    """
+    first = group[0]
+    cites, links = [], []
+    seen_cite, seen_link = set(), set()
+    for s in group:
+        ct = (s.get("citation_text") or "").strip()
+        if ct and ct not in seen_cite:
+            seen_cite.add(ct)
+            cites.append(ct)
+        for l in (s.get("linked_refs") or []):
+            r = refs.get(l.get("uid")) or {}
+            num = l.get("num") if l.get("num") is not None else (r.get("num") if r.get("num") is not None else l.get("index"))
+            key = (l.get("uid"), num)
+            if key in seen_link:
+                continue
+            seen_link.add(key)
+            links.append({"num": "" if num is None else str(num),
+                          "title": (r.get("title") or "").strip()})
+    linked_confs = [s.get("confidence") for s in group if s.get("linked_refs")]
+    if not links:
+        conf = "unlinked"
+    elif "exact" in linked_confs:
+        conf = "exact"
+    elif "partial" in linked_confs:
+        conf = "partial"
+    else:
+        conf = "exact"
+    return {
+        "page": first.get("page") or 0,
+        "uid": first.get("uid") or "",
+        "sentence": " ".join((first.get("sentence") or "").split()),
+        "cites": "; ".join(cites),
+        "links": links,
+        "confidence": conf,
+        "unlinked": 0 if links else 1,
+    }
+
+
 def _cite_index_json(meta):
     """全文档引文索引载荷: [page, uid, 回链目标, 句片段, 引文串, confidence, 未回链?]。
 
@@ -1155,18 +1191,11 @@ def _cite_index_json(meta):
         return "[]"
     refs = {r.get("uid"): r for r in (meta.get("references") or []) if r.get("uid")}
     rows = []
-    for s in (meta.get("citation_spans") or []):
-        links = s.get("linked_refs") or []
-        names = []
-        for l in links:
-            r = refs.get(l.get("uid")) or {}
-            num = l.get("num") or r.get("num") or l.get("index")
-            title = (r.get("title") or "")[:36]
-            names.append(("%s %s" % (num, title)).strip())
-        sent = " ".join((s.get("sentence") or "").split())[:90]
-        rows.append([s.get("page") or 0, s.get("uid") or "",
-                     "; ".join(names), sent, s.get("citation_text") or "",
-                     s.get("confidence") or "", 0 if links else 1])
+    for group in _cspan_sentence_groups(meta.get("citation_spans") or []):
+        r = _cite_row(group, refs)
+        names = ["%s %s" % (l["num"], l["title"][:36]) for l in r["links"]]
+        rows.append([r["page"], r["uid"], "; ".join(names), r["sentence"][:90],
+                     r["cites"], r["confidence"], r["unlinked"]])
     rows.sort(key=lambda x: (x[0], x[1]))
     return json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
 
@@ -1198,16 +1227,12 @@ def _cite_export_btn(meta):
     """
     refs = {r.get("uid"): r for r in ((meta or {}).get("references") or []) if r.get("uid")}
     rows = []
-    for s in ((meta or {}).get("citation_spans") or []):
-        links = s.get("linked_refs") or []
-        nums, titles = [], []
-        for l in links:
-            r = refs.get(l.get("uid")) or {}
-            nums.append(str(l.get("num") or r.get("num") or l.get("index") or ""))
-            titles.append((r.get("title") or "").strip())
-        rows.append([s.get("page") or "", s.get("uid") or "", s.get("confidence") or "",
-                     s.get("citation_text") or "", " ".join((s.get("sentence") or "").split()),
-                     ";".join(nums), ";".join(titles), 0 if links else 1])
+    for group in _cspan_sentence_groups((meta or {}).get("citation_spans") or []):
+        r = _cite_row(group, refs)
+        rows.append([r["page"], r["uid"], r["confidence"], r["cites"], r["sentence"],
+                     ";".join(l["num"] for l in r["links"]),
+                     ";".join(l["title"] for l in r["links"]),
+                     r["unlinked"]])
     dis = "" if rows else " disabled"
     doc = html.escape(str((meta or {}).get("doc") or ""), quote=True)
     data = html.escape(json.dumps(rows, ensure_ascii=False), quote=True)
@@ -2015,8 +2040,6 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
         _load_translated(os.path.join(os.path.dirname(out_fp), "metadata_translated.json"))))
     v = v.replace("@@LAYOUTBTN@@", ('<button id="layoutbtn" class="on" title="显示/隐藏 layout 叠加(阅读序序号 + 双栏分界; 只读, 不改数据)">'
                                     "layout 标注</button>") if lay_any else "")
-    v = v.replace("@@LAYBTN@@", ('<button id="laybtn" title="块边界诊断: 叠加显示全部统一对象框(只读叠加, 不切换布局)">'
-                                 "块框叠加</button>") if meta is not None else "")
     v = v.replace("@@BODY@@", '<div class="wrap">%s</div>' % "\n".join(secs))
     v = v.replace("@@DATA@@", json.dumps(data, ensure_ascii=False))
     v = v.replace("@@GROUPS@@", json.dumps(groups_json, ensure_ascii=False))
