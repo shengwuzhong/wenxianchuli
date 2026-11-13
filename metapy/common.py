@@ -141,6 +141,10 @@ def _strip_glued(raw, head_fold):
 
 def _complete(t):
     t = (t or "").rstrip()
+    # (2026-11-12 T-20261112-WB-REFS-JA) 网址/文件扩展名结尾的日文文献条目也算完整
+    # ('神田公生(1997): ...edu/se059369.html' 无句点, 52_230725 实证——不补会被误并下一条)。
+    if re.search(r"\.(?:html?|pdf|jpg|jpeg|png|gif|docx?|xlsx?|pptx?)\s*$", t, re.I):
+        return True
     return bool(t) and t[-1] in TERM
 
 def _standalone_note(t):

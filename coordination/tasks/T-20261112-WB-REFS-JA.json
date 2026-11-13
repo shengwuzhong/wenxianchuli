@@ -1,0 +1,31 @@
+{
+ "id": "T-20261112-WB-REFS-JA",
+ "title": "日文参考文献抽取修复",
+ "priority": "P1",
+ "owner": "workbuddy",
+ "status": "review",
+ "depends_on": [],
+ "allowed_files": [
+  "metapy/refs.py",
+  "metapy/common.py",
+  "regress.py"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/workbuddy/T-20261112-WB-REFS-JA",
+ "base_commit": "main",
+ "acceptance": [],
+ "handoff_to": "deepseek",
+ "created_at": "2026-11-12T08:09:09+00:00",
+ "updated_at": "2026-11-13T01:30:47+00:00"
+}
