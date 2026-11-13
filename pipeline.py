@@ -321,11 +321,21 @@ def main(argv=None):
             except Exception as e:
                 log("④ 归一化层失败(👁 退回临时聚组): %s" % e)
         upages, unified_driven = _load_fresh_unified(udir, t0)
+        # 既有 metadata.json 一并注入: 否则本轮重建会把「metadata 总览」面板(及其中的 #transbox)
+        # 整段抹掉, 顶栏「中文」按钮随之失去落点而静默失效(2026-11-13 修复)。
+        _old_meta = None
+        _mfp = os.path.join(out, "metadata.json")
+        if os.path.exists(_mfp):
+            try:
+                _old_meta = json.load(io.open(_mfp, encoding="utf-8"))
+            except Exception:
+                _old_meta = None
         nc = build_compare_viewer(cmp_fp, "%s ｜ 1:3 渠道对照" % doc, sizes, per_ch,
                                   {k: (os.path.basename(os.path.normpath(v))
                                        if os.path.abspath(v).startswith(os.path.abspath(out) + os.sep) else k)
                                      for k, v in chans.items() if v},
-                                  unified_pages=upages, unified_driven=unified_driven)
+                                  unified_pages=upages, unified_driven=unified_driven,
+                                  meta=_old_meta)
         log("④ 1:3 对照查看器: %d 块 -> %s" % (nc, cmp_fp))
     elif os.path.exists(cmp_fp):
         os.remove(cmp_fp)  # 本轮全失败则清掉旧对照, 防残留

@@ -452,6 +452,9 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 #langtoggle{position:absolute;top:8px;right:212px;font-size:11px;padding:2px 8px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer;z-index:62}
 #transbox{background:#f0f9ff;border:1px solid #bae6fd;border-radius:4px;padding:6px 8px;margin:0 0 6px;font-size:12px;color:#0f172a}
 #transbox.hide{display:none}
+/* 兜底浮层: 页面由 pipeline 构建(meta=None)时无 metadata 总览面板, #transbox 不存在 →
+   切换按钮运行期自建该浮层, 保证「中文」始终有反馈(2026-11-13 修复: 之前整段监听器直接 return) */
+#transbox.floatpane{position:fixed;top:34px;right:10px;width:360px;max-height:52vh;overflow:auto;z-index:63;box-shadow:0 8px 24px rgba(15,23,42,.18)}
 #transbox .tzh{font-weight:600;color:#0369a1;margin-bottom:2px}
 #transbox .tr{margin-top:3px;line-height:1.45}
 #transbox .tna{color:#b45309}
@@ -518,8 +521,12 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .eye.ll{background:rgba(220,38,38,.92);border-color:#fecaca}.eye.ll:hover,.eye.ll.pin{background:#ef4444}
 .eye.lc{background:rgba(124,58,237,.92);border-color:#ddd6fe}.eye.lc:hover,.eye.lc.pin{background:#8b5cf6}
 .eye.lo{background:rgba(37,99,235,.92);border-color:#bfdbfe}.eye.lo:hover,.eye.lo.pin{background:#3b82f6}
-.r.um{fill:none;stroke:#111827;stroke-width:3;stroke-dasharray:10 5;opacity:.85;pointer-events:none}
-.r.umb{fill:none;stroke:#fff;stroke-width:6;opacity:.9;pointer-events:none}
+/* 共识框默认隐藏, 由 #laybtn 的 body.boxov 打开(2026-11-13 修复: 原先默认 .85/.9 常显,
+   boxov 只把透明度抬到 1, 肉眼几乎无差别 → 按钮看着"没反应")。
+   .on/.cite-on/.flash 例外: 点 metadata 行跳转时的单框高亮仍需可见。 */
+.r.um{fill:none;stroke:#111827;stroke-width:3;stroke-dasharray:10 5;opacity:0;pointer-events:none;transition:opacity .12s}
+.r.umb{fill:none;stroke:#fff;stroke-width:6;opacity:0;pointer-events:none;transition:opacity .12s}
+.r.umb.on,.r.umb.cite-on,.r.um.on,.r.um.cite-on,.r.flash{opacity:1!important}
 .r.cite-target{fill:#fbbf24;fill-opacity:0;stroke:#f59e0b;stroke-width:4;stroke-opacity:0;opacity:0;pointer-events:none}
 .r.cite-target.cite-on{opacity:1;fill-opacity:.16;stroke-opacity:1}
 .r.flash{stroke:#f59e0b!important;stroke-width:6;fill:#fbbf24;fill-opacity:.25}   /* 点击跳转后原图块橙框闪烁 */
@@ -934,8 +941,16 @@ window.citeExport=function(btn){
 };
 /* 中文译文视图(2026-11-13 T-20261113-TRAE-TRANSLATION-VIEWER): 只读 metadata_translated.json, 不改 raw */
 (function(){
- var el=document.getElementById('transdata'),btn=document.getElementById('langtoggle'),box=document.getElementById('transbox');
- if(!el||!btn||!box){return;}
+ var el=document.getElementById('transdata'),btn=document.getElementById('langtoggle');
+ if(!el||!btn){return;}
+ /* #transbox 由 metadata 总览面板提供; pipeline 构建(meta=None)的页面没有该面板,
+    此时运行期自建浮层, 否则按钮点了没反应(监听器被静默跳过)。 */
+ var box=document.getElementById('transbox');
+ if(!box){
+  box=document.createElement('div');
+  box.id='transbox';box.className='hide floatpane';
+  (document.body||document.documentElement).appendChild(box);
+ }
  var t={};
  try{t=JSON.parse(el.textContent||'{}')||{};}catch(e){t={};}
  var ok=(t.status==='ok');
