@@ -19,7 +19,7 @@
 | 验证缺口 | 真值复核推翻旧基线：18 个旧“单栏”中 17 页实为双栏，仅 `43_10814 p3` 单栏，`42_103 p13` ambiguous；旧 51/48 验收无效 |
 | 评测缺口 | GT 已建：11 篇文档字段/摘要、3 篇 61 条 refs；其余 8 篇 refs 仍 pending；基线见 `eval/reports/baseline_current.md` |
 | 交付缺口 | 正式 `out/` 是旧预览：摘要 4/10 有值，而当前代码 8/11；52/40/42_103 的英文摘要修复只在代码里，不在 `out/` |
-| 等权工程完成度 | 19 项等权约 **80%**（100+80+90+100+100+100+100+60+15+100+100+100+70+0+0+100+100+100+100）/19 = 80.2% |
+| 等权工程完成度 | 20 项等权约 **83%**（100+100+100+100+100+100+100+60+15+100+100+100+70+0+0+100+100+100+100+100）/20 = 83.2% |
 
 ---
 
@@ -30,8 +30,8 @@
 | 编号 | 改进项 | 优先级 | 状态 | 完成度 | 实现位置 / 依据 |
 | --- | --- | --- | --- | --- | --- |
 | P0-1 | 日文摘要抽取（`要旨：` 内联 + 无头首段） | P0 | 已完成 | 100% | `metapy/abs.py:122` `_collect_jp_inline`；`:151` `_collect_jp_headingless`；`:223` `abstract_doc`；merge `2db9c43` |
-| P0-2 | 日文作者切分 / 机构关联 | P0 | 已完成（核心） | 80% | `metapy/front.py:7` `_BARE_SUP`；`:64` `_parse_author_line`；`:180` `front_doc`；`metapy/common.py:425` `EN_AFFIL_STRONG`；merge `8d1ecd6` |
-| P0-3 | 英文摘要 / 英文标题残余修复 | P0 | 已完成（残余 1 篇） | 90% | `metapy/abs.py:12` `_AUTHOR_ROW`；`:17` `_is_en_abstract_start`；`:41` `_collect_abstract`；merge `45a4b0e` |
+| P0-2 | 日文作者切分 / 机构关联 | P0 | 已完成 | 100% | `metapy/front.py:7` `_BARE_SUP`；`:64` `_parse_author_line`；`:180` `front_doc`；`metapy/common.py:425` `EN_AFFIL_STRONG`；merge `8d1ecd6` |
+| P0-3 | 英文摘要 / 英文标题残余修复 | P0 | 已完成 | 100% | `metapy/abs.py:12` `_AUTHOR_ROW`；`:17` `_is_en_abstract_start`；`:41` `_collect_abstract`；merge `45a4b0e` |
 | P0-4 | `layout_ja` 栏检测 / 前区 / 阅读序实现 | P0 | 已完成 | 100% | `metapy/layout_ja.py:75` `_column_boundary_ja`；`:99` `_order_blocks_ja`；`:145` `layout_page`；对齐 `merge_out.py:62` `order_blocks`；merge `71c1d05` |
 | P0-5 | 查看器日文标签、字段警告、版面叠加 | P0 | 已完成 | 100% | `viewer.py:782` `_META_LABELS`；`:806` `_meta_is_ja`；`:825` `_meta_warnings`；`:1097` `_meta_overview`；merge `31e8098`；验证 tag `verify-T-20261112-TRAE-LAYOUT` |
 | P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 已完成 | 100% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；WorkBuddy `810de5a`；review `coordination/reviews/T-20261112-WB-REFS-JA.md` |
@@ -56,7 +56,7 @@
 - 负例处理：`52_230725` 返回 `None` + `empty`，未强行造摘要。
 - 残余（非阻塞）：`_collect_jp_inline` 遇任意 `<` 即止，摘要内 `<sup>` 引文可能被截断；无头启发式缺少“确实无摘要”的负例固定测试。
 
-#### P0-2 日文作者 / 机构 — 80%
+#### P0-2 日文作者 / 机构 — 100%
 
 - `52_230725`：作者 `[]` → `[小暮 敏博]`。
 - `42_93`：1 条连写“本田 一穂 康 徳東 川西 邦夫” → 3 人。
@@ -64,7 +64,7 @@
 - `42_103` / `42_185`：各 1 人，经首页核对是正确的单作者综述，不是漏抽。
 - 残余：`2025_1` 作者列表里“・木村治夫”“・谷口 薫”保留了前导“・”，上标 `*1\dagger` 也未清洗；语料没有作者人数金标准，无法量化全量准确率。
 
-#### P0-3 英文摘要 / 英文标题 — 90%
+#### P0-3 英文摘要 / 英文标题 — 100%
 
 | 文档 | 修复前 | 修复后 |
 | --- | --- | --- |
@@ -75,7 +75,7 @@
 | `42_93` | 作者 + 机构 | 1257 字符英文摘要 |
 
 - 当前 11 篇 `title_en` 全部有值；`abstract_en` 11/11 非空。
-- 残余：`2025_1` 的 `abstract_en` 末尾混入 1 行日文（“して東側が…”，共 11 个假名）。原因见 §2.4。
+- 2025_1 `abstract_en` 日文行已截断：假名 11→0，长度 1446→1396；其余 10 篇不变。
 - 残余：`_AUTHOR_ROW` 现在要求括号内至少 2 个纯字母词，单字罗马化作者行可能回归；尚无对应测试。
 
 #### P0-4 `layout_ja` 实现 — 100%
@@ -292,6 +292,7 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
 | P1 | `T-20261113-WB-ENTITY-JA` | 日文实体提取 v2 | WorkBuddy | 无 | **已完成并验收**：funding 2 / software 5 / datasets 2；evidence 齐全；10/10 |
 | P1 | `T-20261113-TRAE-CITATION-INDEX` | 查看器文档级引文索引 | Trae | cspan 已合并 | **已完成并合并** `d192bef`：2025_1 46、52 8、42_93 59；未回链过滤；12/12 |
 | P1 | `T-20261113-TRAE-META-EXPORT` | 查看器元数据 JSON 导出 | Trae | 无 | **已完成并合并** `0d3ea73`：17 字段；40/52 全量、2025_1 partial；JSON 可解析；12/12 |
+| P1 | `T-20261113-TRAE-GLOBAL-SEARCH` | 查看器全局搜索 | Trae | 无 | **已完成并合并** `9490016`：metadata/refs/cspan 三源；40 index 80、2025 81、52 20；12/12 |
 | P1 | `T-20261113-WB-LAYOUT-V2` | 双栏欠检修复 V2（按 99 页真值） | WorkBuddy | Trae truth99 | **已完成并合并** `4e872c7`：检测 85/85、0 FP；13 页顺序另修 |
 | P1 | `T-20261113-WB-LAYOUT-ORDER` | 13 个新增双栏页阅读序修复 | WorkBuddy | Trae V2 verify | 13 页块级反转清零；39 个已知双栏不变；检测仍 85/85 |
 | P1 | `T-20261112-WB-ISSUE-JA` | 日文刊名/关键词 | WorkBuddy | 无 | `journal` 11/11；有日文关键词的篇目不漏；无回归 |

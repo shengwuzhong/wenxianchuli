@@ -1,0 +1,15 @@
+{
+ "task": "T-20261113-TRAE-GLOBAL-SEARCH",
+ "title": "查看器全局搜索",
+ "branch": "agent/trae/T-20261113-TRAE-GLOBAL-SEARCH",
+ "commit": "249c9a2",
+ "code_commit": "249c9a2",
+ "merge_commit": "9490016",
+ "tag": "merge-T-20261113-TRAE-GLOBAL-SEARCH",
+ "merged_at": "2026-11-13T13:34:00+08:00",
+ "integrator": "deepseek",
+ "tests": "unittest 12/12; compileall viewer.py OK",
+ "review": "coordination/reviews/T-20261113-TRAE-GLOBAL-SEARCH.json",
+ "handoff": "coordination/tasks/T-20261113-TRAE-GLOBAL-SEARCH/handoff.md",
+ "note": "Metadata/refs/cspan global search; 40_10569 index 80, 2025_1 81, 52 20; click jump/highlight; console 0; out hash unchanged."
+}

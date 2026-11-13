@@ -1,0 +1,22 @@
+{
+ "task": "T-20261113-TRAE-GLOBAL-SEARCH",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_viewer_only": true,
+  "tests_pass": true,
+  "no_out_writes": true,
+  "four_sources": true,
+  "click_jump": true,
+  "empty_state": true,
+  "console_clean": true
+ },
+ "metrics": {
+  "40_10569": {"index_rows": 80, "hits": {"脳卒中": 45, "本田": 13}},
+  "2025_1": {"index_rows": 81, "hits": {"Huzita": 2}},
+  "52_230725": {"index_rows": 20, "hits": {"岩石": 4}},
+  "screenshots": 2
+ },
+ "notes": "Approved. Input-as-you-type search over metadata/refs/cspan; result rows with type/page/snippet/highlight; click scroll+highlight; empty/no-metadata safe; console 0 error; 12/12; out hash unchanged. Viewer-only.",
+ "reviewed_at": "2026-11-13T13:33:00+08:00"
+}
