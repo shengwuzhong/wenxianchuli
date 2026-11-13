@@ -140,7 +140,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .lg{display:inline-block;margin-left:14px;font-size:12px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px;vertical-align:-1px}
 .fullmd{padding:14px 18px;font-size:14px;line-height:1.9;max-width:1100px;margin:0 auto;background:#fff;min-height:600px}
 </style></head><body>
-<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYOUTBTN@@
+<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
 </header>
 @@BODY@@
@@ -348,7 +348,6 @@ def build_viewer(out_fp, title, sizes, per_page=None, md_text=None, calib_note=N
     else:
         body_html = '<div class="fullmd">%s</div>' % md2html(md_text)
     v = VIEWER_TMPL.replace("@@TITLE@@", title).replace("@@NAV@@", nav)
-    v = v.replace("@@LAYOUTBTN@@", "")   # layout 叠加仅 1:3 对照查看器有(unified 产物)
     v = v.replace("@@BODY@@", body_html).replace("@@DATA@@", json.dumps(data, ensure_ascii=False))
     if calib_note:
         v = v.replace("<head>", "<head>\n<!-- calib: %s -->" % calib_note, 1)
@@ -371,8 +370,6 @@ section{margin:20px 0}h2{font-size:15px;color:#374151;border-left:4px solid #256
 .pane.meta{grid-column:1/-1}   /* 元数据横带: 原第5格(窄列折行+右侧死白)改整行贯穿 */
 .pane.meta.ov .ptitle{background:#7c3aed}   /* 第1页总览横带: 紫头与普通横带(灰头)区分 */
 .mfw{font-size:12px;padding:6px 8px}
-#layoutbtn{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:5px;padding:1px 8px;font-size:12px;margin-left:8px}
-#layoutbtn.on{background:#dbeafe;border-color:#2563eb}
 .mfh{font-size:11px;color:#6b7280;font-weight:bold;margin:6px 0 3px;border-top:1px solid #e5e7eb;padding-top:5px}
 .mfg:first-child .mfh{border-top:none;margin-top:0;padding-top:0}
 .mf{padding:3px 6px;margin:2px 0;border-radius:5px;cursor:pointer;background:#fafafa;border-left:3px solid #e5e7eb}
@@ -439,6 +436,22 @@ section{margin:20px 0}h2{font-size:15px;color:#374151;border-left:4px solid #256
 #thumbtoggle{position:fixed;top:8px;left:10px;z-index:61;font-size:11px;padding:2px 7px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer;white-space:nowrap}
 /* 文档级引文索引(2026-11-13 T-20261113-TRAE-CITATION-INDEX): 纯前端, 点击定位+高亮, 可过滤未回链 */
 #citetoggle{position:fixed;top:8px;right:10px;z-index:61;font-size:11px;padding:2px 8px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer}
+#reviewtoggle{position:fixed;top:8px;right:86px;z-index:61;font-size:11px;padding:2px 8px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer}
+#reviewpanel{position:fixed;top:34px;left:10px;bottom:10px;width:360px;z-index:61;background:#fff;border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 8px 24px rgba(15,23,42,.18);display:flex;flex-direction:column;font-size:12px}
+#reviewpanel.hide{display:none}
+#reviewbar{padding:6px 8px;border-bottom:1px solid #e2e8f0;display:flex;gap:8px;align-items:center}
+#reviewbar button{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;padding:0 7px;font-size:11px}
+#reviewcnt{color:#64748b;margin-right:auto}
+#reviewlist{overflow-y:auto;padding:4px 6px}
+.rvrow{padding:5px 6px;border-bottom:1px dashed #e2e8f0;cursor:pointer}
+.rvrow:hover{background:#eff6ff}
+.rvrow.high{border-left:3px solid #dc2626}
+.rvrow.mid{border-left:3px solid #d97706}
+.rvrow.done{opacity:.45;background:#f8fafc}
+.rvh{font-weight:600;color:#1e3a8a}
+.rvs{color:#334155;margin-top:2px}
+.rva{margin-top:3px}
+.rva button{margin-right:4px;border:1px solid #cbd5e1;background:#fff;border-radius:3px;font-size:10px;padding:0 5px;cursor:pointer}
 #citepanel{position:fixed;top:34px;right:10px;bottom:10px;width:360px;z-index:61;background:#fff;border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 8px 24px rgba(15,23,42,.18);display:flex;flex-direction:column;font-size:12px}
 #citepanel.hide{display:none}
 #citebar{padding:6px 8px;border-bottom:1px solid #e2e8f0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -552,21 +565,21 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .dot.m{background:#60a5fa}.dot.d{background:#fbbf24}.dot.p{background:#34d399}
 .lg{display:inline-block;margin-left:14px;font-size:12px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px;vertical-align:-1px}
 </style></head><body>
-<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYOUTBTN@@
+<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
-<span id="qwrap"><input id="q" type="search" placeholder="搜索标题/作者/文献/引文" autocomplete="off"><div id="qres" class="hide"></div></span>
-<button id="langtoggle" type="button" title="切换中文译文/原文">中文</button>
 </header>
-<button id="thumbtoggle" type="button" title="显示/隐藏逐页缩略图栏">‹ 缩略图</button>
-<nav id="thumbrail" aria-label="页面缩略图">@@THUMBS@@</nav>
 <button id="citetoggle" type="button" title="打开/关闭全文档引文索引">引文索引</button>
 <aside id="citepanel" class="hide" aria-label="引文索引">
-<div id="citebar"><label><input type="checkbox" id="cionly"> 仅未回链</label><span id="citecnt"></span>@@CITEEXP@@</div>
+<div id="citebar"><label><input type="checkbox" id="cionly"> 仅未回链</label><span id="citecnt"></span></div>
 <div id="citelist"></div>
 </aside>
+<button id="reviewtoggle" type="button" title="打开/关闭实体复核队列">复核</button>
+<aside id="reviewpanel" class="hide" aria-label="实体复核队列">
+<div id="reviewbar"><span id="reviewcnt"></span><button id="reviewnext" type="button">下一条</button></div>
+<div id="reviewlist"></div>
+</aside>
 <script type="application/json" id="citedata">@@CITEDATA@@</script>
-<script type="application/json" id="searchdata">@@SEARCHDATA@@</script>
-<script type="application/json" id="transdata">@@TRANSDATA@@</script>
+<script type="application/json" id="reviewdata">@@REVIEWDATA@@</script>
 @@BODY@@
 <script>
 var META=@@DATA@@, pinned=null;
@@ -727,8 +740,6 @@ document.addEventListener('click',function(e){
   var rs=sec.querySelectorAll('rect[data-u="'+mf.dataset.u+'"]');
   rs.forEach(function(r){r.classList.add('on');r.classList.add('cite-on');
    setTimeout(function(){r.classList.remove('on');r.classList.remove('cite-on');},1600);});}});
-var lbt=document.getElementById('layoutbtn');
-if(lbt){lbt.onclick=function(){document.body.classList.toggle('layoff');lbt.classList.toggle('on');};}
 document.addEventListener('click',function(e){
  var t=e.target.closest?e.target.closest('[data-layu]'):null;if(!t)return;
  var uid=t.getAttribute('data-layu');if(!uid)return;
@@ -843,6 +854,67 @@ function metaExport(btn){
   panel.classList.toggle('hide');
   btn.textContent=panel.classList.contains('hide')?'引文索引':'关闭索引';
  });
+ render();
+})();
+/* 实体复核队列(2026-11-13): 只列必需实体的缺失/低置信/未回链, 点击原文定位 */
+(function(){
+ var el=document.getElementById('reviewdata'),panel=document.getElementById('reviewpanel');
+ var btn=document.getElementById('reviewtoggle'),list=document.getElementById('reviewlist');
+ var cnt=document.getElementById('reviewcnt'),next=document.getElementById('reviewnext');
+ if(!el||!panel||!btn||!list){return;}
+ var rows=[];
+ try{rows=JSON.parse(el.textContent||'[]')||[];}catch(e){rows=[];}
+ var doc=(location.pathname.split('/').slice(-2,-1)[0]||'doc');
+ var key='viewer_review:'+doc, state={};
+ try{state=JSON.parse(localStorage.getItem(key)||'{}')||{};}catch(e){state={};}
+ function rid(r){return r[2]+'|'+r[0]+'|'+r[1]+'|'+r[3];}
+ function save(){try{localStorage.setItem(key,JSON.stringify(state));}catch(e){}}
+ function hl(uid){
+  var t=document.querySelectorAll('[data-u="'+uid+'"]');
+  for(var i=0;i<t.length;i++){
+   t[i].classList.add('on');t[i].classList.add('cite-on');
+   (function(x){setTimeout(function(){x.classList.remove('on');x.classList.remove('cite-on');},2400);})(t[i]);
+  }
+ }
+ function go(r){
+  var sec=document.getElementById('p'+((r[0]||1)-1));
+  if(sec){sec.scrollIntoView({behavior:'smooth',block:'start'});}
+  if(r[1]){setTimeout(function(){hl(r[1]);},260);}
+ }
+ function render(){
+  list.textContent='';
+  var done=0;
+  for(var i=0;i<rows.length;i++){
+   (function(r){
+    var id=rid(r), st=state[id];
+    if(st){done++;}
+    var d=document.createElement('div');
+    d.className='rvrow '+(r[5]==='high'?'high':'mid')+(st?' done':'');
+    var h=document.createElement('div');h.className='rvh';
+    h.textContent='p'+r[0]+' · '+r[2]+' · '+r[4];
+    var s=document.createElement('div');s.className='rvs';
+    s.textContent=(r[3]||'(空)').slice(0,110);
+    var a=document.createElement('div');a.className='rva';
+    var ok=document.createElement('button');ok.type='button';ok.textContent='接受';
+    var no=document.createElement('button');no.type='button';no.textContent='驳回';
+    ok.onclick=function(ev){ev.stopPropagation();state[id]='accepted';save();render();};
+    no.onclick=function(ev){ev.stopPropagation();state[id]='rejected';save();render();};
+    a.appendChild(ok);a.appendChild(no);
+    d.appendChild(h);d.appendChild(s);d.appendChild(a);
+    d.onclick=function(){go(r);};
+    list.appendChild(d);
+   })(rows[i]);
+  }
+  if(!rows.length){list.textContent='没有待复核实体';}
+  if(cnt){cnt.textContent=done+' / '+rows.length+' 已处理';}
+ }
+ if(next){next.onclick=function(){
+  for(var i=0;i<rows.length;i++){if(!state[rid(rows[i])]){go(rows[i]);return;}}
+ };}
+ btn.onclick=function(){
+  panel.classList.toggle('hide');
+  btn.textContent=panel.classList.contains('hide')?'复核':'关闭复核';
+ };
  render();
 })();
 /* 全局搜索(2026-11-13 T-20261113-TRAE-GLOBAL-SEARCH): 跨 metadata/refs/cspan, 输入即搜, 命中高亮+定位 */
@@ -1220,6 +1292,63 @@ def _trans_data_json(tr):
     return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
 
 
+def _review_index_json(meta):
+    """复核队列: 只列必需实体的缺失/低置信/未回链，供快速定位。
+
+    row = [page, uid, field_label, value, issue, severity]
+    """
+    if not meta:
+        return "[]"
+    rows = []
+
+    def add(page, uid, field, value, issue, sev):
+        rows.append([page or 0, uid or "", field, (value or "")[:80], issue, sev])
+
+    required = [("title", "标题"), ("keywords", "关键词"), ("abstract", "摘要"),
+                ("authors", "作者"), ("affiliations", "机构"), ("journal", "期刊"),
+                ("year", "出版年"), ("volume", "卷"), ("issue", "期"),
+                ("pages", "页码")]
+    for key, label in required:
+        obj = meta.get(key)
+        if key == "keywords":
+            if not (obj or []) and not (meta.get("keywords_en") or []):
+                add(1, "", label, "", "缺失", "high")
+            continue
+        if key in ("authors",):
+            val = obj or []
+            if not val:
+                add(1, "", label, "", "缺失", "high")
+            continue
+        if key == "affiliations":
+            val = obj or []
+            if not val:
+                add(1, "", label, "", "缺失", "high")
+            continue
+        if not isinstance(obj, dict) or not obj.get("value"):
+            add(1, "", label, "", "缺失", "high")
+            continue
+        if obj.get("confidence") == "low":
+            add(obj.get("page"), obj.get("uid"), label, str(obj.get("value")), "低置信", "mid")
+
+    refs = meta.get("references") or []
+    if not refs:
+        add(1, "", "参考文献", "", "缺失", "high")
+    else:
+        for r in refs:
+            if not r.get("title") or not (r.get("authors_raw") or r.get("authors")):
+                add(r.get("page"), r.get("uid"), "参考文献",
+                    str(r.get("title") or ""), "题名/作者缺失", "mid")
+
+    for group in _cspan_sentence_groups(meta.get("citation_spans") or []):
+        if not any(s.get("linked_refs") for s in group):
+            s = group[0]
+            add(s.get("page"), s.get("uid"), "引文句",
+                (s.get("citation_text") or s.get("sentence") or ""), "未回链", "mid")
+
+    rows.sort(key=lambda x: (x[5] != "high", x[0], x[1]))
+    return json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
+
+
 def _cite_export_btn(meta):
     """引文索引「导出 CSV」按钮: 全量 cspan, 空 cspan 时 disabled。
 
@@ -1493,7 +1622,7 @@ def _meta_cell(meta, pno, audit=None, choices=None):
             badge = '<span class="mbadge %s">编号连续%s</span>' % ("ok" if seq_ok else "bad",
                                                                     "✓" if seq_ok else "✗")
         grp.append(("文献%s" % badge,
-                    dot(0) + _refexp_btns(meta) + '<b>%s %d 条</b>' % (lab_ref, len(refs))
+                    dot(0) + '<b>%s %d 条</b>' % (lab_ref, len(refs))
                     + tbl_head + "".join(_ref_rows(refs, au_by_uid, "ref")) + "</table>"))
     fnrefs = [r for r in (meta.get("footnote_refs") or []) if r.get("page") == pno]
     if fnrefs:
@@ -1713,9 +1842,8 @@ def _meta_overview(meta, audit=None):
             last = gname
         out.append(html_s)
     out.append("</div>" * len({g[0] for g in grp}))
-    return ('<div class="pane meta ov"><div class="ptitle ov">metadata 总览（全部抽取字段 · 明细按页见下方横带）'
-            '%s</div><div id="transbox" class="hide"></div>'
-            '<div class="mfw">%s</div><div class="pmask"></div></div>' % (_meta_export_btn(meta), "".join(out)))
+    return ('<div class="pane meta ov"><div class="ptitle ov">metadata 总览（全部抽取字段 · 明细按页见下方横带）</div>'
+            '<div class="mfw">%s</div><div class="pmask"></div></div>' % "".join(out))
 
 
 
@@ -2032,14 +2160,8 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
             flag += ' <a class="empf jump" data-t="emp_%s" title="跳到本页首个空块">空块×%d</a>' % (first_emp, nemp)
         secs.append('<section id="p%d"><h2>第 %d 页%s <span class="stat" id="st_p%d"></span></h2>%s<div class="grid">%s%s%s</div></section>' % (p, p + 1, flag, p, lay_strip, ov_cell, img_cell, ch_cells))
     v = COMPARE_TMPL.replace("@@TITLE@@", title).replace("@@NAV@@", nav)
-    v = v.replace("@@THUMBS@@", thumbs)
     v = v.replace("@@CITEDATA@@", _cite_index_json(meta))
-    v = v.replace("@@SEARCHDATA@@", _search_index_json(meta))
-    v = v.replace("@@CITEEXP@@", _cite_export_btn(meta))
-    v = v.replace("@@TRANSDATA@@", _trans_data_json(
-        _load_translated(os.path.join(os.path.dirname(out_fp), "metadata_translated.json"))))
-    v = v.replace("@@LAYOUTBTN@@", ('<button id="layoutbtn" class="on" title="显示/隐藏 layout 叠加(阅读序序号 + 双栏分界; 只读, 不改数据)">'
-                                    "layout 标注</button>") if lay_any else "")
+    v = v.replace("@@REVIEWDATA@@", _review_index_json(meta))
     v = v.replace("@@BODY@@", '<div class="wrap">%s</div>' % "\n".join(secs))
     v = v.replace("@@DATA@@", json.dumps(data, ensure_ascii=False))
     v = v.replace("@@GROUPS@@", json.dumps(groups_json, ensure_ascii=False))

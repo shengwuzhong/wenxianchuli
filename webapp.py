@@ -76,7 +76,7 @@ def run_metadata(doc, _log):
     任何阶段失败都不阻断主流程(降级为无 metadata 全览的纯对照), 只记日志。"""
     import metapy
     stages = [("m3", metapy.m3_doc), ("layout_ja", metapy.layout_ja_doc),
-              ("refs", metapy.refs_doc), ("frefs", metapy.frefs_doc),
+              ("refs", metapy.refs_doc),
               ("front", metapy.front_doc), ("abs", metapy.abstract_doc),
               ("issue", metapy.issue_doc), ("cspan", metapy.cspan_doc),
               ("entity", metapy.entity_doc)]
