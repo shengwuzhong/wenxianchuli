@@ -448,6 +448,13 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 #citebar button{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;padding:0 7px;font-size:11px;color:#1e3a8a}
 #citebar button:hover{background:#dbeafe;border-color:#2563eb}
 #citebar button:disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9}
+/* 中文译文视图(2026-11-13 T-20261113-TRAE-TRANSLATION-VIEWER): 顶栏中文/原文切换, 不覆盖 raw 字段 */
+#langtoggle{position:absolute;top:8px;right:212px;font-size:11px;padding:2px 8px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer;z-index:62}
+#transbox{background:#f0f9ff;border:1px solid #bae6fd;border-radius:4px;padding:6px 8px;margin:0 0 6px;font-size:12px;color:#0f172a}
+#transbox.hide{display:none}
+#transbox .tzh{font-weight:600;color:#0369a1;margin-bottom:2px}
+#transbox .tr{margin-top:3px;line-height:1.45}
+#transbox .tna{color:#b45309}
 #citecnt{color:#64748b;margin-left:auto}
 #citelist{overflow-y:auto;padding:4px 6px}
 .cirow{padding:5px 6px;border-bottom:1px dashed #e2e8f0;cursor:pointer}
@@ -545,6 +552,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 <header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYBTN@@@@LAYOUTBTN@@
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
 <span id="qwrap"><input id="q" type="search" placeholder="搜索标题/作者/文献/引文" autocomplete="off"><div id="qres" class="hide"></div></span>
+<button id="langtoggle" type="button" title="切换中文译文/原文">中文</button>
 </header>
 <button id="thumbtoggle" type="button" title="显示/隐藏逐页缩略图栏">‹ 缩略图</button>
 <nav id="thumbrail" aria-label="页面缩略图">@@THUMBS@@</nav>
@@ -555,6 +563,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 </aside>
 <script type="application/json" id="citedata">@@CITEDATA@@</script>
 <script type="application/json" id="searchdata">@@SEARCHDATA@@</script>
+<script type="application/json" id="transdata">@@TRANSDATA@@</script>
 @@BODY@@
 <script>
 var META=@@DATA@@, pinned=null;
@@ -923,6 +932,42 @@ window.citeExport=function(btn){
  document.body.appendChild(a);a.click();
  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1200);
 };
+/* 中文译文视图(2026-11-13 T-20261113-TRAE-TRANSLATION-VIEWER): 只读 metadata_translated.json, 不改 raw */
+(function(){
+ var el=document.getElementById('transdata'),btn=document.getElementById('langtoggle'),box=document.getElementById('transbox');
+ if(!el||!btn||!box){return;}
+ var t={};
+ try{t=JSON.parse(el.textContent||'{}')||{};}catch(e){t={};}
+ var ok=(t.status==='ok');
+ var kws=t.keywords_zh||[];
+ var has=!!(t.title_zh||t.abstract_zh||kws.length);
+ var zh=false;
+ function render(){
+  box.textContent='';
+  if(!zh){box.classList.add('hide');return;}
+  box.classList.remove('hide');
+  if(!ok||!has){
+   var n=document.createElement('div');n.className='tna';
+   n.textContent='暂无译文'+(t.status?'（status='+t.status+'）':'（无 metadata_translated.json）');
+   box.appendChild(n);return;
+  }
+  var h=document.createElement('div');h.className='tzh';
+  h.textContent='中文译文';
+  box.appendChild(h);
+  function row(k,v){
+   if(!v){return;}
+   var d=document.createElement('div');d.className='tr';
+   var b=document.createElement('b');b.textContent=k+'：';
+   var s=document.createElement('span');s.textContent=v;
+   d.appendChild(b);d.appendChild(s);box.appendChild(d);
+  }
+  row('标题',t.title_zh);row('摘要',t.abstract_zh);
+  if(kws.length){row('关键词',kws.join(' / '));}
+ }
+ btn.addEventListener('click',function(){
+  zh=!zh;btn.textContent=zh?'原文':'中文';render();
+ });
+})();
 </script>
 <div id="citepop"><div id="citepoptitle">原图块定位</div><svg id="citesvg" preserveAspectRatio="xMidYMid meet"></svg></div>
 </body></html>"""
@@ -1109,6 +1154,26 @@ def _cite_index_json(meta):
                      s.get("confidence") or "", 0 if links else 1])
     rows.sort(key=lambda x: (x[0], x[1]))
     return json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
+
+
+def _load_translated(path):
+    """读 metadata_translated.json(WorkBuddy 契约); 缺失/损坏返回 None, 不抛错。"""
+    try:
+        with io.open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _trans_data_json(tr):
+    """译文载荷: 只取契约字段, 供前端切换; 无译文返回 {}。"""
+    if not isinstance(tr, dict):
+        return "{}"
+    out = {"status": tr.get("status") or "unavailable",
+           "title_zh": tr.get("title_zh") or "",
+           "abstract_zh": tr.get("abstract_zh") or "",
+           "keywords_zh": tr.get("keywords_zh") or []}
+    return json.dumps(out, ensure_ascii=False).replace("</", "<\\/")
 
 
 def _cite_export_btn(meta):
@@ -1609,7 +1674,7 @@ def _meta_overview(meta, audit=None):
         out.append(html_s)
     out.append("</div>" * len({g[0] for g in grp}))
     return ('<div class="pane meta ov"><div class="ptitle ov">metadata 总览（全部抽取字段 · 明细按页见下方横带）'
-            '%s</div>'
+            '%s</div><div id="transbox" class="hide"></div>'
             '<div class="mfw">%s</div><div class="pmask"></div></div>' % (_meta_export_btn(meta), "".join(out)))
 
 
@@ -1931,6 +1996,8 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
     v = v.replace("@@CITEDATA@@", _cite_index_json(meta))
     v = v.replace("@@SEARCHDATA@@", _search_index_json(meta))
     v = v.replace("@@CITEEXP@@", _cite_export_btn(meta))
+    v = v.replace("@@TRANSDATA@@", _trans_data_json(
+        _load_translated(os.path.join(os.path.dirname(out_fp), "metadata_translated.json"))))
     v = v.replace("@@LAYOUTBTN@@", ('<button id="layoutbtn" class="on" title="显示/隐藏 layout 叠加(阅读序序号 + 双栏分界; 只读, 不改数据)">'
                                     "layout 标注</button>") if lay_any else "")
     v = v.replace("@@LAYBTN@@", ('<button id="laybtn" title="块边界诊断: 叠加显示全部统一对象框(只读叠加, 不切换布局)">'
