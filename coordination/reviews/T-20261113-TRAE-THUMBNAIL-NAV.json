@@ -1,0 +1,23 @@
+{
+ "task": "T-20261113-TRAE-THUMBNAIL-NAV",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_viewer_only": true,
+  "tests_pass": true,
+  "no_out_writes": true,
+  "thumb_counts": true,
+  "click_scroll": true,
+  "fold_mobile": true,
+  "console_clean": true,
+  "refs_export_fix": true
+ },
+ "metrics": {
+  "2025_1": {"pages": 17, "thumbs": 17},
+  "40_10569": {"pages": 7, "thumbs": 7},
+  "52_230725": {"pages": 7, "thumbs": 7},
+  "screenshots": 3
+ },
+ "notes": "Approved. Fixed left rail, lazy thumbnails, click scroll, scroll-spy highlight, fold/localStorage; 17/7/7 counts; console 0 error; 12/12. Also fixes a real main-line refs export JS escaping bug (template backslash/newline eaten by Python string), via fromCharCode constants; this is necessary for the previously merged export feature.",
+ "reviewed_at": "2026-11-13T12:55:00+08:00"
+}
