@@ -1,0 +1,22 @@
+{
+ "task": "T-20261112-WB-LAYOUT-DETECT",
+ "reviewer": "deepseek-integrator",
+ "verdict": "changes_requested",
+ "round": 1,
+ "checks": {
+  "code_reverted": true,
+  "no_out_writes": true,
+  "diagnosis_present": true,
+  "old_acceptance_valid": false,
+  "count_consistent": false,
+  "matches_trae_truth": true
+ },
+ "metrics": {
+  "workbuddy_report": {"false_pages_claimed": 17, "false_pages_listed": 18, "claimed_double": 16, "table_double": 17, "single": 1},
+  "trae_truth": {"audited_pages": 30, "double": 28, "single": 1, "ambiguous": 1},
+  "candidate_second_round": {"double": 68, "single": 31},
+  "old_target": {"double": 51, "single": 48}
+ },
+ "notes": "诊断结论成立：旧 51/48 验收基线错误，18 个旧“单栏”里 17 页实际是双栏，只有 43_10814 p3 是单栏；42_185 p1 是双栏且被“候选线须划分全部块”拒绝。但报告计数不一致：正文说 17 个误判，表里 18 行；说 16 页双栏，表里 17 页双栏。结论应改为 30 页中 28 double / 1 single / 1 ambiguous（42_103 p13 在 Trae 处为 ambiguous，WorkBuddy 判 double）。不批准旧验收；需要按修正后的真值重下实现任务。",
+ "reviewed_at": "2026-11-13T10:00:00+08:00"
+}

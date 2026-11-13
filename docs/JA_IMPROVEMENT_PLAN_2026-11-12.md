@@ -16,7 +16,7 @@
 | 已完成 | 日文摘要（要旨/内联/无头）、作者与机构（核心案例）、英文摘要/标题（残余 1 篇）、`layout_ja` 实现、查看器日文面板与警告 |
 | 最大缺口 | 参考文献（refs）日文化：`2025_1` 抽出 0 条，`52_230725` 7 行只切出 3 条，日文条目字段普遍错位，`lang` 仍把日文标成 `ko` |
 | 第二缺口 | 引文句（cspan）依赖 refs：全角括号/日文作者-年份形态未支持，`2025_1` 为 0，`52_230725` 6 条 unlinked |
-| 验证缺口 | Trae 已回归 11 篇 99 页：39 个双栏页反转 0；但 12 个单栏页实际是双栏但 `layout_ja` 欠检 |
+| 验证缺口 | 真值复核推翻旧基线：18 个旧“单栏”中 17 页实为双栏，仅 `43_10814 p3` 单栏，`42_103 p13` ambiguous；旧 51/48 验收无效 |
 | 评测缺口 | GT 已建：11 篇文档字段/摘要、3 篇 61 条 refs；其余 8 篇 refs 仍 pending；基线见 `eval/reports/baseline_current.md` |
 | 交付缺口 | 正式 `out/` 是旧预览：摘要 4/10 有值，而当前代码 8/11；52/40/42_103 的英文摘要修复只在代码里，不在 `out/` |
 | 等权工程完成度 | 15 项等权约 **56%**（100+80+90+85+100+100+45+60+15+100+0+60+0+0+0）/15 = 55.7% |
@@ -39,7 +39,7 @@
 | P1-3 | 本篇来源（`issue`）日文刊名 / 关键词 | P1 | 进行中 | 60% | `metapy/issue.py:133` `_jname_from_line`；`:201` `extract`；`:385` `issue_doc` |
 | P1-4 | 脚注文献（frefs）日文适用性 | P1 | 未开始 | 15% | `metapy/refs.py:1706` `frefs_doc` |
 | P1-5 | `layout_ja` 全量回归（11 篇 99 页） | P1 | 已完成 | 100% | Trae `T-20261112-TRAE-LAYOUT-FULL`：99 页逐页表、39 双栏页 0 反转、12 单栏差异判定；`coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.md` |
-| P1-6 | `layout_ja` 双栏欠检修复（12 页） | P1 | 未开始 | 0% | Trae 回归发现 `2025_1` p7/p13、`40_10588` p4、`42_103` p5/p13、`42_185` p1/p6、`42_93` p8/p10、`52_230302` p7、`5_55` p8、`9_1` p9 实为双栏但 `detected=single` |
+| P1-6 | `layout_ja` 双栏欠检修复（按真值重定） | P1 | blocked（验收基线错误） | 0% | 30 页 audited：28 double / 1 single（`43_10814 p3`）/ 1 ambiguous（`42_103 p13`）；39 个已知双栏不变；旧 51/48 作废 |
 | P2-1 | 日文金标准与字段准确率评测 | P2 | 进行中 | 60% | `eval/ja_gold.json`（11 篇字段/摘要，3 篇 61 条 refs）；`eval/gold_eval.py`；`eval/validate_gold.py`；基线 `eval/reports/baseline_current.md` |
 | P2-2 | 文本规范化 / 术语统一 | P2 | 未开始 | 0% | 无实现；`metapy/common.py:80` 只有兼容字 NFKC 折叠，不是全文规范化 |
 | P2-3 | 翻译（日→中） | P2 | 未开始 | 0% | 无实现、无规格 |
@@ -83,7 +83,7 @@
 - 复刻 `merge_out.order_blocks` 的“full 块按 y 交错、body 块左栏后右栏”逻辑，替换旧的左边缘最大空隙法。
 - `40_10569` p1 的栏边界从错误的 429 纠正为 620；`52_230725` p0 从误判双栏纠正为单栏。
 - `40_10569` + `52_230725` 共 14 页，其中 7 个双栏页与 `merge_out` 的反转数为 **0**（修复前 342 处）。
-- Trae 全量回归（99 页）发现 **12 个单栏页实际是双栏但 `detected=single`**：`2025_1` p7/p13、`40_10588` p4、`42_103` p5/p13、`42_185` p1/p6、`42_93` p8/p10、`52_230302` p7、`5_55` p8、`9_1` p9。根因是 `_column_boundary_ja` 的“两侧各 ≥2 块”门槛在每栏仅 1 块时判不出双栏；这是 P1-6 的输入。
+- 2026-11-13 真值复核：12 个目标页全为双栏；18 个旧“误判页”中 **17 页实际是双栏**，只有 `43_10814 p3` 是单栏（并排 ROC 图），`42_103 p13` 为 ambiguous。根因仍是 `_column_boundary_ja` 的“两侧各 ≥2 块”门槛；旧 51/48 验收基线因此作废。
 - 已知设计债：`layout_ja._order_blocks_ja` 与 `merge_out.order_blocks` 是两份复制逻辑，未来可能漂移。
 
 #### P0-5 查看器 — 100%
@@ -144,11 +144,17 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
 - 截图 12 张（6 页整页 + 6 页放大）；正式 `out/` 未写，哈希仍 `09a8820b…`。
 - 报告：`coordination/tasks/T-20261112-TRAE-LAYOUT-FULL/handoff.md`；review：`coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.md`。
 
-#### P1-6 `layout_ja` 双栏欠检修复 — 0%
+#### P1-6 `layout_ja` 双栏欠检修复 — 0%（blocked，验收基线错误）
 
-- 12 页实为双栏但 `detected=single`：`2025_1` p7/p13、`40_10588` p4、`42_103` p5/p13、`42_185` p1/p6、`42_93` p8/p10、`52_230302` p7、`5_55` p8、`9_1` p9。
-- 根因：`_column_boundary_ja` 要求分隔线两侧各 ≥2 个窄块；当每栏只有 1 个块（如单段落跨栏）时判不出双栏。
-- 修复方向：对“每侧 1 块但几何上明显分栏”的页面增加几何兜底（左右块 x 区间不重叠 + 中间间隙），但不得把真正的单栏页误判为双栏；用 Trae 的 99 页回归复测。
+- 真值（WorkBuddy + Trae 独立判读一致）：
+  - 12 个目标页全为双栏；
+  - 18 个旧“误判页”中 **17 页实际是双栏**，仅 `43_10814 p3` 是单栏（两张并排 ROC 图，无正文栏）；
+  - `42_103 p13` 为 sparse 尾页，允许 double/ambiguous。
+- 30 页 audited：**28 double / 1 single / 1 ambiguous**；旧 51/48 作废。
+- 根因：`_column_boundary_ja` 要求“两侧各 ≥2 个窄块”；OCR 常把整栏合并成 1 块，故投票失败。
+- 失败尝试：WorkBuddy 几何兜底第二轮 68/31，命中 42_185 p1 之外的目标，却把 `43_10814 p3` 误判；它也因“候选线必须划分全部块”漏掉 42_185 p1。代码已回退。
+- 新方向：保留投票法；只在**正文带**做几何分组；允许前区/图表跨线块为 full；42_185 p1 必须 double，43_10814 p3 必须 single。
+- 尚未复核：其余 30 个旧单栏页；若均为单栏，全量暂定 **67 double / 31 single / 1 ambiguous**。
 
 #### P2-1 金标准 — 60%
 
@@ -267,7 +273,7 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
 | P0 | `T-20261112-USER-OUT-DECISION` | 是否解冻 `out/` / 补 `2025_1` | 用户 + DeepSeek | 用户拍板 | 明确“继续冻结”或“生成新预览”；若解冻，`2025_1` 必须有 `metadata.json` |
 | P1 | `T-20261112-WB-CSPAN-JA` | 日文全角括注/作者-年份 | WorkBuddy | `WB-REFS-JA` | 6 个合成用例通过；`2025_1` cspan ≥10；`52_230725` unlinked ≤2；exact ≥95% |
 | P1 | `T-20261112-TRAE-LAYOUT-FULL` | 11 篇 99 页 layout/viewer 全量回归 | Trae | 无 | **已完成**：99 页逐页表；39 个双栏页 0 反转；12 单栏差异逐页判定；12 张截图；12/12 测试；merge `12e5c2a` |
-| P1 | `T-20261112-WB-LAYOUT-DETECT` | 12 页双栏欠检修复 | WorkBuddy | Trae 回归报告 | 12 页全部 `detected=double`；39 个已知双栏页仍 0 反转；不新增单栏误判；99 页回归复测 |
+| P1 | `T-20261112-WB-LAYOUT-DETECT` | 双栏欠检修复（按 30 页真值重定） | WorkBuddy | Trae truth | 30 页 audited 28 double/1 single/1 ambiguous；42_185 p1 double；43_10814 p3 single；39 个已知双栏不变；其余 30 页复核 |
 | P1 | `T-20261112-WB-ISSUE-JA` | 日文刊名/关键词 | WorkBuddy | 无 | `journal` 11/11；有日文关键词的篇目不漏；无回归 |
 | P1 | `T-20261112-WB-AUTHOR-CLEAN` | 作者“・”/`\dagger` 清洗 | WorkBuddy | 无 | `2025_1` 作者无前导“・”、无 `\dagger`；其他篇人数不变 |
 | P2 | `T-20261112-WB-FREFS-JA` | frefs 日文适用性 | WorkBuddy | 用户确认是否需要 | 明确“需要/不需要”；需要则 `42_93` 误报复核 + 日文脚注样例 |
@@ -341,10 +347,10 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
 
 #### T-20261112-WB-LAYOUT-DETECT（P1，WorkBuddy）
 
-- **目标**：修复 Trae 报告的 12 页双栏欠检。
+- **目标**：按 30 页真值修复双栏欠检，不再追求旧 51/48。
 - **范围**：仅 `metapy/layout_ja.py`；不改 `merge_out.py`、`unify.py`、`m3.py`。
-- **做法建议**：在 `_column_boundary_ja` 的“两侧各 ≥2 块”之外增加几何兜底：左右两组块 x 区间不重叠、中间间隙 ≥20px、两组 y 区间有重叠；每侧仅 1 块时也判双栏；但必须保证 60 个已知单栏页不误判。
-- **验收**：12 页全部 `detected=double`；39 个已知双栏页仍 0 反转；60 个已知单栏页不新增双栏；Trae 99 页回归复测；`test_pipeline.py` 12/12。
+- **做法建议**：保留投票法；仅在**正文带**（页下部或 y 密度最高带）做几何分组；每侧 ≥1 个 Text 块、x 不重叠、gap≥20px、y 有重叠；允许前区/图表窄跨线块为 full，不再要求“候选线划分全部块”；42_185 p1 必须 double，43_10814 p3 必须 single。
+- **验收（2026-11-13 修正）**：30 页 audited 28 double / 1 single / 1 ambiguous；42_185 p1 double；43_10814 p3 single；39 个已知双栏不变；其余 30 个旧单栏页复核后定全量；`test_pipeline.py` 12/12。
 
 #### T-20261112-WB-ISSUE-JA（P1，WorkBuddy）
 

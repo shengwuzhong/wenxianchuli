@@ -1,0 +1,28 @@
+{
+ "task": "T-20261112-TRAE-LAYOUT-TRUTH",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "report_present": true,
+  "truth_csv_present": true,
+  "screenshots_present": true,
+  "scope_read_only": true,
+  "no_code_changes": true,
+  "no_out_writes": true,
+  "counts_reconcile": true
+ },
+ "metrics": {
+  "audited_pages": 30,
+  "target_pages": 12,
+  "old_misjudged_pages": 18,
+  "double": 28,
+  "single": 1,
+  "ambiguous": 1,
+  "only_false_positive": "43_10814 p3",
+  "targets_missed_by_old_rule": ["42_185 p1"],
+  "42_185_p1": "double, boundary 619, gap 25px, y overlap 381px",
+  "42_103_p13": "ambiguous"
+ },
+ "notes": "Approved as the independent layout truth set. 30 pages (12 target + 18 old single; WorkBuddy handoff listed 18, not 17): 28 double / 1 single / 1 ambiguous. 17 of 18 old 'false positives' are actually double; only 43_10814 p3 is single. 42_185 p1 is double and was rejected by the 'line must partition all blocks' rule. This confirms the old 51/48 acceptance is invalid. Note: 42_103 p13 marked ambiguous; allow either in later verification.",
+ "reviewed_at": "2026-11-13T10:00:00+08:00"
+}
