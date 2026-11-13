@@ -1,0 +1,29 @@
+{
+ "id": "T-20261113-TRAE-TRANSLATION-VIEWER",
+ "title": "查看器中文译文视图",
+ "priority": "P1",
+ "owner": "trae",
+ "status": "done",
+ "depends_on": [],
+ "allowed_files": [
+  "viewer.py"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/trae/T-20261113-TRAE-TRANSLATION-VIEWER",
+ "base_commit": "main",
+ "acceptance": [],
+ "handoff_to": "deepseek",
+ "created_at": "2026-11-13T05:44:39+00:00",
+ "updated_at": "2026-11-13T13:51:00+08:00"
+}

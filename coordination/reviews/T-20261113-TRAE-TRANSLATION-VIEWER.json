@@ -1,0 +1,22 @@
+{
+ "task": "T-20261113-TRAE-TRANSLATION-VIEWER",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_viewer_only": true,
+  "tests_pass": true,
+  "no_out_writes": true,
+  "switch_works": true,
+  "raw_preserved": true,
+  "unavailable_fallback": true,
+  "actual_translation_data": false
+ },
+ "metrics": {
+  "fixture_2025_1": "ok, Chinese title/abstract/keywords shown",
+  "fixture_40_10569": "unavailable, fallback message",
+  "fixture_52_230725": "ok but empty -> no-translation message",
+  "screenshots": 2
+ },
+ "notes": "Approved as a viewer feature. Reads metadata_translated.json if present; Chinese/raw toggle; raw fields preserved; unavailable and empty safe; 12/12; out hash unchanged. NOT evidence that actual translation data exists: no translate.py/out_preview from WorkBuddy; P2-3 remains incomplete.",
+ "reviewed_at": "2026-11-13T13:50:00+08:00"
+}
