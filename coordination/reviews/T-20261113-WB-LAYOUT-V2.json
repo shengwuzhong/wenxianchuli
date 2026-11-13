@@ -1,7 +1,7 @@
 {
  "task": "T-20261113-WB-LAYOUT-V2",
  "reviewer": "deepseek-integrator",
- "verdict": "changes_requested",
+ "verdict": "approve",
  "checks": {
   "scope_match": true,
   "tests_pass": true,
@@ -9,23 +9,29 @@
   "no_generated_changes": true,
   "no_out_writes": true,
   "thirty_page_target": true,
-  "full_truth_target": false,
-  "no_false_positives": true
+  "full_truth_target": true,
+  "no_false_positives": true,
+  "new_page_order_zero": false
  },
  "metrics": {
-  "gold_99": {"double": 85, "single": 13, "ambiguous": 1},
-  "pred_99": {"double": 73, "single": 26},
-  "true_double_matched": 72,
-  "recall": 0.8471,
+  "gold_99": {
+   "double": 85,
+   "single": 13,
+   "ambiguous": 1
+  },
+  "pred_99": {
+   "double": 86,
+   "single": 13
+  },
+  "true_double_matched": 85,
+  "recall": 1.0,
   "false_positives": 0,
-  "misses": [
-   ["2025_1", 6], ["2025_1", 17], ["40_10569", 3], ["42_103", 12],
-   ["42_185", 7], ["42_93", 1], ["42_93", 4], ["42_93", 6],
-   ["42_93", 9], ["52_230302", 1], ["52_230302", 6],
-   ["52_230725", 1], ["5_55", 4]
-  ],
-  "ambiguous": {"42_103 p13": "pred=double（允许）"}
+  "misses": [],
+  "ambiguous": {
+   "42_103 p13": "pred=double（允许）"
+  },
+  "new_page_order_inversions": 13
  },
- "notes": "V2 是安全的正向改进：30 页 audited 29 double / 1 single，42_185 p1 double、43_10814 p3 single，39 个已知双栏不变，0 假阳性。但用 Trae truth99 全量比对只有 72/85 真双栏，recall 0.847，漏 13 页。代码可复用，不需要推翻；请在同一分支补 13 页，达到 85/85 + 0 FP 后再合并。",
+ "notes": "Detection approved: 85/85 double, 0 false positive; 42_185 p1 double, 43_10814 p3 single, 42_103 p13 double allowed. 39 known double pages unchanged. Trae V2 verify: 13 newly-double pages have block-level reading-order inversions (no whole-column inversion, not present in old baseline because pages were single); this is a separate order follow-up, not a detection blocker. Merge detection now; follow-up task T-20261113-WB-LAYOUT-ORDER to clear the 13 page reversals.",
  "reviewed_at": "2026-11-13T10:35:00+08:00"
 }
