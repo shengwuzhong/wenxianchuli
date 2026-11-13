@@ -32,7 +32,27 @@ def _sentences(t):
     return [p.replace(u"\x00", ".").strip() for p in parts if p.strip()]
 
 
-NARR = re.compile(r"([0-9A-Za-z가-힣一-鿿·.'\-]{2,40}?)[ ]?(\((?:19|20)\d{2}[a-z]?\))")
+# 叙述式: 作者段(允许 ·/・/全角空格/et al.) + 可选 ほか/ら/等 + 括号年份。
+# 括号兼容半角 () 与日文全角 （）——日文正文大量使用全角括注。
+NARR = re.compile(
+    u"([0-9A-Za-z가-힣一-鿿·\u30fb.'\\-]{2,40}?)[ \u3000]?"
+    u"(?:(?:ほか|ら|等)[ \u3000]?)?"
+    u"([（(](?:19|20)\\d{2}[a-z]?[）)])")
+YEAR_SEG = re.compile(r"(?<![\d\-–—])(?:19|20)\d{2}[a-z]?(?![年月日度\d\-])")
+# 括注内作者/年份分隔: 半角逗号、全角逗号(，)、日文顿号(、)
+SEG_SEP = re.compile(u"[,，、]")
+_OPEN_PAREN = {u"(": u")", u"（": u"）"}
+_CLOSE_PAREN = set(_OPEN_PAREN.values())
+_ETAL_TAIL = re.compile(u"(?:\\bet\\s*al\\.?|\\betc\\.?|외|ほか|ら|等)\\s*$", re.I)
+_ABBREV = re.compile(u"(?i)^(?:e\\.?g|i\\.?e|cf|fig|figs|ref|refs|no|pp?|vol|vols|"
+                     u"tab|eq|sec|chap|al|etal|et)$")
+# 括注里的非作者引导词(日文常见): 例如/参照/注/浏览日 等
+_NOT_AUTHOR = re.compile(u"^(?:例えば|例|cf\\.?|参照|注記|注|最終閲覧日|閲覧日|"
+                         u"アクセス日|最終更新日|掲載日)")
+# 合著作者串内的分隔: and / & / ・ / · / 逗号(半角·全角·顿号)
+_AUTHOR_SPLIT = re.compile(u"(?:\\band\\b|&|\u30fb|·|[,，、;；])")
+# 作者键与括号之间允许的残留: et al./etal./etc./외/ほか/ら/等 与分隔符、空白
+_BETWEEN_CITE = u"(?:etal\\.?|etc\\.?|외|ほか|ら|等|[·・*\\s])*"
 NUM_LOOSE = re.compile(r"\[\s*\d{1,3}(?:[,\-\s]\d{1,3})*\s*\]")
 NUM_STRICT = re.compile(r"(?<![\[\d])\[\s*(\d{1,3})\s*\]")
 # 上标数字引文(日文文献): 形态 '$ ^{n} $' / '$^{n,m)}$' / '^{n)}' / '^{n}'。
@@ -51,34 +71,68 @@ def _year_ok(y):
     return y[:4].isdigit() and int(y[:4]) in YEAR_OK
 
 
+def _strip_etal(s):
+    return _ETAL_TAIL.sub("", (s or "").strip()).strip()
+
+
+def _author_ok(s):
+    """括注作者段是否成立: 汉字/韩文 1 字起(日文「堤ほか」), 拉丁至少 2 字母;
+    e.g./i.e./Fig./al. 等缩写与纯年份段出局; 例如/参照/浏览日 等引导词出局。"""
+    t = _strip_etal(s)
+    if _NOT_AUTHOR.match(t.strip()):
+        return False
+    core = re.sub(u"[^0-9A-Za-z가-힣一-鿿]", "", t).strip(".")
+    if not core or _ABBREV.match(core):
+        return False
+    if re.search(u"[가-힣一-鿿]", core):
+        return True
+    return len(core) >= 2
+
+
+def _author_parts(s):
+    """合著串拆成单个作者(保留原序), 供首作者回链兜底。"""
+    return [p.strip() for p in _AUTHOR_SPLIT.split(_strip_etal(s or "")) if p.strip()]
+
+
 def _paren_cite(inner):
     """括注式判定: 括号内必须同时有(作者段)与(四位年份段)——只含年份的括号(如
-    '(2015 개정교육과정)')在此自然出局, 回链比对兼任误报过滤器。返回 (author_token, year) 或 None。"""
+    '(2015 개정교육과정)')在此自然出局, 回链比对兼任误报过滤器。返回 (author_token, year) 或 None。
+    作者/年份分隔兼容 ',' '，' '、'; 无逗号的 '山田 2018' 从年份段剥离年份后取作者。"""
+    if not inner:
+        return None
+    segs = [s.strip() for s in SEG_SEP.split(inner) if s.strip()]
     year = None
-    segs = [s.strip() for s in inner.split(",") if s.strip()]
     for s in segs:
-        m = re.search(r"(?:19|20)\d{2}[a-z]?", s)
-        if m and _year_ok(m.group(0)):
-            year = m.group(0)
+        for m in YEAR_SEG.finditer(s):
+            if _year_ok(m.group(0)):
+                year = m.group(0)
     if year is None:
         return None
     for s in segs:
-        if re.search(r"(?:19|20)\d{2}", s):
-            continue   # 年份段不当作者
-        if re.search(u"[A-Za-z가-힣一-鿿]{2}", s):
-            return s, year
+        m = YEAR_SEG.search(s)
+        if m:
+            rest = s[:m.start()].strip(u" ,，、;；")   # 年份前才是作者; 年份打头(2015 改革)出局
+        else:
+            rest = s.strip()
+        if rest and _author_ok(rest):
+            return rest, year
     return None
 
 
 def _narr_name_ok(name):
-    """叙述式名字段: 至少含 2 个字母/韩文/汉字, 排除纯句尾碎片('는'/'과' 等)。"""
-    core = re.sub(u"[^0-9A-Za-z가-힣一-鿿]", "", name or "")
+    """叙述式名字段: 汉字/韩文/拉丁; 单个汉字(日文姓氏「堤ほか」)成立,
+    单个韩文虚词('는'/'과')仍出局; 纯拉丁至少 2 字母。"""
+    core = re.sub(u"[^0-9A-Za-z가-힣一-鿿]", "", _strip_etal(name))
+    if not core or _ABBREV.match(core):
+        return False
+    if re.search(u"[一-鿿]", core):
+        return True
     return len(core) >= 2
 
 
 def _author_fold(s):
     value = re.sub(r"\*", "", s or "").strip()
-    value = re.sub(r"(?:\bet\s+al\.?|\betc\.?|외)\s*$", "", value, flags=re.I).strip()
+    value = _strip_etal(value)
     return _foldv(value)
 
 
@@ -108,6 +162,10 @@ def _author_matches(value, row):
     key = _author_fold(value)
     if key and key in row["af"]:
         return True
+    for part in _author_parts(value):
+        pk = _author_fold(part)
+        if len(pk) >= 2 and pk in row["af"]:
+            return True
     if len(key) < 5:
         return False
     return any(_edit_distance_le1(key, _author_fold(k)) for k in row["akeys"])
@@ -132,7 +190,7 @@ def _author_keys(r):
         vals.append(raw)
     keys = set()
     for value in vals:
-        value = re.sub(r"(?:\bet\s+al\.?|\betc\.?|외)\s*$", "", value.strip(), flags=re.I)
+        value = _strip_etal(value.strip())
         value = value.strip(" ,.;·*")
         if len(_author_fold(value)) >= 2:
             keys.add(value)
@@ -146,7 +204,7 @@ def _author_keys(r):
 
 def _narrative_reverse(sent, m, ridx):
     """用本篇同年作者键向左锚定叙述式边界，返回 (原文起点, 完整作者段)。"""
-    year = m.group(2).strip("()")[:5]
+    year = m.group(2).strip(u"()（）")[:5]
     if not _year_ok(year):
         return None
     left = sent[:m.start(2)]
@@ -162,7 +220,7 @@ def _narrative_reverse(sent, m, ridx):
             idx = folded.rfind(k)
             while idx >= 0:
                 between = folded[idx + len(k):]
-                if re.fullmatch(r"(?:etal\.?|etc\.?|외|[·*])*", between, re.I):
+                if re.fullmatch(_BETWEEN_CITE, between, re.I):
                     start = positions[idx]
                     name = left[start:].strip()
                     score = (row["yfull"] == year, len(k), idx)
@@ -174,7 +232,7 @@ def _narrative_reverse(sent, m, ridx):
         for token in re.finditer(r"[A-Za-z가-힣一-鿿]{5,}", left):
             key = _author_fold(token.group(0))
             between = _foldv(left[token.end():])
-            if not re.fullmatch(r"(?:etal\.?|etc\.?|외|[·*])*", between, re.I):
+            if not re.fullmatch(_BETWEEN_CITE, between, re.I):
                 continue
             for row in ridx.rows:
                 if row["y4"] != year[:4] or not _author_matches(key, row):
@@ -186,12 +244,12 @@ def _narrative_reverse(sent, m, ridx):
 
 
 def _split_top_level(text, separators=";；"):
-    """按非嵌套分号切分，返回 (文本, 起点, 终点)。"""
+    """按非嵌套分号切分，返回 (文本, 起点, 终点)。括号深度兼容全角 （）［］｛｝。"""
     out, start, depth = [], 0, 0
     for i, ch in enumerate(text):
-        if ch in "([{":
+        if ch in u"([{（［｛":
             depth += 1
-        elif ch in ")]}":
+        elif ch in u")]}）］｝":
             depth = max(0, depth - 1)
         elif ch in separators and depth == 0:
             out.append((text[start:i], start, i))
@@ -200,18 +258,40 @@ def _split_top_level(text, separators=";；"):
     return out
 
 
+def _split_units(text):
+    """多引括注拆分: 先按顶层分号, 再把「两侧都带年份」的中点段(・)拆开——
+    作者内部的 ・(如 木村・中西, 2013) 左侧无年份, 不会被拆。"""
+    out = []
+    for part, a, b in _split_top_level(text):
+        segs, start = [], 0
+        for m in re.finditer(u"\u30fb", part):
+            left, right = part[start:m.start()], part[m.end():]
+            if YEAR_SEG.search(left) and YEAR_SEG.search(right):
+                segs.append((left, start, m.start()))
+                start = m.end()
+        if not segs:
+            out.append((part, a, b))
+            continue
+        segs.append((part[start:], start, len(part)))
+        out.extend((t, a + s, a + e) for t, s, e in segs)
+    return out
+
+
 def _paren_hits(sent):
-    """平衡括号扫描；多引括注逐单元返回不重叠的 (start,end,kind,(author,year))。"""
+    """平衡括号扫描(半角 () 与日文全角 （）)；多引括注逐单元返回不重叠的
+    (start,end,kind,(author,year))。"""
     hits, stack = [], []
     for i, ch in enumerate(sent):
-        if ch == "(":
-            stack.append(i)
-        elif ch == ")" and stack:
-            start = stack.pop()
+        if ch in _OPEN_PAREN:
+            stack.append((i, ch))
+        elif ch in _CLOSE_PAREN and stack:
+            start, opener = stack.pop()
+            if ch != _OPEN_PAREN[opener]:
+                continue
             if stack:
                 continue
             inner = sent[start + 1:i]
-            units = _split_top_level(inner)
+            units = _split_units(inner)
             parsed = []
             for text, a, b in units:
                 got = _paren_cite(text)
@@ -253,6 +333,16 @@ class _RefIndex(object):
         key = _author_fold(author_tok)
         y4 = year[:4]
         a_hits = [r for r in self.rows if key and key in r["af"]]
+        if not a_hits:
+            # 合著串(and/&/・/·/逗号)按首作者兜底:「Kimura and Tsutsumi」「三田村・吉川」
+            for part in _author_parts(author_tok):
+                pk = _author_fold(part)
+                if len(pk) < 2:
+                    continue
+                hits = [r for r in self.rows if pk in r["af"]]
+                if hits:
+                    key, a_hits = pk, hits
+                    break
         if not a_hits:
             a_hits = [r for r in self.rows if r["y4"] == y4 and _author_matches(key, r)]
         full = [r for r in a_hits if r["yfull"] == year]
@@ -347,9 +437,7 @@ def cspan_doc(doc, out_root):
                 authors, year, best, ncand = None, None, None, 0
                 if kind == "narrative":
                     name = m.group(1)
-                    if not _narr_name_ok(name):
-                        continue
-                    year = m.group(2).strip(u"()")[:5]
+                    year = m.group(2).strip(u"()（）")[:5]
                     if not _year_ok(year):
                         continue
                     reverse = _narrative_reverse(sent, m, ridx)
@@ -357,6 +445,10 @@ def cspan_doc(doc, out_root):
                         s0, name = reverse
                         if s0 < previous_end:
                             continue
+                        if not _narr_name_ok(name):
+                            continue
+                    elif not _author_ok(name):
+                        continue   # 无回链时按括注口径过滤 al./例如 等碎片
                     authors = [name]
                     best, ncand, ma, my = ridx.link_ay(name, year, p + 1)
                     conf = "exact" if (best and ma and my and best in
@@ -371,6 +463,8 @@ def cspan_doc(doc, out_root):
                         else ("partial" if (best and (ma or my)) else "unlinked")
                 else:
                     # numeric([n]) 与 superscript(^{n,m}) 数字式: 上标可含多数字, 逐数字生成独立 span
+                    if not ridx.max_num:
+                        continue   # 文献表无编号 → 数字/上标无可对号目标(不出 unlinked 噪声)
                     num_grp = m.group(1)
                     nums = [int(x) for x in re.findall(r"\d+", num_grp)]
                     if kind == "superscript" and len(nums) > 1:
@@ -515,7 +609,39 @@ def _selftest():
             and bool(sup2) and sup2.group(1) == "1,2"
             and bool(sup3) and sup3.group(1) == "3"
             and not SUP_STRICT.search(u"10^{3} の細胞"))
-    oks = (ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10, ok11, ok12)
+    # 13) 日文全角括注: （著者，年）成立, 全角逗号分隔
+    hits13 = _paren_hits(u"と報告されている（尾崎ほか，2000）。")
+    ok13 = len(hits13) == 1 and hits13[0][3] == (u"尾崎ほか", "2000")
+    # 14) 半角括号 + 日文顿号 + 顶层分号: 拆成两篇独立单元
+    hits14 = _paren_hits(u"(尾崎ほか、2000; 西岡ほか、2001)")
+    ok14 = [h[3] for h in hits14] == [(u"尾崎ほか", "2000"), (u"西岡ほか", "2001")]
+    # 15) 无逗号括注 + 全角叙述式: 从年份段剥离年份取作者
+    m15 = NARR.search(u"山田（2018）")
+    ok15 = (_paren_cite(u"山田 2018") == (u"山田", "2018")
+            and bool(m15) and m15.group(1) == u"山田")
+    # 16) 多作者中点: 作者内 ・ 左侧无年份, 不拆单元
+    hits16 = _paren_hits(u"（木村・田中，2013）")
+    ok16 = len(hits16) == 1 and hits16[0][3] == (u"木村・田中", "2013")
+    # 17) 同年 a/b: 全角括注保留下标并对到 1966b
+    ja_refs = [
+        {"uid": "uT1", "num": 1, "page": 5, "authors_raw": u"田井昭子，",
+         "authors": [u"田井昭子"], "year": "1966a"},
+        {"uid": "uT2", "num": 2, "page": 5, "authors_raw": u"田井昭子，",
+         "authors": [u"田井昭子"], "year": "1966b"},
+    ]
+    jridx = _RefIndex(ja_refs)
+    hits17 = _paren_hits(u"（田井，1966b）")
+    best17, _, ma17, my17 = (jridx.link_ay(hits17[0][3][0], hits17[0][3][1], 5)
+                             if hits17 else (None, 0, False, False))
+    ok17 = (len(hits17) == 1 and best17 is not None and best17["uid"] == "uT2" and my17)
+    # 18) 无回链: 括注仍成立, 但 link_ay 无候选(不误配到同年其他文献)
+    hits18 = _paren_hits(u"（存在しない，1999）")
+    best18, nc18 = (jridx.link_ay(hits18[0][3][0], hits18[0][3][1], 5)[:2]
+                    if hits18 else (None, 0))
+    ok18 = len(hits18) == 1 and best18 is None and nc18 == 0
+    oks = (ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10, ok11, ok12,
+           ok13, ok14, ok15, ok16, ok17, ok18)
+
     for i, ok in enumerate(oks, 1):
         if ok:
             n_ok += 1
