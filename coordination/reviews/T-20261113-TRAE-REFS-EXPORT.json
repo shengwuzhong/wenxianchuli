@@ -1,0 +1,23 @@
+{
+ "task": "T-20261113-TRAE-REFS-EXPORT",
+ "reviewer": "deepseek-integrator",
+ "verdict": "approve",
+ "checks": {
+  "scope_match": true,
+  "tests_pass": true,
+  "no_frozen_changes": true,
+  "no_generated_changes": true,
+  "no_out_writes": true,
+  "csv_counts": true,
+  "csv_columns": true,
+  "bibtex_sample": true,
+  "empty_refs_disabled": true
+ },
+ "metrics": {
+  "2025_1": {"refs": 35, "csv_rows": 35, "cols": 9},
+  "40_10569": {"refs": 19, "csv_rows": 19, "cols": 9},
+  "52_230725": {"refs": 7, "csv_rows": 7, "cols": 9}
+ },
+ "notes": "Approved. Only viewer.py changed (+69/−1). CSV 35/19/7 rows, all 9 columns; BibTeX escapes and key format present; empty refs disabled; browser console 0 error; unittest 12/12; out hash unchanged. Payload is repeated per page (2025_1 ~3x); acceptable for this task, optimize later if needed.",
+ "reviewed_at": "2026-11-13T11:32:00+08:00"
+}
