@@ -1,0 +1,23 @@
+{
+ "id": "T-20261113-DS-NORMALIZE-META",
+ "title": "normalizer 接入 metadata sidecar（raw/normalized/映射）",
+ "priority": "P1",
+ "owner": "deepseek",
+ "status": "done",
+ "depends_on": ["T-20261113-DS-NORMALIZER"],
+ "allowed_files": ["metapy/normalize_meta.py", "docs/JA_IMPROVEMENT_PLAN_2026-11-12.md"],
+ "forbidden": ["metapy/m3.py", "unify.py", "out/", "uploads/", "inbox/", "channels.local.json"],
+ "allow_frozen": [],
+ "branch": "main",
+ "base_commit": "57950e7",
+ "acceptance": [
+  "normalize_meta 可对 metadata.json 生成 sidecar",
+  "覆盖 title/abstract/authors/affiliations/keywords/body/references",
+  "raw/normalized/段级 map 保留",
+  "不修改 canonical metadata.json",
+  "selfcheck PASS"
+ ],
+ "handoff_to": "deepseek",
+ "created_at": "2026-11-13T12:35:00+08:00",
+ "updated_at": "2026-11-13T12:35:00+08:00"
+}
