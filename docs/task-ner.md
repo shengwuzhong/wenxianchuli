@@ -4,9 +4,9 @@
 
 `D:\Workspace\KCI\pipeline`——韩文期刊三渠道 OCR 管道。13 篇已完成统一层（`out/<doc>/unified/`，按块的正文文本）和元数据层（`out/<doc>/metadata.json`：标题/作者/机构/摘要/参考文献条目等）。旧 REVIEW 文档已删除，代码注释里的 §xx 编号是历史痕迹，不用理。
 
-**先读 `RULES.md`**——唯一有效的规矩，只有 5 条。
+**先读 `rules.md`**——唯一有效的规矩，只有 5 条。
 
-> 现行状态（2026-11-09）：旧 NER 产物已按用户要求全部清除。funding/software/datasets 改为“当前论文关系 + evidence_span + uid”抽取，全文覆盖分批，仅 needs_context 候选携带前后块复核；不再以名称出现代替关系证据。NER 开关仍为 false，真实 DS 运行需另行授权。journals/standards/proceedings 保留既有口径。下文保留最初任务背景，现行决定以 RULES.md 与 REVIEW.md 末尾记录为准。
+> 现行状态（2026-11-09）：旧 NER 产物已按用户要求全部清除。funding/software/datasets 改为“当前论文关系 + evidence_span + uid”抽取，全文覆盖分批，仅 needs_context 候选携带前后块复核；不再以名称出现代替关系证据。NER 开关仍为 false，真实 DS 运行需另行授权。journals/standards/proceedings 保留既有口径。下文保留最初任务背景，现行决定以 rules.md 与 review-log.md 末尾记录为准。
 
 ## 目标
 

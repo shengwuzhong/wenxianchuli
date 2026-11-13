@@ -17,7 +17,7 @@ def _llm_cfg():
 # 不再限 high——§56 归因修正: 0 生效的只是 high+pos_alarm 旧通路本身)。
 def _hybrid_families(r, au=None):
     """批次4 四族触发(混合层 dry-run 队列; 验收=pending 覆盖 P0 错值名单, 非调通)。
-    判据全部来自 REVIEW_METADATA_ANOMALIES P0 实测形态; 返回族标列表(可多族同中):
+    判据全部来自 review-metadata-anomalies 的 P0 实测形态; 返回族标列表(可多族同中):
     参见注=引导语散文形态(句尾 참조/자세하다/서술함/하였다 或 이하…내용은 句型; 作者段引导语=批次3 guard 的全等级版);
     一条多文献=≥2 年份锚(_split_glued 同款 '年, 后随逗号') 或题名内 '에 대하여' 无逗号粘连第二题名(u36_6 型)——
       CJK 双容器判据实测弃用(章载于书合法形态 u8_6/#38 不可分, 且相关 P0 均有别族兜底);

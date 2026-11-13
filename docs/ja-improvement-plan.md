@@ -5,7 +5,7 @@
 - 适用范围：`out/` 下 11 篇日文文献（10 篇已有正式元数据，`2025_1` 只有 merged/unified/viewer，没有 `metadata.json`）。用户口径为“12 篇、2025_1 为第 12 篇”，但 `uploads/` 与 `out/` 实际只有 11 个 PDF，第 12 篇未找到；见 §6。
 - 当前策略：**A 方案冻结**。正式 `out/` 保持 2026-11-12T1413 预览，不重跑；所有验证在临时副本进行。新预览按用户决定放 `out_preview/`。
 - 完成度口径：**工程完成度**（已通过验收的子项 / 当前定义的子项），不是字段准确率。金标准已建 11 篇文档字段/摘要 + 3 篇 refs，refs 准确率仍以 `eval/ja_gold.json` 为准。
-- 金标准说明：`docs/JA_GOLD_2026-11-12.md`；基线 `eval/reports/baseline_current.md`。
+- 金标准说明：`docs/ja-gold.md`；基线 `eval/reports/baseline_current.md`。
 
 ---
 
@@ -453,10 +453,10 @@ Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。
 【必读】
 1. AGENTS.md
 2. coordination/README.md
-3. docs/RULES.md
-4. docs/JA_IMPROVEMENT_PLAN_2026-11-12.md（本报告）
+3. docs/rules.md
+4. docs/ja-improvement-plan.md（本报告）
 5. coordination/tasks/T-20261112-WB-EN-ABS/handoff.md（了解上一轮风格）
-6. docs/JA_GOLD_2026-11-12.md 与 eval/ja_gold.json（2025_1/40_10569/52_230725 的 refs GT）
+6. docs/ja-gold.md 与 eval/ja_gold.json（2025_1/40_10569/52_230725 的 refs GT）
 7. metapy/refs.py、metapy/common.py、regress.py 的相关函数
 
 【背景】
@@ -583,7 +583,7 @@ E. 兼容
 2. coordination/README.md
 3. coordination/tasks/T-20261112-TRAE-LAYOUT/handoff.md（上一轮 IoU 映射与截图方法）
 4. coordination/tasks/T-20261112-WB-LAYOUTFIX/handoff.md（layout_ja 对齐 merge_out 的口径）
-5. docs/JA_IMPROVEMENT_PLAN_2026-11-12.md（本报告 §2.3、§3.2）
+5. docs/ja-improvement-plan.md（本报告 §2.3、§3.2）
 6. metapy/layout_ja.py、merge_out.py、viewer.py 的相关函数
 
 【背景】

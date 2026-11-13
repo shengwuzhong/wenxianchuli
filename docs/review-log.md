@@ -1,4 +1,4 @@
-# REVIEW.md（2026-11-04 新开）
+# review-log.md（2026-11-04 新开）
 
 记录所有决定与改动，最新的在最前面。旧档已删，本文件从新开始。
 
@@ -267,7 +267,7 @@ audit.cspan 落 num_mode(N_num/N_fn/ambiguous)+kind/conf 分布+cross_page 计�
 ## 2026-11-04 ｜ 批次：文献实体抽取（基金/软件/数据集，--stage ner）
 
 ### 任务来源
-`TASK_NER.md`：LLM 先行抽三类实体（funding=资助机构+课题号 / software=工具名+版本 / datasets=数据集名+链接），
+`task-ner.md`：LLM 先行抽三类实体（funding=资助机构+课题号 / software=工具名+版本 / datasets=数据集名+链接），
 证据闸门唯一硬约束（evidence_span 必须字面出现在源块文本，`_foldv` 折叠核对），词典后置（本批不做）。
 方向已定，未讨论。
 
@@ -373,7 +373,7 @@ accepted / (accepted + rejected)，分母含 schema 拒收（两者都是"送审
   - `_state_mineru.json` 移除其 MinerU 任务项(7→6);
   - `out/_analysis_report.html` / `out/_analysis_summary.csv` 删除(旧 analyze.py 产物, 生成器已入 _attic, 无现行再生器);
   - `out/_regress_report.html` 用 `python regress.py` 重建(745 条 flagged, 0 残留)。
-- **保留不动**: REVIEW.md 历史条目(该文 11-04~11-06 的抽取记录是既成事实日志, 按 RULES §5 不篡改历史,
+- **保留不动**: review-log.md 历史条目(该文 11-04~11-06 的抽取记录是既成事实日志, 按 RULES §5 不篡改历史,
   以本条宣告清除); `out_llm_trial/ner_glossary.json` 词典中 source 指向该文的词条(用户批注知识,
   "只进不改"拍板, 删源文实体不删词条)。
 - 现行语料 13 篇; 代码/配置/文档(除 REVIEW 历史)已无 2pages 痕迹。
@@ -613,7 +613,7 @@ accepted / (accepted + rejected)，分母含 schema 拒收（两者都是"送审
 - 新增 `_batch_blocks` / `_request_batch`，统计 batches/context_reviewed；审计卡显示 relation。journals/standards/proceedings 保留既有字段与名称锚口径，未借本任务删改。
 - 自检覆盖三类合法关系、NASA 无证据拒收、KOSIS 首次不确定→二次接受、非法关系/证据内无名拒绝、分批不重不漏、标注继承和 trial 隔离；`python -m metapy.ner` 8/8 PASS，viewer/unified unittest 7/7 PASS。channels.json 解析正常。
 - 当前运行配置：`_ner_run.py` 默认 provider=ds，channels llm 为 `deepseek-flash` + DeepSeek chat.completions，key 从 KCI_LLM_KEY 读取；`ner_enabled=false` 保持不变。旧 ner_llm 仍为 0。未联网、未真实调用 DS、未提交 git。
-- TASK_NER.md、channels 注释和 ner.py 旧语义注释已同步。真实全量运行仍需用户另行明确授权。
+- task-ner.md、channels 注释和 ner.py 旧语义注释已同步。真实全量运行仍需用户另行明确授权。
 
 
 ---

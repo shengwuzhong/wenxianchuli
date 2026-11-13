@@ -21,6 +21,15 @@
 
 ---
 
+## 仓库结构
+
+- **功能清单：** [`docs/features.md`](docs/features.md)
+- **目录结构：** [`docs/project-structure.md`](docs/project-structure.md)
+- **相对基线新增：** [`docs/changes-since-baseline.md`](docs/changes-since-baseline.md)
+- **文档导航：** [`docs/README.md`](docs/README.md)
+
+运行产物 `out/`、`out_llm_trial/`、`uploads/` 不入库；可查看的示例在 [`examples/`](examples/)。
+
 ## 我该从哪儿开始？
 
 挑一行和你目的相符的即可，**每行都自成一体**：
@@ -238,7 +247,7 @@ mineru_drive.py    MinerU 桌面版的 CDP 驱动（兜底）
 requirements.txt   渲染 / CDP 运行时依赖
 channels.json      标定 + 模型默认值（无机密）
 channels.local.example.json   复制为 channels.local.json 后填自己的 token
-docs/              channels.md · calibration.md · architecture.md · REVIEW.md · RULES.md
+docs/              channels.md · calibration.md · architecture.md · review-log.md · rules.md
 examples/          13625974/（一份真实跑批产物，首页链接）
 uploads/ inbox/    输入 PDF + 缓存/外部渠道产物（已 gitignore）
 out/               管线产物；out_llm_trial/ 放实体抽取产物（已 gitignore）

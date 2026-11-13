@@ -24,6 +24,15 @@ but silently disagrees with itself across pages. The point is not "which engine 
 
 ---
 
+## Repository map
+
+- **Feature overview:** [`docs/features.md`](docs/features.md)
+- **Directory layout:** [`docs/project-structure.md`](docs/project-structure.md)
+- **Changes since baseline:** [`docs/changes-since-baseline.md`](docs/changes-since-baseline.md)
+- **Documentation index:** [`docs/README.md`](docs/README.md)
+
+The runtime outputs (`out/`, `out_llm_trial/`, `uploads/`) are intentionally ignored; the checked-in demo lives in [`examples/`](examples/).
+
 ## Where do I start?
 
 Pick the row that matches what you actually want; each row works on its own.
@@ -324,7 +333,7 @@ mineru_drive.py     CDP driver for the MinerU desktop app (fallback)
 requirements.txt    render/CDP runtime dependencies
 channels.json       calibration + model defaults (no secrets)
 channels.local.example.json   copy to channels.local.json and fill in your tokens
-docs/               channels.md · calibration.md · architecture.md · REVIEW.md · RULES.md
+docs/               channels.md · calibration.md · architecture.md · review-log.md · rules.md
 examples/           13625974/ (one real run, linked from the front page)
 uploads/ inbox/     input PDFs + cached/external channel output (gitignored)
 out/                pipeline products; out_llm_trial/ holds entity-extraction data (gitignored)
