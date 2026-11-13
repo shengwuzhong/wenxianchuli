@@ -395,6 +395,10 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 .mf td.cnum{white-space:nowrap;width:26px}
 .mfg table{border-collapse:collapse;width:100%;font-size:11px;table-layout:fixed}
 .mfg table.refs td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal}
+.refexp{float:right;margin:-2px 0 2px 8px}
+.refexp button{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;padding:0 7px;font-size:11px;margin-left:5px;color:#1e3a8a}
+.refexp button:hover{background:#dbeafe;border-color:#2563eb}
+.refexp button:disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9}
 .mfg table.cspt td{white-space:normal;word-break:break-word}   /* 引文句句子换行, 引文高亮不再被裁掉 */
 .mftag{display:inline-block;font-size:9px;color:#6b7280;border:1px solid #e5e7eb;border-radius:3px;padding:0 3px;margin-right:4px;vertical-align:1px}
 .mfwarn{display:inline-block;font-size:9px;color:#b91c1c;background:#fee2e2;border:1px solid #fca5a5;border-radius:3px;padding:0 4px;margin:0 4px 0 2px;vertical-align:1px}
@@ -541,6 +545,58 @@ document.addEventListener('mouseout',function(e){
  var mf=e.target.closest?e.target.closest('.refs .mf[data-u]'):null;
  if(mf&&(!e.relatedTarget||!mf.contains(e.relatedTarget)))citeHover(mf,false);
 });
+/* refs 导出(2026-11-13 T-20261113-TRAE-REFS-EXPORT): 纯前端，CSV/BibTeX，无后端接口 */
+function _rxVal(v){return (v===null||v===undefined)?'':String(v);}
+function _rxEsc(s){
+ return _rxVal(s).replace(/\\/g,'\\textbackslash{}').replace(/([{}%&_#$])/g,'\\$1');
+}
+function _rxCsv(v){return '"'+_rxVal(v).replace(/"/g,'""')+'"';}
+function _rxKey(doc,num,idx){
+ var s=(doc||'doc')+'_'+((num===null||num===undefined||num==='')?idx:num);
+ return s.replace(/[^0-9A-Za-z_\u4e00-\u9fff]+/g,'_').replace(/^_+|_+$/g,'')||('ref_'+idx);
+}
+function _rxSave(name,text,mime){
+ var blob=new Blob([text],{type:mime+';charset=utf-8'});
+ var a=document.createElement('a');
+ a.href=URL.createObjectURL(blob); a.download=name;
+ document.body.appendChild(a); a.click();
+ setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1200);
+}
+function refsExport(btn,fmt){
+ var refs=[];
+ try{refs=JSON.parse(btn.getAttribute('data-refs')||'[]');}catch(err){refs=[];}
+ if(!refs.length){return;}
+ var doc=btn.getAttribute('data-doc')||'doc';
+ var i,r,lines=[];
+ if(fmt==='csv'){
+  lines.push(['num','authors','title','year','journal','volume','issue','pages','doi'].map(_rxCsv).join(','));
+  for(i=0;i<refs.length;i++){
+   r=refs[i];
+   lines.push([_rxVal(r.num), (r.authors||[]).join('; '), _rxVal(r.title), _rxVal(r.year),
+    _rxVal(r.container_title||r.source), _rxVal(r.volume), _rxVal(r.issue), _rxVal(r.pages),
+    _rxVal(r.doi)].map(_rxCsv).join(','));
+  }
+  _rxSave(doc+'_references.csv',lines.join('\r\n')+'\r\n','text/csv');
+ }else{
+  for(i=0;i<refs.length;i++){
+   r=refs[i];
+   var book=!(r.source||r.container_title);
+   var body=[];
+   if((r.authors||[]).length){body.push('  author = {'+_rxEsc(r.authors.join(' and '))+'},');}
+   if(r.title){body.push('  title = {'+_rxEsc(r.title)+'},');}
+   if(r.year){body.push('  year = {'+_rxEsc(r.year)+'},');}
+   if(r.container_title){body.push('  journal = {'+_rxEsc(r.container_title)+'},');}
+   else if(r.source&&!book){body.push('  journal = {'+_rxEsc(r.source)+'},');}
+   if(r.volume){body.push('  volume = {'+_rxEsc(r.volume)+'},');}
+   if(r.issue){body.push('  number = {'+_rxEsc(r.issue)+'},');}
+   if(r.pages){body.push('  pages = {'+_rxEsc(r.pages)+'},');}
+   if(r.doi){body.push('  doi = {'+_rxEsc(r.doi)+'},');}
+   if(book&&r.publisher){body.push('  publisher = {'+_rxEsc(r.publisher)+'},');}
+   lines.push('@'+(book?'book':'article')+'{'+_rxKey(doc,r.num,i+1)+',\n'+body.join('\n')+'\n}');
+  }
+  _rxSave(doc+'_references.bib',lines.join('\n\n')+'\n','application/x-bibtex');
+ }
+}
 document.addEventListener('mouseover',function(e){
  var eye=e.target.closest?e.target.closest('.eye'):null;
  if(eye){clearTimeout(ghide);fillMasks(eye.dataset.g,eye.closest('section'));return;}
@@ -999,6 +1055,18 @@ def _meta_cell(meta, pno, audit=None, choices=None):
                           au_d, esc(r.get("year") or "?"), ti_d, src_d))
         return trs
 
+    def _refexp_btns(meta):
+        """全库 refs 导出按钮(纯前端 CSV/BibTeX); 无 refs 时禁用。"""
+        all_refs = meta.get("references") or []
+        payload = html.escape(json.dumps(all_refs, ensure_ascii=False), quote=True)
+        doc = esc(meta.get("doc") or "")
+        dis = "" if all_refs else " disabled"
+        return ('<span class="refexp"><button data-doc="%s" data-refs="%s"%s'
+                ' onclick="refsExport(this,\'csv\')">导出 CSV</button>'
+                '<button data-doc="%s" data-refs="%s"%s'
+                ' onclick="refsExport(this,\'bib\')">导出 BibTeX</button></span>'
+                % (doc, payload, dis, doc, payload, dis))
+
     au_by_uid = {x.get("uid"): x for x in (((audit or {}).get("references") or [])
                                             + ((audit or {}).get("footnote_refs") or []))}
     tbl_head = ('<table class="refs"><colgroup><col style="width:52px">'
@@ -1016,7 +1084,7 @@ def _meta_cell(meta, pno, audit=None, choices=None):
             badge = '<span class="mbadge %s">编号连续%s</span>' % ("ok" if seq_ok else "bad",
                                                                     "✓" if seq_ok else "✗")
         grp.append(("文献%s" % badge,
-                    dot(0) + '<b>%s %d 条</b>' % (lab_ref, len(refs))
+                    dot(0) + _refexp_btns(meta) + '<b>%s %d 条</b>' % (lab_ref, len(refs))
                     + tbl_head + "".join(_ref_rows(refs, au_by_uid, "ref")) + "</table>"))
     fnrefs = [r for r in (meta.get("footnote_refs") or []) if r.get("page") == pno]
     if fnrefs:
