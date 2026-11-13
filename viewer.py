@@ -403,6 +403,17 @@ body.boxov .imgw .r.umb,body.boxov .imgw .r.um{opacity:1}   /* 裁决1(§47): LA
 .mfx button{cursor:pointer;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;padding:0 7px;font-size:11px;color:#1e3a8a}
 .mfx button:hover{background:#dbeafe;border-color:#2563eb}
 .mfx button:disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9}
+/* 全局搜索(2026-11-13 T-20261113-TRAE-GLOBAL-SEARCH): 顶栏输入即搜, 结果浮层, 命中高亮 */
+#qwrap{position:relative;display:inline-block;margin-left:8px}
+#q{width:190px;font-size:11px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px}
+#qres{position:absolute;right:0;top:24px;width:430px;max-height:60vh;overflow-y:auto;background:#fff;border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 8px 24px rgba(15,23,42,.2);z-index:80;font-size:12px}
+#qres.hide{display:none}
+#qhead{padding:4px 8px;border-bottom:1px solid #e2e8f0;color:#64748b}
+.qrow{padding:5px 8px;border-bottom:1px dashed #e2e8f0;cursor:pointer}
+.qrow:hover{background:#eff6ff}
+.qh{color:#1d4ed8;font-weight:600;font-size:11px}
+.qs{color:#334155;margin-top:2px;word-break:break-all}
+#qres mark{background:#fde68a;color:#7c2d12}
 .mfg table.cspt td{white-space:normal;word-break:break-word}   /* 引文句句子换行, 引文高亮不再被裁掉 */
 .mftag{display:inline-block;font-size:9px;color:#6b7280;border:1px solid #e5e7eb;border-radius:3px;padding:0 3px;margin-right:4px;vertical-align:1px}
 .mfwarn{display:inline-block;font-size:9px;color:#b91c1c;background:#fee2e2;border:1px solid #fca5a5;border-radius:3px;padding:0 4px;margin:0 4px 0 2px;vertical-align:1px}
@@ -530,6 +541,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 </style></head><body>
 <header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>@@LAYBTN@@@@LAYOUTBTN@@
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
+<span id="qwrap"><input id="q" type="search" placeholder="搜索标题/作者/文献/引文" autocomplete="off"><div id="qres" class="hide"></div></span>
 </header>
 <button id="thumbtoggle" type="button" title="显示/隐藏逐页缩略图栏">‹ 缩略图</button>
 <nav id="thumbrail" aria-label="页面缩略图">@@THUMBS@@</nav>
@@ -539,6 +551,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 <div id="citelist"></div>
 </aside>
 <script type="application/json" id="citedata">@@CITEDATA@@</script>
+<script type="application/json" id="searchdata">@@SEARCHDATA@@</script>
 @@BODY@@
 <script>
 var META=@@DATA@@, pinned=null;
@@ -819,6 +832,76 @@ function metaExport(btn){
   btn.textContent=panel.classList.contains('hide')?'引文索引':'关闭索引';
  });
  render();
+})();
+/* 全局搜索(2026-11-13 T-20261113-TRAE-GLOBAL-SEARCH): 跨 metadata/refs/cspan, 输入即搜, 命中高亮+定位 */
+(function(){
+ var el=document.getElementById('searchdata'),q=document.getElementById('q'),box=document.getElementById('qres');
+ if(!el||!q||!box){return;}
+ var rows=[];
+ try{rows=JSON.parse(el.textContent||'[]')||[];}catch(e){rows=[];}
+ var head=document.createElement('div');head.id='qhead';box.appendChild(head);
+ function clip(t,p,n){
+  var a=Math.max(0,p-28),b=Math.min(t.length,p+n+56);
+  return (a>0?'…':'')+t.slice(a,b)+(b<t.length?'…':'');
+ }
+ function hilite(frag,term){
+  var f=frag.toLowerCase(),i=0,pos,out=document.createDocumentFragment();
+  while((pos=f.indexOf(term,i))>=0){
+   if(pos>i){out.appendChild(document.createTextNode(frag.slice(i,pos)));}
+   var m=document.createElement('mark');m.textContent=frag.slice(pos,pos+term.length);out.appendChild(m);
+   i=pos+term.length;
+  }
+  if(i<frag.length){out.appendChild(document.createTextNode(frag.slice(i)));}
+  return out;
+ }
+ function go(r){
+  box.classList.add('hide');
+  var sec=document.getElementById('p'+(r[1]-1));
+  if(sec){sec.scrollIntoView({behavior:'smooth',block:'start'});}
+  setTimeout(function(){
+   var t=document.querySelectorAll('[data-u="'+r[2]+'"]');
+   for(var k=0;k<t.length;k++){
+    t[k].classList.add('on');t[k].classList.add('cite-on');
+    (function(e){setTimeout(function(){e.classList.remove('on');e.classList.remove('cite-on');},2400);})(t[k]);
+   }
+  },260);
+ }
+ function clearRes(){
+  while(box.childNodes.length>1){box.removeChild(box.lastChild);}
+ }
+ function run(){
+  var term=(q.value||'').trim().toLowerCase();
+  clearRes();
+  if(!term){box.classList.add('hide');return;}
+  box.classList.remove('hide');
+  var hit=0,i;
+  for(i=0;i<rows.length&&hit<60;i++){
+   var r=rows[i],text=r[3]||'',p=text.toLowerCase().indexOf(term);
+   if(p<0){continue;}
+   hit++;
+   (function(row,pos){
+    var d=document.createElement('div');d.className='qrow';
+    var h=document.createElement('div');h.className='qh';
+    h.textContent=row[0]+' · p'+row[1];
+    var s=document.createElement('div');s.className='qs';
+    s.appendChild(hilite(clip(row[3],pos,term.length),term));
+    d.appendChild(h);d.appendChild(s);
+    d.addEventListener('click',function(){go(row);});
+    box.appendChild(d);
+   })(r,p);
+  }
+  head.textContent=hit?(hit+' 条命中'):'无命中';
+  if(!hit){
+   var e=document.createElement('div');e.className='qrow';
+   e.textContent='无命中（可试标题/作者/文献题名/引文串）';
+   box.appendChild(e);
+  }
+ }
+ q.addEventListener('input',run);
+ q.addEventListener('keydown',function(ev){if(ev.key==='Escape'){box.classList.add('hide');}});
+ document.addEventListener('click',function(ev){
+  if(!q.contains(ev.target)&&!box.contains(ev.target)){box.classList.add('hide');}
+ });
 })();
 </script>
 <div id="citepop"><div id="citepoptitle">原图块定位</div><svg id="citesvg" preserveAspectRatio="xMidYMid meet"></svg></div>
@@ -1486,6 +1569,46 @@ def _meta_overview(meta, audit=None):
 
 
 
+def _search_index_json(meta):
+    """全局搜索索引: [类型, 页码, uid, 可搜文本]。metadata/refs/cspan 三源合并, 纯前端检索。"""
+    rows = []
+    if not meta:
+        return "[]"
+
+    def add(kind, page, uid, text):
+        t = " ".join(str(text or "").split())
+        if t:
+            rows.append([kind, page or 1, uid or "", t[:4000]])
+
+    def field(k):
+        v = meta.get(k)
+        return (v.get("value"), v.get("page") or 1, v.get("uid") or "") if isinstance(v, dict) else (v, 1, "")
+
+    for k, lab in (("title", "题录"), ("title_en", "题录"), ("abstract", "摘要"),
+                   ("abstract_en", "摘要"), ("journal", "来源"), ("journal_en", "来源")):
+        val, pg, uid = field(k)
+        if val:
+            add(lab + "·" + k, pg, uid, val)
+    for a in (meta.get("authors") or []):
+        if isinstance(a, dict):
+            add("作者", a.get("page") or 1, a.get("uid") or "", a.get("name") or "")
+        else:
+            add("作者", 1, "", a)
+    kws = [k.get("value") if isinstance(k, dict) else k for k in (meta.get("keywords") or [])]
+    if kws:
+        add("关键词", 1, "", " / ".join(str(x) for x in kws if x))
+    val, pg, uid = field("body")
+    if val:
+        add("正文", pg, uid, val)
+    for r in (meta.get("references") or []):
+        add("文献", r.get("page"), r.get("uid"),
+            " ".join(str(r.get(k) or "") for k in ("title", "authors_raw", "source", "doi")))
+    for s in (meta.get("citation_spans") or []):
+        add("引文", s.get("page"), s.get("uid"),
+            (s.get("sentence") or "") + " " + (s.get("citation_text") or ""))
+    return json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
+
+
 _META_EXPORT_KEYS = ("doc", "title", "title_en", "authors", "affiliations", "abstract",
                      "abstract_en", "journal", "journal_en", "year", "volume", "issue",
                      "pages", "keywords", "body", "references", "citation_spans")
@@ -1761,6 +1884,7 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
     v = COMPARE_TMPL.replace("@@TITLE@@", title).replace("@@NAV@@", nav)
     v = v.replace("@@THUMBS@@", thumbs)
     v = v.replace("@@CITEDATA@@", _cite_index_json(meta))
+    v = v.replace("@@SEARCHDATA@@", _search_index_json(meta))
     v = v.replace("@@LAYOUTBTN@@", ('<button id="layoutbtn" class="on" title="显示/隐藏 layout 叠加(阅读序序号 + 双栏分界; 只读, 不改数据)">'
                                     "layout 标注</button>") if lay_any else "")
     v = v.replace("@@LAYBTN@@", ('<button id="laybtn" title="块边界诊断: 叠加显示全部统一对象框(只读叠加, 不切换布局)">'
