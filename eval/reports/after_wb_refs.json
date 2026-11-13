@@ -1,0 +1,252 @@
+{
+ "gold": "D:\\处理工具\\2\\multidoc-ocr-compare-main\\eval\\ja_gold.json",
+ "pred": "out_llm_trial\\wb_refs_review3",
+ "docs": [
+  {
+   "doc": "2025_1",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "超多重スタック地中レーダ探査と 群列ボーリングコア解析に基づく奈良盆地 東縁断層帯・帯解断層の極浅部変形構造",
+     "pred": null,
+     "ok": false
+    },
+    "title_en": {
+     "gold": "Shallow subsurface structure of the Obitoke fault in the eastern marginal faults of the Nara basin based on ultra-rapid stacking ground penetrating radar survey and arrayed boring analysis",
+     "pred": null,
+     "ok": false
+    },
+    "journal": {
+     "gold": "活断層研究",
+     "pred": null,
+     "ok": false
+    },
+    "year": {
+     "gold": 2025,
+     "pred": null,
+     "ok": false
+    },
+    "volume": {
+     "gold": "63",
+     "pred": null,
+     "ok": false
+    },
+    "issue": {
+     "gold": null,
+     "pred": null,
+     "ok": true
+    },
+    "pages": {
+     "gold": "1-17",
+     "pred": null,
+     "ok": false
+    },
+    "authors": {
+     "gold": [
+      "川嶋涉造",
+      "木村治夫",
+      "谷口 薫",
+      "中西利典",
+      "堤 浩之"
+     ],
+     "pred": [],
+     "recall": 0.0,
+     "count_ok": false
+    },
+    "abstract": {
+     "gold_len": 0,
+     "pred_len": 0,
+     "skipped": true
+    },
+    "abstract_en": {
+     "gold_len": 1396,
+     "pred_len": 0,
+     "ratio": 0.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 34,
+    "pred": 35,
+    "recall": 1.0,
+    "title_ok": 0.9118,
+    "author_ok": 1.0,
+    "matched": 34,
+    "missing": []
+   }
+  },
+  {
+   "doc": "40_10569",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "脳卒中の病型ごとの急性期から回復期までの実態調査 —熊本脳卒中地域連携パスの9年間のデータを用いて—",
+     "pred": "脳卒中の病型ごとの急性期から回復期までの実態調査 —熊本脳卒中地域連携パスの9年間のデータを用いて—",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "Survey of stroke types in acute hospitals and Kaifukuki rehabilitation wards: nine years of Kumamoto Stroke Liaison Critical Pathway data",
+     "pred": "Survey of stroke types in acute hospitals and Kaifukuki rehabilitation wards: nine years of Kumamoto Stroke Liaison Critical Pathway data",
+     "ok": true
+    },
+    "journal": {
+     "gold": "脳卒中",
+     "pred": "脳卒中",
+     "ok": true
+    },
+    "year": {
+     "gold": 2018,
+     "pred": 2018,
+     "ok": true
+    },
+    "volume": {
+     "gold": 40,
+     "pred": 40,
+     "ok": true
+    },
+    "issue": {
+     "gold": null,
+     "pred": null,
+     "ok": true
+    },
+    "pages": {
+     "gold": "343-349",
+     "pred": "343-349",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "本田 省二",
+      "徳永 誠",
+      "渡邊 進",
+      "田北 智裕",
+      "大塚 忠弘",
+      "米原 敏郎",
+      "西徹",
+      "寺崎 修司",
+      "三浦 正毅",
+      "平田 好文",
+      "山鹿真紀夫",
+      "橋本洋一郎"
+     ],
+     "pred": [
+      "本田 省二",
+      "徳永 誠",
+      "渡邊 進",
+      "田北 智裕",
+      "大塚 忠弘",
+      "米原 敏郎",
+      "西徹",
+      "寺崎 修司",
+      "三浦 正毅",
+      "平田 好文",
+      "山鹿真紀夫",
+      "橋本洋一郎"
+     ],
+     "recall": 1.0,
+     "count_ok": true
+    },
+    "abstract": {
+     "gold_len": 366,
+     "pred_len": 366,
+     "ratio": 1.0,
+     "pred_kana": 93,
+     "gold_kana": 93
+    },
+    "abstract_en": {
+     "gold_len": 995,
+     "pred_len": 0,
+     "ratio": 0.0,
+     "pred_kana": 0,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 19,
+    "pred": 19,
+    "recall": 0.9474,
+    "title_ok": 0.7895,
+    "author_ok": 0.9474,
+    "matched": 18,
+    "missing": [
+     {
+      "num": 16,
+      "title": "The influence of stroke type, gender, and age on FIM improvement",
+      "authors": "Tokunaga M, Watanabe S, Nakanishi R, et al"
+     }
+    ]
+   }
+  },
+  {
+   "doc": "52_230725",
+   "exists": true,
+   "fields": {
+    "title": {
+     "gold": "表面形状観察のための高分解能走査電子顕微鏡法",
+     "pred": "表面形状観察のための高分解能走査電子顕微鏡法",
+     "ok": true
+    },
+    "title_en": {
+     "gold": "High-resolution scanning electron microscopy to observe surface morphology",
+     "pred": "High-resolution scanning electron microscopy to observe surface morphology",
+     "ok": true
+    },
+    "journal": {
+     "gold": "岩石鉱物科学",
+     "pred": "岩石鉱物科学",
+     "ok": true
+    },
+    "year": {
+     "gold": 2023,
+     "pred": 2023,
+     "ok": true
+    },
+    "volume": {
+     "gold": 52,
+     "pred": 52,
+     "ok": true
+    },
+    "issue": {
+     "gold": null,
+     "pred": null,
+     "ok": true
+    },
+    "pages": {
+     "gold": "1-7",
+     "pred": "1-7",
+     "ok": true
+    },
+    "authors": {
+     "gold": [
+      "小暮 敏博"
+     ],
+     "pred": [],
+     "recall": 0.0,
+     "count_ok": false
+    },
+    "abstract": {
+     "gold_len": 0,
+     "pred_len": 0,
+     "skipped": true
+    },
+    "abstract_en": {
+     "gold_len": 721,
+     "pred_len": 1300,
+     "ratio": 0.0497,
+     "pred_kana": 469,
+     "gold_kana": 0
+    }
+   },
+   "refs": {
+    "gold": 7,
+    "pred": 7,
+    "recall": 1.0,
+    "title_ok": 0.8571,
+    "author_ok": 1.0,
+    "matched": 7,
+    "missing": []
+   }
+  }
+ ]
+}

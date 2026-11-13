@@ -1,7 +1,7 @@
-﻿# 日文文献处理：进度与规划说明
+# 日文文献处理：进度与规划说明
 
 - 版本：2026-11-12
-- 基线：`main` @ `c61a3fc`（GT/评审/布局回归已提交；此前 `75a3da1` 为 7 个抽取任务 done）
+- 基线：`main` @ `645e34d`（GT/评审/布局回归已提交；此前 `75a3da1` 为 7 个抽取任务 done）
 - 适用范围：`out/` 下 11 篇日文文献（10 篇已有正式元数据，`2025_1` 只有 merged/unified/viewer，没有 `metadata.json`）。用户口径为“12 篇、2025_1 为第 12 篇”，但 `uploads/` 与 `out/` 实际只有 11 个 PDF，第 12 篇未找到；见 §6。
 - 当前策略：**A 方案冻结**。正式 `out/` 保持 2026-11-12T1413 预览，不重跑；所有验证在临时副本进行。新预览按用户决定放 `out_preview/`。
 - 完成度口径：**工程完成度**（已通过验收的子项 / 当前定义的子项），不是字段准确率。金标准已建 11 篇文档字段/摘要 + 3 篇 refs，refs 准确率仍以 `eval/ja_gold.json` 为准。
@@ -19,7 +19,7 @@
 | 验证缺口 | Trae 已回归 11 篇 99 页：39 个双栏页反转 0；但 12 个单栏页实际是双栏但 `layout_ja` 欠检 |
 | 评测缺口 | GT 已建：11 篇文档字段/摘要、3 篇 61 条 refs；其余 8 篇 refs 仍 pending；基线见 `eval/reports/baseline_current.md` |
 | 交付缺口 | 正式 `out/` 是旧预览：摘要 4/10 有值，而当前代码 8/11；52/40/42_103 的英文摘要修复只在代码里，不在 `out/` |
-| 等权工程完成度 | 15 项等权约 **54%**（100+80+90+85+100+70+45+60+15+100+0+60+0+0+0）/15 = 53.7% |
+| 等权工程完成度 | 15 项等权约 **56%**（100+80+90+85+100+100+45+60+15+100+0+60+0+0+0）/15 = 55.7% |
 
 ---
 
@@ -34,7 +34,7 @@
 | P0-3 | 英文摘要 / 英文标题残余修复 | P0 | 已完成（残余 1 篇） | 90% | `metapy/abs.py:12` `_AUTHOR_ROW`；`:17` `_is_en_abstract_start`；`:41` `_collect_abstract`；merge `45a4b0e` |
 | P0-4 | `layout_ja` 栏检测 / 前区 / 阅读序实现 | P0 | 已完成（12 页欠检） | 85% | `metapy/layout_ja.py:75` `_column_boundary_ja`；`:99` `_order_blocks_ja`；`:145` `layout_page`；对齐 `merge_out.py:62` `order_blocks`；merge `71c1d05` |
 | P0-5 | 查看器日文标签、字段警告、版面叠加 | P0 | 已完成 | 100% | `viewer.py:782` `_META_LABELS`；`:806` `_meta_is_ja`；`:825` `_meta_warnings`；`:1097` `_meta_overview`；merge `31e8098`；验证 tag `verify-T-20261112-TRAE-LAYOUT` |
-| P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 进行中（review changes requested） | 70% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；WorkBuddy `810de5a`；review `coordination/reviews/T-20261112-WB-REFS-JA.md` |
+| P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 已完成 | 100% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；WorkBuddy `810de5a`；review `coordination/reviews/T-20261112-WB-REFS-JA.md` |
 | P1-2 | 引文句（cspan）日文化：全角括号、日文作者-年份、回链 | P1 | 进行中 | 45% | `metapy/cspan.py:35` `NARR`（仅 ASCII 括号）；`:274` `_ref_pages`；`:288` `cspan_doc` |
 | P1-3 | 本篇来源（`issue`）日文刊名 / 关键词 | P1 | 进行中 | 60% | `metapy/issue.py:133` `_jname_from_line`；`:201` `extract`；`:385` `issue_doc` |
 | P1-4 | 脚注文献（frefs）日文适用性 | P1 | 未开始 | 15% | `metapy/refs.py:1706` `frefs_doc` |
@@ -93,7 +93,7 @@
 - 版面叠加：双栏边界线、`body/front` 分区、阅读序序号；截图 `40_10569_p1.png`（576 KB）、`52_230725_p1.png`（675 KB）。
 - 残余：警告只是提示，不修数据；`abstract` 为空的提示会一直存在，直到后端能判定“原文无”。
 
-#### P1-1 参考文献日文化 — 70%（review changes requested）
+#### P1-1 参考文献日文化 — 100%（已合并）
 
 当前 `main` 共抽出 **233 条**参考文献，其中 `title=null` 24 条；但“字段存在”不等于“字段正确”：
 
@@ -103,15 +103,15 @@
 - `lang` 判定（`metapy/refs.py:657`）只有 `ko`/`en` 两类，汉字多即判 `ko`；全语料 **50 条**日文条目被标成 `ko`，没有 `ja`。
 - 英文条目反而较稳：`42_185` 18 条、`52_230302` 42 条、`5_55` 33 条，`title=null` 很少。
 
-**WorkBuddy `T-20261112-WB-REFS-JA`（`810de5a`）现状**：
+**WorkBuddy `T-20261112-WB-REFS-JA` 最终结果（`6b9d1f2` 已合并）**：
 
 | doc | pred | GT 唯一 | recall | title_ok | author_ok | 结论 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `2025_1` | 21 | 34 | **0.618** | **0.294** | **0.618** | 不通过（缺 13 条） |
-| `40_10569` | 19 | 19 | 0.947 | 0.789 | 0.947 | 接近（缺 #16） |
+| `2025_1` | 35 | 34 | **1.000** | 0.912 | **1.000** | 通过（author 为空 0） |
+| `40_10569` | 19 | 19 | 0.947 | 0.789 | 0.947 | 通过（#16 非阻塞） |
 | `52_230725` | 7 | 7 | **1.000** | 0.857 | **1.000** | 通过 |
 
-Review 记录：`coordination/reviews/T-20261112-WB-REFS-JA.md`。阻塞点：第 17 页 `u16_3` 的 `all(_ja_line_selfcontained)` 不成立，只切出 3 条；第 16 页 `u15_4` 另有 4 条被过滤；多条英文 `title` 被填成 journal；`Sumirah` 条被页脚受付污染。
+Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。修复覆盖：`_split_entries_block` 混合关键词/页脚块逐行切分、日文多作者引号条目前置作者、英文 `Title. Journal` title 串位、`lang=ja`、`AGERS` 续行归属。42_185 18、42_93 49、5_55 33、52_230302 43 不变。
 
 #### P1-2 引文句 cspan — 45%
 
@@ -261,7 +261,7 @@ Review 记录：`coordination/reviews/T-20261112-WB-REFS-JA.md`。阻塞点：�
 
 | 优先级 | 任务 ID | 任务 | 建议 owner | 依赖 | 验收标准（摘要） |
 | --- | --- | --- | --- | --- | --- |
-| P0 | `T-20261112-WB-REFS-JA` | 日文参考文献抽取 | WorkBuddy | 无 | `2025_1` GT recall=1.0（34/34 唯一，35 条含 1 条原文重复）；`52_230725` 7/7；`40_10569` title/author 抽检；日文条目 `lang=ja`；回归测试全过 |
+| P0 | `T-20261112-WB-REFS-JA` | 日文参考文献抽取 | WorkBuddy | 无 | **已完成并合并** `6b9d1f2`：`2025_1` recall 1.000、author 为空 0；`52_230725` 7/7；`40_10569` 18/19（#16 非阻塞） |
 | P0 | `T-20261112-WB-ABS-EN-JA` | `abstract_en` 遇日文行终止 | WorkBuddy | 无 | `2025_1` 的 `abstract_en` 假名数=0；11 篇全部无日文尾行；abs 自检通过 |
 | P0 | `T-20261112-DS-GOLD-SCHEMA` | 日文金标准 schema 与比对骨架 | DeepSeek | 已确认字段 | **已完成**：`eval/ja_gold.json` + `eval/gold_eval.py` + 基线报告；不写 `out/` |
 | P0 | `T-20261112-USER-OUT-DECISION` | 是否解冻 `out/` / 补 `2025_1` | 用户 + DeepSeek | 用户拍板 | 明确“继续冻结”或“生成新预览”；若解冻，`2025_1` 必须有 `metadata.json` |
