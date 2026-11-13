@@ -3,7 +3,7 @@
  "title": "layout_ja 双栏检测V2（30页真值）",
  "priority": "P1",
  "owner": "workbuddy",
- "status": "review",
+ "status": "done",
  "depends_on": [],
  "allowed_files": [
   "metapy/layout_ja.py"
@@ -25,5 +25,5 @@
  "acceptance": [],
  "handoff_to": "deepseek",
  "created_at": "2026-11-13T02:15:56+00:00",
- "updated_at": "2026-11-13T11:10:00+08:00"
+ "updated_at": "2026-11-13T11:12:00+08:00"
 }
