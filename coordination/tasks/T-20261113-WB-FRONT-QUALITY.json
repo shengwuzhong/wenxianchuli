@@ -1,0 +1,30 @@
+{
+ "id": "T-20261113-WB-FRONT-QUALITY",
+ "title": "作者清洗与英文摘要残留",
+ "priority": "P1",
+ "owner": "workbuddy",
+ "status": "in_progress",
+ "depends_on": [],
+ "allowed_files": [
+  "metapy/front.py",
+  "metapy/abs.py"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/workbuddy/T-20261113-WB-FRONT-QUALITY",
+ "base_commit": "main",
+ "acceptance": [],
+ "handoff_to": "",
+ "created_at": "2026-11-13T05:24:38+00:00",
+ "updated_at": "2026-11-13T05:24:39+00:00"
+}

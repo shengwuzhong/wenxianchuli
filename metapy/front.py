@@ -6,6 +6,58 @@ from .common import *
 # 43_10814 日文作者行以「双空格+裸上标+双空格」分隔多位作者, 需与 SUP_LATEX 同作作者分隔点。
 _BARE_SUP = re.compile(r"\s*\^\{([^}]*)\}\s*")
 
+# (2026-11-13 T-20261113-WB-FRONT-QUALITY) 作者名/标记清洗: LaTeX 匕首残留与边沿间隔点
+_DAGGER = re.compile(r"\\(?:dagger|ddagger|ast|star)\b")
+_JP_DOT = u"・"                       # U+30FB 中黒(日文作者行惯用分隔点, 与 '·'(U+00B7)不同码位)
+_MID_SEP = u" ·•,，․\t"               # 作者名首尾可剥的分隔/标点集合(含中黒)
+_SKIP_CH = set(u" \t\ue000\ue001$^{}*\\†‡,，")
+
+
+def _clean_marker(mk):
+    """上标标记清洗: 去 LaTeX 匕首(\\dagger/\\ddagger)、†‡、$ 与花括号残留, 保留 '*1'/'1,2' 语义。"""
+    s = _DAGGER.sub("", mk or "")
+    s = s.replace(u"†", "").replace(u"‡", "")
+    return s.strip(" $,，{}")
+
+
+def _clean_author_name(nm):
+    """作者名清洗(仅边沿): 去前导/尾部中黒 '・' '·'、LaTeX 匕首与多余空白。
+    不动姓名内部单一空格('谷口 薫')与外来名中缀 'ジョン・スミス'(・两侧皆片假名, 由
+    _jp_middot_to_sep 保留)。日文作者行 OCR 常把分隔点留在换行处('・\\n木村治夫'),
+    或把 '*1\\dagger' 上标残留在名尾, 此处统一收敛。"""
+    s = _DAGGER.sub("", nm or "").replace(u"†", "").replace(u"‡", "")
+    s = _norm_ws(s)
+    return s.strip(_MID_SEP).strip()
+
+
+def _near_char(chars, i, step):
+    """'・' 两侧最近可见字符(跳过空白/上标占位符/LaTeX 残留), 供中缀判定。"""
+    j = i + step
+    while 0 <= j < len(chars):
+        c = chars[j]
+        if c not in _SKIP_CH and not c.isdigit():
+            return c
+        j += step
+    return ""
+
+
+def _is_kata(c):
+    return bool(c) and (u"ァ" <= c <= u"ヶ" or c == u"ー")
+
+
+def _jp_middot_to_sep(line):
+    """日文中黒归一: 两侧同为片假名 → 外来名中缀, 保留('ジョン・スミス'); 否则视为多位作者
+    分隔点, 折成 '·' 与既有分隔符同级(2025_1 实证: '川嶋渉造^{*1\\dagger}・木村治夫^{*2}・…')。"""
+    if _JP_DOT not in line:
+        return line
+    chars = list(line)
+    for i, ch in enumerate(chars):
+        if ch != _JP_DOT:
+            continue
+        if _is_kata(_near_char(chars, i, -1)) and _is_kata(_near_char(chars, i, 1)):
+            continue   # 外来名中缀, 不切
+        chars[i] = u"·"
+    return "".join(chars)
 
 
 def _pick_title(j, want_hangul, want_japanese=False):
@@ -90,6 +142,9 @@ def _parse_author_line(line, u, foot_affil):
     # 43_10814 实证: '伊藤 清佳  ^{1)}  深尾 繁治  ^{1)} …' 上标即作者间分隔点)也归一化为
     # 占位符, 与 SUP_LATEX 同走切分逻辑。marker 内容(含右括号)由后续 affil 配对 strip(')') 归一。
     line = _BARE_SUP.sub(_hide_sup, line)
+    # (2026-11-13 T-20261113-WB-FRONT-QUALITY) 日文中黒 '・' 归一分隔点(外来名中缀保留)
+    if not en_line:
+        line = _jp_middot_to_sep(line)
     # 英文行逗号分层; 韩/日文行 ·•․、全角逗号'，' 与'逗号+名'分层(英文逗号多为机构内分隔)
     if en_line:
         toks = re.split(r"\s*,\s*|\s+and\s+", line)
@@ -109,7 +164,9 @@ def _parse_author_line(line, u, foot_affil):
         # 占位符 token(作者名后的上标): 挂到上一个作者名(日文语义: '本田 省二 $^{1)} $ 徳永 誠…')
         if re.fullmatch(u"\ue000\\d+\ue001", tk):
             if pending_mk is not None:
-                pending_mk.append(_sup_ph[int(re.match(u"\ue000(\\d+)\ue001", tk).group(1))])
+                _m = _clean_marker(_sup_ph[int(re.match(u"\ue000(\\d+)\ue001", tk).group(1))])
+                if _m:
+                    pending_mk.append(_m)
             continue
         tk = re.sub(r"^(?:and|&)\s+", "", tk)
         # 从占位符恢复 markers 并剥离上标
@@ -126,7 +183,7 @@ def _parse_author_line(line, u, foot_affil):
         # 作者无法关联机构。
         mk += re.findall(r"[\^]?\{([\*\d,，]+)\}", tk)
         tk = re.sub(r"[\^]?\{[\*\d,，]+\}", "", tk)
-        tk = re.sub(r"(\*{1,4}|†|‡|§)+(?=$|[\s·•,.])", "", tk).strip(" ·•,․")
+        tk = re.sub(r"(\*{1,4}|†|‡|§)+(?=$|[\s·•,.])", "", tk).strip(_MID_SEP)
         role = None
         mrole = ROLE_WORDS.search(tk)
         if mrole:
@@ -160,7 +217,11 @@ def _parse_author_line(line, u, foot_affil):
             if maff2 is None and rest.strip("() ,·•"):
                 pass
         nm = _norm_ws(nm)
-        nm = HONORIFIC.sub("", nm).strip(" ,·•")
+        nm = HONORIFIC.sub("", nm)
+        # (2026-11-13 T-20261113-WB-FRONT-QUALITY) 边沿中黒/匕首/空白清洗(不改姓名内部空格)
+        nm = _clean_author_name(nm)
+        # 清洗须就地改 mk(后续占位符 token 追加到同一列表, 重建会丢掉后置 marker)
+        mk[:] = [m for m in (_clean_marker(x) for x in mk) if m]
         if not nm or len(_fold(nm)) < 2:
             continue
         if ROLE_WORDS.fullmatch(nm):
@@ -431,7 +492,7 @@ def front_doc(doc, out_root):
                     continue   # 排除标题型 running head
                 if head_auth and _fold(head_auth[0]["name"]) != fold_s:
                     continue   # 只接受稳定复现的作者 running head
-                head_auth = [{"name": x, "markers": [], "affiliation": None,
+                head_auth = [{"name": _clean_author_name(x), "markers": [], "affiliation": None,
                               "role": None, "roman": None} for x in parts]
                 break
         if head_auth:
@@ -559,11 +620,24 @@ def _selftest():
     ok6 = len(jp) == 1 and jp[0]["name"] == "森 悠一郎" and jp[0]["roman"] == "Yuichiro MORI"
     # 日文标题脚本判定(纯汉字无仮名不影响韩文路径, 含仮名判定为 ja)
     ok7 = _script_kind("中性子回折実験で探る") == "ja" and _script_kind("한글") == "ko"
-    oks = (ok1, ok2, ok3, ok4, ok5, ok6, ok7)
+    # (2026-11-13 T-20261113-WB-FRONT-QUALITY) 2025_1 实证作者行: '・' 分隔 + '*1\dagger' 标记,
+    # 换行处残留前导 '・' —— 清洗后 5 位作者, 无前导中黒/匕首残留, 多人不被合并
+    jq = _parse_author_line(
+        u"川嶋涉造  $ ^{*1\\dagger} $ ・木村治夫  $ ^{*2} $ ・谷口 薫  $ ^{*3} $ ・\n"
+        u"中西利典  $ ^{*4} $ ·堤 浩之  $ ^{*5} $", None, {})
+    ok8 = ([x["name"] for x in jq] == [u"川嶋涉造", u"木村治夫", u"谷口 薫", u"中西利典", u"堤 浩之"]
+           and [x["markers"] for x in jq] == [[u"*1"], [u"*2"], [u"*3"], [u"*4"], [u"*5"]])
+    # 外来名中缀 '・' 不切(两侧皆片假名), 尾部 '・' 与重复空白剥净
+    jk = _parse_author_line(u"ジョン・スミス ・", None, {})
+    ok9 = len(jk) == 1 and jk[0]["name"] == u"ジョン・スミス"
+    # 名尾匕首残留直接剥离
+    jd = _parse_author_line(u"山田 太郎†", None, {})
+    ok10 = len(jd) == 1 and jd[0]["name"] == u"山田 太郎"
+    oks = (ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10)
     for i, ok in enumerate(oks, 1):
         if not ok:
             print("FAIL [front case %d]" % i)
-    print("front selftest: %d/7 PASS" % sum(oks))
+    print("front selftest: %d/10 PASS" % sum(oks))
     return all(oks)
 
 

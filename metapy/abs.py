@@ -38,10 +38,24 @@ def _is_en_abstract_start(s, u):
     return len(_fold(s)) >= 40 and bool(re.search(r"[A-Za-z]{4,}", s))
 
 
-def _collect_abstract(pdata, pages, head_u, max_pages=3, skip_fold=None):
+def _en_language_guard(txt):
+    """英文摘要语言闸门(2026-11-13 T-20261113-WB-FRONT-QUALITY): 逐行扫, 首行出现假名
+    (≥2 个假名或日文比例>0.08)即截断——英文摘要后接日文正文/栏内续行时(2025_1 实证:
+    英文摘要块下方 'して東側が相対的に隆起する…')不留半句日文, 也不回退保留半句英文。
+    正常英文摘要无假名, 不会被截断。"""
+    keep = []
+    for ln in (txt or "").split("\n"):
+        if len(re.findall(u"[ぁ-ゖァ-ヶ]", ln)) >= 2 or _japanese_ratio(ln) > 0.08:
+            break
+        keep.append(ln)
+    return "\n".join(keep).strip()
+
+
+def _collect_abstract(pdata, pages, head_u, max_pages=3, skip_fold=None, stop_on_ja=False):
     """从头块之下收集摘要正文(跨页续接, 遇 Keywords 行/新节头/文献区 即止)。
     跨栏块按行取: 若块首在头上方, 只取 ABSTRACT_START 之后的行(13625974 作者行同块形态)。
-    skip_fold: 折叠全等的节头视为英文题名的尾页复写(1892171/1632041 形态), 跳过不停。"""
+    skip_fold: 折叠全等的节头视为英文题名的尾页复写(1892171/1632041 形态), 跳过不停。
+    stop_on_ja: 英文摘要专用——遇日文行即止(英摘要块下常粘日文正文, 2025_1/42_103 实证)。"""
     out_lines = []
     uids = []
     start_p = head_u["page"] - 1
@@ -112,6 +126,10 @@ def _collect_abstract(pdata, pages, head_u, max_pages=3, skip_fold=None):
                             s, re.I):
                     stop = True   # 文献区头(行级全等; 摘要内 '선행문헌' 类词不误触; 2026-11-11 增日文)
                     break
+                if stop_on_ja and (len(re.findall(u"[ぁ-ゖァ-ヶ]", s)) >= 2
+                                   or _japanese_ratio(s) > 0.08):
+                    stop = True
+                    break   # 英文摘要遇日文行即止(不留半句日文, 2025_1 实证)
                 out_lines.append(s)
             if take and u["uid"] not in uids:
                 uids.append(u["uid"])
@@ -396,7 +414,8 @@ def abstract_doc(doc, out_root):
                 ten_fold = ten_fold or _fold(first)
                 break
     if h_en is not None:
-        txt, uids = _collect_abstract(pdata, pages, h_en, skip_fold=ten_fold or None)
+        txt, uids = _collect_abstract(pdata, pages, h_en, skip_fold=ten_fold or None,
+                                      stop_on_ja=True)
         res["abstract_en"] = {"value": txt or None, "page": h_en["page"], "box": h_en["box"],
                               "from_tail": bool(tail),
                               "confidence": _conf(h_en, uids)}
@@ -573,7 +592,11 @@ def abstract_doc(doc, out_root):
         v = (res[k] or {}).get("value")
         if v:
             cleaned, _ = _clean_lines(v, (), doc_heads)
-            res[k]["value"] = cleaned.strip() or v
+            cleaned = cleaned.strip() or v
+            if k == "abstract_en":
+                # 兜底: 无头/尾页 matter 路径也过语言闸门, 残留日文行截断(2025_1 实证)
+                cleaned = _en_language_guard(cleaned)
+            res[k]["value"] = cleaned or None
     # §38 分层: confidence.basis → audit; 产品 confidence 只留 {level, source, uid_head}
     abs_audit = {}
     for k in ("abstract", "abstract_en"):
@@ -686,12 +709,24 @@ def _selftest():
             and "森 悠一郎" not in v and "Neutron diffraction experiments" not in v
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    for i, ok in enumerate((ok1, ok2, ok3), 1):
+    # 4) (2026-11-13 T-20261113-WB-FRONT-QUALITY) 英文摘要块后粘日文正文行: stop_on_ja 即止,
+    #    语言闸门对残留假名行截断; 正常英文摘要(无假名)不被截断
+    en_body = {"uid": "b4", "page": 1, "type": "Text", "box": [0, 30, 100, 50],
+               "main_text": "The eastern marginal fault consists of east-dipping reverse faults.\n"
+                            u"して東側が相対的に隆起する逆断層から構成される（地震調査委員会, 2001).",
+               "cross_page": {}}
+    t4, _u4 = _collect_abstract({0: {"h": 1000, "unified": [head, en_body]}}, [0], head,
+                                max_pages=1, stop_on_ja=True)
+    ok4 = t4 == "The eastern marginal fault consists of east-dipping reverse faults."
+    ok5 = _en_language_guard(u"The fault is reverse.\nして東側が隆起する。") == "The fault is reverse." \
+        and _en_language_guard("The fault is reverse.\nIt dips eastward.") == \
+        "The fault is reverse.\nIt dips eastward."
+    ok6 = _en_language_guard(t4) == t4
+    for i, ok in enumerate((ok1, ok2, ok3, ok4, ok5, ok6), 1):
         if not ok:
             print("FAIL [abs case %d]" % i)
-    print("abs selftest: %d/3 PASS" % (ok1 + ok2 + ok3))
-    return ok1 and ok2 and ok3
-
+    print("abs selftest: %d/6 PASS" % sum((ok1, ok2, ok3, ok4, ok5, ok6)))
+    return all((ok1, ok2, ok3, ok4, ok5, ok6))
 
 if __name__ == "__main__":
     raise SystemExit(0 if _selftest() else 1)
