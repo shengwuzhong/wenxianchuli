@@ -3,7 +3,7 @@
  "title": "13 个新增双栏页阅读序修复",
  "priority": "P1",
  "owner": "workbuddy",
- "status": "review",
+ "status": "done",
  "depends_on": [
   "T-20261113-WB-LAYOUT-V2",
   "T-20261113-TRAE-V2-VERIFY"
@@ -35,5 +35,5 @@
  ],
  "handoff_to": "deepseek",
  "created_at": "2026-11-13T11:15:00+08:00",
- "updated_at": "2026-11-13T11:32:00+08:00"
+ "updated_at": "2026-11-13T11:34:00+08:00"
 }

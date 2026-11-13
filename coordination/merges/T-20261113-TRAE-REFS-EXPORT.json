@@ -1,0 +1,15 @@
+{
+ "task": "T-20261113-TRAE-REFS-EXPORT",
+ "title": "查看器 refs 导出 CSV/BibTeX",
+ "branch": "agent/trae/T-20261113-TRAE-REFS-EXPORT",
+ "commit": "7e33c1b",
+ "code_commit": "7e33c1b",
+ "merge_commit": "cead307",
+ "tag": "merge-T-20261113-TRAE-REFS-EXPORT",
+ "merged_at": "2026-11-13T11:34:00+08:00",
+ "integrator": "deepseek",
+ "tests": "unittest 12/12; compileall viewer.py OK",
+ "review": "coordination/reviews/T-20261113-TRAE-REFS-EXPORT.json",
+ "handoff": "coordination/tasks/T-20261113-TRAE-REFS-EXPORT/handoff.md",
+ "note": "Only viewer.py +69/−1. CSV 35/19/7 rows, 9 cols; BibTeX @article/@book key=doc_num; empty refs disabled; console 0 error. out hash unchanged."
+}
