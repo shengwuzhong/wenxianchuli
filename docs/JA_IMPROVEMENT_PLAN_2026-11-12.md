@@ -1,4 +1,4 @@
-﻿# 日文文献处理：进度与规划说明
+# 日文文献处理：进度与规划说明
 
 - 版本：2026-11-12
 - 基线：`main` @ `645e34d`（GT/评审/布局回归已提交；此前 `75a3da1` 为 7 个抽取任务 done）
@@ -19,7 +19,7 @@
 | 验证缺口 | 真值复核推翻旧基线：18 个旧“单栏”中 17 页实为双栏，仅 `43_10814 p3` 单栏，`42_103 p13` ambiguous；旧 51/48 验收无效 |
 | 评测缺口 | GT 已建：11 篇文档字段/摘要、3 篇 61 条 refs；其余 8 篇 refs 仍 pending；基线见 `eval/reports/baseline_current.md` |
 | 交付缺口 | 正式 `out/` 是旧预览：摘要 4/10 有值，而当前代码 8/11；52/40/42_103 的英文摘要修复只在代码里，不在 `out/` |
-| 等权工程完成度 | 16 项等权约 **69%**（100+80+90+100+100+100+45+60+15+100+100+60+50+0+0+100）/16 = 68.8% |
+| 等权工程完成度 | 16 项等权约 **72%**（100+80+90+100+100+100+100+60+15+100+100+60+50+0+0+100）/16 = 72.2% |
 
 ---
 
@@ -35,7 +35,7 @@
 | P0-4 | `layout_ja` 栏检测 / 前区 / 阅读序实现 | P0 | 已完成 | 100% | `metapy/layout_ja.py:75` `_column_boundary_ja`；`:99` `_order_blocks_ja`；`:145` `layout_page`；对齐 `merge_out.py:62` `order_blocks`；merge `71c1d05` |
 | P0-5 | 查看器日文标签、字段警告、版面叠加 | P0 | 已完成 | 100% | `viewer.py:782` `_META_LABELS`；`:806` `_meta_is_ja`；`:825` `_meta_warnings`；`:1097` `_meta_overview`；merge `31e8098`；验证 tag `verify-T-20261112-TRAE-LAYOUT` |
 | P1-1 | 参考文献（refs）日文化：文献区识别、条目切分、字段解析、`lang=ja` | P1 | 已完成 | 100% | `metapy/refs.py:7` `_split_entries_block`；`:456` `_extract_fields`；`:657` `lang` 二分类；`:1341` `refs_doc`；`regress.py:14` `REF_HEAD`；WorkBuddy `810de5a`；review `coordination/reviews/T-20261112-WB-REFS-JA.md` |
-| P1-2 | 引文句（cspan）日文化：全角括号、日文作者-年份、回链 | P1 | 进行中 | 45% | `metapy/cspan.py:35` `NARR`（仅 ASCII 括号）；`:274` `_ref_pages`；`:288` `cspan_doc` |
+| P1-2 | 引文句（cspan）日文化：全角括号、日文作者-年份、回链 | P1 | 已完成 | 100% | `metapy/cspan.py` 已合并 `f40d2a0`：384 spans，exact 97.4%，2025_1 46，52_230725 unlinked 0 |
 | P1-3 | 本篇来源（`issue`）日文刊名 / 关键词 | P1 | 进行中 | 60% | `metapy/issue.py:133` `_jname_from_line`；`:201` `extract`；`:385` `issue_doc` |
 | P1-4 | 脚注文献（frefs）日文适用性 | P1 | 未开始 | 15% | `metapy/refs.py:1706` `frefs_doc` |
 | P1-5 | `layout_ja` 全量回归（11 篇 99 页） | P1 | 已完成 | 100% | Trae `T-20261112-TRAE-LAYOUT-FULL`：99 页逐页表、39 双栏页 0 反转、12 单栏差异判定；`coordination/reviews/T-20261112-TRAE-LAYOUT-FULL.md` |
@@ -91,6 +91,7 @@
 - 日文文献显示“中文 · 日文”双语标签（标题/作者/机构/摘要/期刊/年卷期页/关键词/参考文献）。
 - 字段级“待复核”警告：空摘要、`abstract_en` 含假名、`abstract_en` 与机构高度相似、`title_en` 以 Key words 开头、作者 0 人、作者混入章节词。
 - 版面叠加：双栏边界线、`body/front` 分区、阅读序序号；截图 `40_10569_p1.png`（576 KB）、`52_230725_p1.png`（675 KB）。
+- refs 导出 CSV/BibTeX（`cead307`）；逐页缩略图导航（`017f105`，点击定位/scroll-spy/折叠/lazy）。
 - 残余：警告只是提示，不修数据；`abstract` 为空的提示会一直存在，直到后端能判定“原文无”。
 
 #### P1-1 参考文献日文化 — 100%（已合并）
@@ -113,12 +114,13 @@
 
 Review：`coordination/reviews/T-20261112-WB-REFS-JA.md`（round 3 approve）。修复覆盖：`_split_entries_block` 混合关键词/页脚块逐行切分、日文多作者引号条目前置作者、英文 `Title. Journal` title 串位、`lang=ja`、`AGERS` 续行归属。42_185 18、42_93 49、5_55 33、52_230302 43 不变。
 
-#### P1-2 引文句 cspan — 45%
+#### P1-2 引文句 cspan — 100%
 
-- 当前共 **332 条**：`exact` 312、`partial` 5、`unlinked` 15（exact 率 94%，但这是规则标签，不是人工准确率）。
-- 数字上标形态（`$ ^{1)} $`、`^{2,3)}`）在日文文献上工作良好；`NARR` 正则（`metapy/cspan.py:35`）只认 ASCII `(...)` 和 `(1998)` 形态，日文常见的 `（山田, 2018）`、`山田（2018）` 不识别。
-- `2025_1` 因 refs 为 0，cspan 也是 0；`52_230725` 7 条中 6 条 `unlinked`（文献表只有 3 条可回链）；`52_230302` 4 条 `unlinked`。
-- cspan 的“对号”依赖 `references[].authors_raw`，refs 字段错位会直接传导为 unlinked。
+- 已合并 `f40d2a0`：**384 条**，`exact` 374（97.40%）、`partial` 5、`unlinked` 5。
+- 支持全角 `（山田, 2018）`/`山田（2018）`、无逗号、`・`/`ほか/ら`、同年 a/b、多引分号拆分。
+- `2025_1` 0→46 条且全部 exact；`52_230725` unlinked 6→0。
+- 旧 332 条中仅移除 9 条伪 span（8 条无编号文献表的数字上标 + 1 条 OCR 碎片），无 exact 回归。
+- 残余：52_230302 有 5 条 partial，因本篇文献表无对应条目，属 refs 侧限制。
 
 #### P1-3 本篇来源 issue — 60%
 
