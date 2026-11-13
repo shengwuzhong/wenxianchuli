@@ -35,6 +35,28 @@ def _ay_head(s):
     return bool(AY_HEAD.match(s) or _JA_AY_HEAD.match(s))
 
 
+def _ja_entry_head(ln):
+    """文献行头(逐行切分用): 行首是作者名(汉字/字母/韩文) + 逗号/括号分隔的独立年份。
+    区别于 DOI/URL/会议名续行——后者的年份嵌在 '.'/'/' 里(如 'AGERS.2018' 的 2018 前是点号,
+    '西岡芳晴，…，2001' 的 2001 前是全角逗号)。这是日文逗号式 '著者，年，題名' 的关键判据
+    (AY_HEAD 只认 ASCII 逗号/括号, 全角逗号 '，' 分隔的日文头不匹配, 2025_1 u16_3 实证)。
+    收紧(2026-11-13): 年份后必须跟逗号字段分隔(，/,)——正文文内引用 'Mori et al. (2021)の時点' /
+    'Shibazaki et al., 2011; ...' / '課題番号: 2022A0324' 的年份后是 ')'/';'/字母数字,
+    不是字段分隔, 必须拒收(52_230302 正文碎片被误收回归实证)。"""
+    m = re.search(u"[，,（(]\\s*(?:19|20)\\d{2}[a-z]?[\\s]*[，,]", ln)
+    if not m:
+        return False
+    auth = ln[:m.start()].strip()
+    return bool(re.search(u"[ぁ-ゖァ-ヶ一-鿿가-힣A-Za-z]", auth))
+
+
+# 文献块终止信号: 关键词头/关键词正文/受付受理日期行(2025_1 u16_3 尾部实证)。
+# 一旦命中即断流, 后续行不再当文献(避免把 'キーワード' 及日期当条目/页脚污染)。
+_REF_STOP = re.compile(
+    u"^(?:キーワード|キ—ワ—ド|Keywords?|KEYWORDS?|索引語|主題語)\\s*[:：]?\\s*$"
+    u"|^\\((?:19|20)\\d{2}年\\d{1,2}月\\d{1,2}日(?:受付|受理|受領|採録)\\)\\s*$")
+
+
 def _split_entries_block(t, style):
     """块文本 -> [(num|None, entry_text)]。bracketed: [n] 切; numbered: 行首 N. 切; authoryear: 条目头行切。"""
     t = (t or "").strip()
@@ -42,16 +64,42 @@ def _split_entries_block(t, style):
         return []
     # (2026-11-12 T-20261112-WB-REFS-JA) 多行按行切: 日文文献块常见'一行一条'('著者(年): 題名.
     # 誌名, 巻, 頁' 每行独立), 但 AY_HEAD 只认英文/韩文头(不含日文汉字/仮名), 日文条目被并入前一条
-    # (52_230725 u6_6 7 行只出 3 条实证)。判据: 行数≥2 且每行都含合法年份 + 行末终止符
-    # (句点/页码/出版社/网址/DOI 之一), 则按行切(每行一条), 否则走原风格切分。
+    # (52_230725 u6_6 7 行只出 3 条实证)。原判据 all(_ja_line_selfcontained) 是 all-or-nothing:
+    # 块内混入 キーワード/受付/续行 即整块退回 authoryear 切分, 大量条目丢失(2025_1 u16_3 16 行只出 3 条)。
+    # 改为逐行判定+续行合并+终止断流: 文献行独立成条; 无年份续行(DOI/AGERS 等)并入上一条;
+    # 遇 _REF_STOP 终止; 其余非文献行跳过。不再要求整块每一行都是文献。
     lines = [ln.strip() for ln in t.split("\n") if ln.strip()]
-    if len(lines) >= 2 and all(
-            _ja_line_selfcontained(ln) for ln in lines):
+    # (2026-11-12) 逐行切只对「含日文(汉字/仮名)」的块生效——纯英文括号年式块(u4_12 25 条英文文献)
+    # 走下方 authoryear 分支(AY_HEAD 逐行头), 保持原有粘连/切分行为; 若对英文块也逐行切,
+    # 会把截断的尾行(如 'Okuchi (1997): …at High' 无终止符)独立成条 + 拆散英文粘连
+    # (52_230302 43→49 回归实证)。
+    _has_ja = re.search(u"[ぁ-ゖァ-ヶ一-鿿]", t)
+    if len(lines) >= 2 and style == "authoryear" and _has_ja:
+        # 逐行判定+续行合并+终止断流(仅 authoryear 无编号流; numbered/bracketed 走编号切分,
+        # 避免 '1) 2)' 编号块被 _ja_entry_head 误判——编号头 'N)' 不是 '作者,年' 结构, 40_10569 u6_4 实证)
         out = []
+        buf = None
         for ln in lines:
-            m = NUM_MARK.match(ln) or LIST_MARK.match(ln)
-            out.append((int(m.group(1)) if m else None, ln))
-        return [x for x in out if x[1]]
+            if _REF_STOP.match(ln):
+                break
+            is_head = _ja_entry_head(ln)
+            if is_head:
+                if buf:
+                    out.append(buf)
+                m = NUM_MARK.match(ln) or LIST_MARK.match(ln)
+                buf = (int(m.group(1)) if m else None, ln)
+            elif buf:
+                # 续行(DOI/URL/AGERS 或跨行题名尾): 并入上一条
+                buf = (buf[0], buf[1] + " " + ln)
+            # 其余(无 buf 的散行, 如页眉/孤行)跳过
+        if buf:
+            out.append(buf)
+        if out:
+            return [x for x in out if x[1]]
+        # (2026-11-12) 逐行切已启用但产出为空(整块被 _REF_STOP 首行命中终止, 如 u16_4 受付/受理
+        # 日期块)——应返回空而非落到下方 authoryear 分支把日期块当整条回收(Sumirah 页脚污染实证)。
+        if any(_REF_STOP.match(ln) for ln in lines):
+            return []
     if style == "bracketed":
         out = []
         for seg in regress.split_entries(t):
@@ -151,7 +199,10 @@ def _year_pick(e):
         s = 0.0
         if re.match(r"^\s*[.。]?\s*$", tail):
             s += 3.0
-        elif re.match(r"^\s*[.,)]", tail):
+        elif re.match(r"^\s*[.,)，)]", tail):
+            # (2026-11-12) 补全角逗号 '，'——日文逗号式 '著者，年，題名' 里出版年后紧跟 '，'
+            # (谷口 2021 实证: 出版年 2021 后 '，' 与题名内 '学会2021年度' 的 2021 后 '年' 竞争,
+            # 原 [.,)] 只认 ASCII 逗号, 出版年不得分, 平局取后者→错选题名内年份)
             s += 1.0
         if re.match(r"^\s*-\s*\d", tail):
             s -= 3.0
@@ -160,7 +211,7 @@ def _year_pick(e):
         if re.search(r"\(\s*$", head):
             s += 1.0
         suf = ""
-        msuf = re.match(r"([a-z])[\s,]", tail)   # 1982a 式著录后缀(后随分隔)
+        msuf = re.match(r"([a-z])[\s,，]", tail)   # 1982a 式著录后缀(后随分隔; 补全角逗号 '，' 兼容日文 1966a，)
         if msuf:
             suf = msuf.group(1)
             s += 1.5   # 带后缀=刻意的同年消歧著录, 等价于"后随标点"惯例且优先于同年无后缀候选
@@ -533,7 +584,18 @@ def _extract_fields(entry, tailflow=False):
         f["title"] = mq.group(1).strip().rstrip(",").strip()   # 1.5: 重配支的组含引内逗号(美式标点), 尾逗号剥除
         f["grammar"] = "quoted"
     elif mi:
-        if re.search(u"[“\"『「]", e[:mi.start()]):
+        pre = e[:mi.start()]
+        after = e[mi.end():]
+        # (2026-11-12 T-20261112-WB-REFS-JA) 科学期刊惯例 'Author, year, Title. *Journal*, vol, pages'
+        # 里斜体的是期刊名(非题名)——2025_1 Furutani/Hongo/Huzita/Neal 的 title 被误填成
+        # 'Journal of Geosciences...'。判别: 斜体前已有 '年, 题名' 结构 + 斜体后紧跟 ', 卷(数字)'。
+        m_pt = re.search(u"[，,]\\s*(?:19|20)\\d{2}[a-z]?\\s*[，,]\\s*(.{8,})$", pre)
+        m_vp = re.search(u"^\\s*[，,]\\s*\\*{0,2}\\s*\\d+", after)
+        if m_pt and m_vp and not re.search(u"[“\"『「]", pre):
+            f["title"] = m_pt.group(1).strip().rstrip(u",，.。 ").strip()
+            f["source"] = mi.group(1).strip()
+            f["grammar"] = "italic_journal"
+        elif re.search(u"[“\"『「]", pre):
             # 1.5b: italic 题名可信的前提是全文无未配对开引号——有开无闭时 italic 更像期刊名(1982b Nordstrom 题名/来源对调实证)
             f["title"] = None
             f["grammar"] = "ambiguous_quote"
@@ -594,60 +656,72 @@ def _extract_fields(entry, tailflow=False):
         # 年后首段=题名, 次段=来源
         rest2 = e[mend:].strip().lstrip(",. ").lstrip(")").strip()
         rest2 = re.sub(u"^년[^,)]*\\),?\\s*", "", rest2)   # A7: '(1915년경 발간)' 年后残余剥离, 防 '년경 발간' 灌入题名(u35_12 实证)
-        segs2 = [s.strip() for s in rest2.split(",")
-                 if re.search(r"[0-9A-Za-z가-힣一-鿿]", s)]   # 纯标点段(如 A7 剥后残留的 '.')不入段
-        if segs2:
-            f["title"] = _norm_ws(_seg_clean(segs2[0]))
-            src = _norm_ws(_seg_clean(segs2[1])) if len(segs2) > 1 else None
-            if src:
-                mji = re.search(u"(.+?)\\s*제\\s*\\d{1,3}\\s*[집호]\\s*$", src)
-                if mji and len(mji.group(1).strip()) >= 2:
-                    src = mji.group(1).strip()   # A6: 来源尾挂 제N집/제N호 拆出, 防 '강원문화사연구 제4집' 混号(u36_0 实证)
+        # (2026-11-12 T-20261112-WB-REFS-JA) 日文全角逗号式 '著者，年，題名，誌名，巻，頁':
+        # 年后用全角 '，' 分层(ASCII ',' 切不到, 题名被灌成 '，題名，誌名，巻，頁')。
+        # 2025_1 田井/堤/寒川/有働/千田 实证: rest2='題名，誌名，巻，頁' 按 '，' 切 → 首段题名/次段誌名。
+        ja_style = (u"，" in rest2 and not re.search(r"[“\"『「]", rest2)
+                    and re.match(u"^[，,]?\\s*[ぁ-ゖァ-ヶ一-鿿]", rest2))
+        if ja_style:
+            jsegs = [s.strip() for s in re.split(u"[，,]", rest2)
+                     if s.strip() and re.search(r"[0-9A-Za-z가-힣一-鿿]", s)]
+            f["title"] = _norm_ws(_seg_clean(jsegs[0]))
+            src = _norm_ws(_seg_clean(jsegs[1])) if len(jsegs) > 1 and not re.match(r"^\d+", jsegs[1]) else None
             f["grammar"] = "noquote"
-        elif mnotice:
-            # 公告型: 公告号之后、尾年之前的整段=公告主题(题名)
-            after = re.sub(r"^[\s,，]+", "", e[mnotice.end():])
-            after = re.sub(r"[\s,，]*((?:19|20)\d{2})\s*[.。]?\s*$", "", after).strip(u" ,.")
-            if len(_fold(after)) >= 4:
-                f["title"] = _norm_ws(after)
-                f["grammar"] = "notice"
-        elif tailflow and f["title"] is None and myear and f.get("grammar") != "ambiguous_quote":
-            # 尾年逗号流(frefs 开关; 脚注常态): '作者, 제목, 출처, 년도.'——年份在尾, 年前段按逗号分层
-            # (refs 主区韩式 author(년) 前置流走首分支; 开关化=references[] 冻结基线零影响)
-            head = NUM_MARK.sub("", LIST_MARK.sub("", e[:myear.start()]))
-            hsegs = [s.strip() for s in head.split(",") if s.strip()]
-            if len(hsegs) >= 2:
-                tit0 = _seg_clean(hsegs[1]).strip(u"'\"")
-                # 题名内 '. 出版社' 黏连拆分('정서심리학. 시그마프레스'实证): 出版社尾词命中则后段归 src
-                pm = re.match(u"^(.{2,}?)[.]\\s+(.*(?:프레스|출판사|Press|Publishing|사))[.]?\\s*$", tit0)
-                if pm and not src:
-                    f["title"] = _norm_ws(pm.group(1).strip())
-                    src = pm.group(2).strip()
-                else:
-                    f["title"] = _norm_ws(tit0)
-                if len(hsegs) > 2:
-                    src = _norm_ws(_seg_clean(hsegs[2]))
+        else:
+            segs2 = [s.strip() for s in rest2.split(",")
+                     if re.search(r"[0-9A-Za-z가-힣一-鿿]", s)]   # 纯标点段(如 A7 剥后残留的 '.')不入段
+            if segs2:
+                f["title"] = _norm_ws(_seg_clean(segs2[0]))
+                src = _norm_ws(_seg_clean(segs2[1])) if len(segs2) > 1 else None
+                if src:
                     mji = re.search(u"(.+?)\\s*제\\s*\\d{1,3}\\s*[집호]\\s*$", src)
                     if mji and len(mji.group(1).strip()) >= 2:
-                        src = mji.group(1).strip()
+                        src = mji.group(1).strip()   # A6: 来源尾挂 제N집/제N호 拆出, 防 '강원문화사연구 제4집' 混号(u36_0 实证)
                 f["grammar"] = "noquote"
-                # 作者重切: 年前首段才是作者(默认 cut 至年位会把题名/来源段并进作者数组);
-                # '/'=原文作者/韩译者分隔(取左), 尾标 '역/저/편' 剥离(1892171 u28_5 Kalat 实证);
-                # 拉丁多词机构名整段保留(National Institute of Mental Health 实证), 免空白切拆碎
-                auth0 = hsegs[0].split("/")[0].rstrip("(, ").rstrip(",․·. ").strip()
-                auth0 = re.sub(u"\\s+(역|저|편|편집)$", "", auth0).strip()
-                f["authors_raw"] = auth0 or None
-                f["et_al"] = bool(re.search(r"(?:\betc\.?|\bet\s+al\.?)\s*$", auth0 or "", re.I)) or \
-                             bool(re.search(u"(?:[\\s,·․]|^)외\\s*$", auth0 or ""))
-                if f["et_al"]:
-                    auth0 = re.sub(r"[\s,]*(?:\betc\.?|\bet\s+al\.?)\s*$", "", auth0,
-                                   flags=re.I).strip()
-                    auth0 = re.sub(u"[\\s,·․]*외\\s*$", "", auth0).strip()
-                corp0 = bool(re.search(r"University|Institute|Ministry|Committee|Center|Centre|"
-                                       r"Corporation|Association|Foundation|National|Government|"
-                                       u"대학|연구소|연구원|학회|위원회", auth0))
-                f["authors"] = _split_authors(auth0, corp=corp0 or bool(mnotice),
-                                              latcorp=True) if auth0 else []
+            elif mnotice:
+                # 公告型: 公告号之后、尾年之前的整段=公告主题(题名)
+                after = re.sub(r"^[\s,，]+", "", e[mnotice.end():])
+                after = re.sub(r"[\s,，]*((?:19|20)\d{2})\s*[.。]?\s*$", "", after).strip(u" ,.")
+                if len(_fold(after)) >= 4:
+                    f["title"] = _norm_ws(after)
+                    f["grammar"] = "notice"
+            elif tailflow and f["title"] is None and myear and f.get("grammar") != "ambiguous_quote":
+                # 尾年逗号流(frefs 开关; 脚注常态): '作者, 제목, 출처, 년도.'——年份在尾, 年前段按逗号分层
+                # (refs 主区韩式 author(년) 前置流走首分支; 开关化=references[] 冻结基线零影响)
+                head = NUM_MARK.sub("", LIST_MARK.sub("", e[:myear.start()]))
+                hsegs = [s.strip() for s in head.split(",") if s.strip()]
+                if len(hsegs) >= 2:
+                    tit0 = _seg_clean(hsegs[1]).strip(u"'\"")
+                    # 题名内 '. 出版社' 黏连拆分('정서심리학. 시그마프레스'实证): 出版社尾词命中则后段归 src
+                    pm = re.match(u"^(.{2,}?)[.]\\s+(.*(?:프레스|출판사|Press|Publishing|사))[.]?\\s*$", tit0)
+                    if pm and not src:
+                        f["title"] = _norm_ws(pm.group(1).strip())
+                        src = pm.group(2).strip()
+                    else:
+                        f["title"] = _norm_ws(tit0)
+                    if len(hsegs) > 2:
+                        src = _norm_ws(_seg_clean(hsegs[2]))
+                        mji = re.search(u"(.+?)\\s*제\\s*\\d{1,3}\\s*[집호]\\s*$", src)
+                        if mji and len(mji.group(1).strip()) >= 2:
+                            src = mji.group(1).strip()
+                    f["grammar"] = "noquote"
+                    # 作者重切: 年前首段才是作者(默认 cut 至年位会把题名/来源段并进作者数组);
+                    # '/'=原文作者/韩译者分隔(取左), 尾标 '역/저/편' 剥离(1892171 u28_5 Kalat 实证);
+                    # 拉丁多词机构名整段保留(National Institute of Mental Health 实证), 免空白切拆碎
+                    auth0 = hsegs[0].split("/")[0].rstrip("(, ").rstrip(",․·. ").strip()
+                    auth0 = re.sub(u"\\s+(역|저|편|편집)$", "", auth0).strip()
+                    f["authors_raw"] = auth0 or None
+                    f["et_al"] = bool(re.search(r"(?:\betc\.?|\bet\s+al\.?)\s*$", auth0 or "", re.I)) or \
+                                 bool(re.search(u"(?:[\\s,·․]|^)외\\s*$", auth0 or ""))
+                    if f["et_al"]:
+                        auth0 = re.sub(r"[\s,]*(?:\betc\.?|\bet\s+al\.?)\s*$", "", auth0,
+                                       flags=re.I).strip()
+                        auth0 = re.sub(u"[\\s,·․]*외\\s*$", "", auth0).strip()
+                    corp0 = bool(re.search(r"University|Institute|Ministry|Committee|Center|Centre|"
+                                           r"Corporation|Association|Foundation|National|Government|"
+                                           u"대학|연구소|연구원|학회|위원회", auth0))
+                    f["authors"] = _split_authors(auth0, corp=corp0 or bool(mnotice),
+                                                  latcorp=True) if auth0 else []
     if src and f.get("year") and re.search(r"\s+" + re.escape(f["year"][:4]) + r"\s*$", src):
         src = re.sub(r"\s+" + re.escape(f["year"][:4]) + r"\s*$", "", src).strip(" ,.")  # 出版社与年间无逗号时尾年粘入(13625974 num16 实证)
     f["source"] = src
@@ -1544,6 +1618,15 @@ def refs_doc(doc, out_root):
             t, _ = _clean_lines(t, (), doc_heads)   # 条目级再剔 running 行
             if not t or _is_running(t, doc_heads):
                 continue
+            # (2026-11-12) 关键词头块跳过: 'Key words:' / 'キーワード' 是摘要后的关键词,
+            # 不是文献(40_10569 u6_8 与期刊引用 '(Jpn J Stroke 40:…) 跨块缝合后混入实证)。
+            if re.match(u"^(?:キーワード|Key\\s*words?|Keywords?|KEYWORDS?)\\s*[:：]",
+                        t.lstrip()):
+                continue
+            # (2026-11-12) 论文自身出处块跳过: '(<Journal> <卷>: <页>, <年>)' 纯括号包裹的
+            # 期刊引用是文末自引(40_10569 u6_9 '(Jpn J Stroke 40: 343-349, 2018)' 实证), 非文献。
+            if re.match(u"^\\s*\\(\\s*[A-Za-z][A-Za-z .&'-]*\\s*\\d+\\s*:\\s*\\d+\\s*[-–~～]\\s*\\d+\\s*,\\s*(?:19|20)\\d{2}\\s*\\)\\s*$", t):
+                continue
             if p not in colb:
                 colb[p] = _page_col_boundary(j)
             blocks.append({"p": p, "col": _col_of_b(u, colb[p], j["w"]), "y": u["box"][1],
@@ -1575,7 +1658,7 @@ def refs_doc(doc, out_root):
             prev = merged[-1]
             prev_open = not _complete(prev["text"])
             new_head = e["num"] is not None or (e["num"] is None and
-                                                _ay_head(e["text"]))
+                                                (_ay_head(e["text"]) or _ja_entry_head(e["text"])))
             if prev_open and not new_head:
                 prev["text"] += " " + e["text"].strip()
                 continue
@@ -1586,14 +1669,22 @@ def refs_doc(doc, out_root):
             continue
         if e["num"] is None:
             # 无编号条目: 作者-年头起 + 带 引号/斜体题名/来源线索 之一(防正文句含年份混入)
-            if not _ay_head(e["text"]):
+            if not _ay_head(e["text"]) and not _ja_entry_head(e["text"]):
                 continue
+            _has_cjk = re.search(u"[ぁ-ゖァ-ヶ一-鿿가-힣]", e["text"])
+            _vol_pages = re.search(u"\\d+\\*{0,2}\\s*[,，]\\s*\\d+\\s*[-–~～]\\s*\\d+", e["text"])
+            _ja_clue = re.search(u"(?:出版|書店|書房|大学|学会|研究会|誌|雑誌|學|研究|報告|地質|科学|紀|地球|断層|p\\b)",
+                                 e["text"])
             if not (QUOTE_TITLE.search(e["text"]) or ITALIC_TITLE.search(e["text"])
                     or re.search(r"pp?\.\s?\d|학\s*회|회\s*지|제\s*\d+\s*[권호]|출판사|University|Press|"
                                  r"Journal|학술|Inc\.|Book|[A-Za-z]{4,}", e["text"])
-                    or (re.search(u"[ぁ-ゖァ-ヶ]", e["text"]) and
-                        re.search(u"(?:出版|書店|書房|大学|学会|研究会|誌|雑誌|\\d+\\s*[,，]\\s*\\d+\\s*[-–~～]\\s*\\d+)",
-                                  e["text"]))):
+                    # (2026-11-12) 卷, 頁 数字模式与日文关键词线索只对「含汉字/仮名」的日文条目放行,
+                    # 不绑定仮名——纯汉字日文条目(石田 1970/金原 1984/木村 2013/三田村 1997)无仮名,
+                    # 原 '含仮名才查' 把它们误拒(2025_1 u15_4 实证)。但绝不能对纯英文条目无条件放行:
+                    # 英文括号年式 'Fischer (2014): …J. Geophys. Res., 119, 2810–2827' 的 '119, 2810–2827'
+                    # 会被裸卷页数字模式误判为文献(52_230302 u4_12 25 条英文被误收回归实证)。
+                    # 卷常被 **bold** 包裹('地球科学, **51**, 8-14'), 数字间夹 '*' 需容忍。
+                    or (_has_cjk and (_vol_pages or _ja_clue))):
                 continue
         entries.append(e)
     # —— 批次2: num 恢复(895567 41 条全 null 实测)——numbered 且 num 过半为空 → 按序重编 1..N(验收: int 连续) ——
