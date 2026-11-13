@@ -4,8 +4,63 @@
 - 工具：workbuddy
 - 分支：agent/workbuddy/main（直接提交，未开 feature 分支）
 - Base：75a3da1
-- Commit：810de5a
+- Commit：810de5a（首轮）→ **review 返工 follow-up（本轮）**
 - 状态：review（handoff_to=deepseek）
+
+## 〇、review 返工（2026-11-13，本轮）
+
+上轮 commit `810de5a` 被 review 判「changes requested」，基线 `2025_1` recall 0.618。本轮按
+`coordination/reviews/T-20261112-WB-REFS-JA.md` 逐条对照返工，**只改 `metapy/refs.py`**
+（common.py/regress.py 上轮已改，本轮未动）。review 明确 4 根因 → 全部修复：
+
+| 根因 | 修复 |
+| --- | --- |
+| ① `_split_entries_block` 逐行切 all-or-nothing | 重写为逐行判定 + 续行合并 + `_REF_STOP` 断流；**限定 style=="authoryear" 且块含日文(汉字/仮名)**，纯英文块走原 authoryear 分支（防 52_230302 英文粘连被拆散） |
+| ② u15_4 #5/#8/#13/#18 被过滤 | `_ja_entry_head`（全角逗号日文头）+ num=None 过滤放宽「卷页数字模式 + 日文关键词」**仅对含汉字/仮名条目**放行 |
+| ③ 英文 title 被填成 journal | italic 分支 `m_vp` 补 `\*{0,2}` 容忍 **卷** 加粗；`_year_pick` 尾随评分补全角逗号「，」 |
+| ④ 页脚/关键词污染 | `_REF_STOP` 终止（キーワード/受付/受理）；u16_4 日期块遇 `_REF_STOP` 返回空；Sumirah 页脚清除 |
+
+### 验收结果（三篇 GT）
+
+| doc | recall | title_ok | author_ok | 结论 |
+| --- | --- | --- | --- | --- |
+| 2025_1 | **1.000** (35/34 含重复) | **0.912** | **0.941** | ✅（验收线 1.000 / ≥0.90 / ≥0.60） |
+| 40_10569 | **0.947** (18/19) | 0.789 | 0.947 | ✅（review 只要求 recall≥0.947） |
+| 52_230725 | **1.000** (7/7) | **0.857** | **1.000** | ✅（验收线 1.000 / ≥0.85 / ≥0.90） |
+
+### 13 条缺失逐条结果（2025_1 GT 编号 5,8,13,18,24,25,28,29,31,32,33,34,35）
+
+全部恢复（recall=1.000）。代表性：#18 三田村（纯汉字日文条目被 num=None 过滤误拒，卷页模式容忍 `**卷**` 加粗后恢复）、#33 谷口（年份消歧补全角逗号后恢复）、#32 田井b（全角逗号日文式切分恢复）。
+
+### 兼容性（回归防范，本轮重点）
+
+| doc | 预期 | 实际 | 说明 |
+| --- | --- | --- | --- |
+| 42_185 | 18 | 18 | ✓ |
+| 42_93 | 49 | 49 | ✓ |
+| 5_55 | 33 | 33 | ✓ |
+| 52_230302 | 43 | 43 | ✓（首版返工曾误到 49，已回退：逐行切限日文块 + `_ja_entry_head` 收紧年份后必须跟逗号） |
+
+### 剩余 BAD title（不阻塞，title_ok 已达标）
+
+- [14] 増田1985（sim0.83）：缺引号副题「"逆グレーディング構造"：」前缀
+- [27] Patria（sim0.77）：英文题名被首个 ASCII 逗号截断
+- [34] Sumirah（sim0.88）：题名缺 ", Riau Province"（原文以 "Geoscience," 结尾，题名本就不完整）
+- 40_10569 #16 Tokunaga（recall 0.947 缺 1 条）：`N) 作者ら: 題名` 英文冒号式字段解析，review 标「非阻塞」
+
+### 测试与哈希
+
+```
+py -m metapy.refs                # selftest 48/48 PASS
+py -m unittest test_pipeline.py  # 12/12 OK
+py -m compileall -q metapy/refs.py metapy/common.py regress.py  # OK
+py -c "import ner_lite; assert ner_lite.selfcheck()==0"          # OK
+```
+正式 out/ 哈希：`09a8820b6e21dbee3f34c3af19d428ac1672234a7b00c32dd7900a8e2b72b091`（1151 文件，**一致**，未写 out/）
+
+---
+
+## 一、改动文件与关键函数（首轮 810de5a 记录，保留备查）
 
 ## 一、改动文件与关键函数
 
