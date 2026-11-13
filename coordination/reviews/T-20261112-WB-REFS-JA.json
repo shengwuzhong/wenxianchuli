@@ -2,6 +2,7 @@
  "task": "T-20261112-WB-REFS-JA",
  "reviewer": "deepseek-integrator",
  "verdict": "changes_requested",
+ "round": 2,
  "checks": {
   "scope_match": true,
   "tests_pass": true,
@@ -10,17 +11,18 @@
   "no_secrets": true,
   "handoff_present": true,
   "out_hash_unchanged": true,
-  "gold_2025_1_recall": false,
-  "gold_2025_1_title": false,
-  "gold_2025_1_author": false,
+  "gold_2025_1_recall": true,
+  "gold_2025_1_title": true,
+  "gold_2025_1_author_threshold": true,
+  "gold_2025_1_author_not_null": false,
   "gold_52_230725": true,
-  "gold_40_10569": false
+  "gold_40_10569": true
  },
  "metrics": {
-  "2025_1": {"pred": 21, "gold_unique": 34, "recall": 0.618, "title_ok": 0.294, "author_ok": 0.618, "missing": [5, 8, 13, 18, 24, 25, 28, 29, 31, 32, 33, 34, 35]},
+  "2025_1": {"pred": 35, "gold_unique": 34, "recall": 1.0, "title_ok": 0.912, "author_ok": 0.941, "author_null": 2, "bad_years": [24]},
   "40_10569": {"pred": 19, "gold_unique": 19, "recall": 0.947, "title_ok": 0.789, "author_ok": 0.947, "missing": [16]},
-  "52_230725": {"pred": 7, "gold_unique": 7, "recall": 1.0, "title_ok": 0.857, "author_ok": 1.0, "missing": []}
+  "52_230725": {"pred": 7, "gold_unique": 7, "recall": 1.0, "title_ok": 0.857, "author_ok": 1.0}
  },
- "notes": "52_230725 与 40_10569 的方向正确，但 2025_1 未达到 GT 验收：21/34 唯一、title 0.294、author 0.618、13 条缺失。核心原因是 u16_3（第17页）同时含文献/关键词/受付行，_ja_line_selfcontained 的 all() 条件不成立，走 authoryear 分支只切出 3 条；page 16 u15_4 另有 4 条被过滤掉。另有多条英文条目 title 被填成 journal（Furutani/Hongo/Huzita/Kimura/Neal），Sumirah 条 title 被页脚「年10月31日受理」污染。需要一次 follow-up commit 修 2025_1，再按 GT 复测。",
- "reviewed_at": "2026-11-12T17:05:00+08:00"
+ "notes": "核心 recall 已达标：2025_1 35/34（含 1 条重复）、52 7/7、40 18/19。但 2025_1 有 2 条 author 为空（GT #24 西岡 2001、#25 尾崎 2000），且 #24 的 year 被 AGERS DOI 的 2018 污染、raw 尾部粘了 'Electronics...AGERS...'。用户要求 title/author Not Null，author 为空不能通过。根因：_corner_biblio_fields 假设 segs[0] 单作者、segs[1] 为「」题名；日文多作者用全角逗号分隔时取不到作者；AGERS 续行被 _split_entries_block 并入上一条日本条目。请只做这一处小修，不要重写已通过的逐行切分。",
+ "reviewed_at": "2026-11-13T09:25:00+08:00"
 }
