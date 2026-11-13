@@ -1,0 +1,27 @@
+{
+ "id": "T-20261113-WB-LAYOUT-ORDER",
+ "title": "13 个新增双栏页阅读序修复",
+ "priority": "P1",
+ "owner": "workbuddy",
+ "status": "pending",
+ "depends_on": ["T-20261113-WB-LAYOUT-V2", "T-20261113-TRAE-V2-VERIFY"],
+ "allowed_files": ["metapy/layout_ja.py"],
+ "forbidden": [
+  "metapy/m3.py", "out/", "uploads/", "inbox/", "out_llm_trial/",
+  "channels.local.json", "_server.lock", ".workbuddy/", "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/workbuddy/T-20261113-WB-LAYOUT-ORDER",
+ "base_commit": "main",
+ "acceptance": [
+  "13 个新增 double 页块级反转清零",
+  "39 个已知双栏页反转数不增加",
+  "truth99 检测仍 85/85、0 假阳性",
+  "42_185 p1 保持 double，43_10814 p3 保持 single",
+  "layout_ja selftest + unittest 12/12",
+  "正式 out/ 哈希不变"
+ ],
+ "handoff_to": "deepseek",
+ "created_at": "2026-11-13T11:15:00+08:00",
+ "updated_at": "2026-11-13T11:15:00+08:00"
+}
