@@ -84,6 +84,24 @@ git diff --stat baseline-2026-11-12..HEAD
 - `README.md`、`README.zh-CN.md`：文档更新；
 - `.gitignore`：运行产物与私有配置忽略。
 
+## 上游 84f9b47 新增模块
+
+2026-11-13 从原作者仓库拉取并合入以下新模块：
+
+| 文件 | 用途 | 标注 |
+| --- | --- | --- |
+| `gui.py` / `dashboard.css` / `启动GUI.bat` | 桌面 GUI 工作台 | **上游新增** |
+| `stages.py` | 阶段级重跑 | **上游新增** |
+| `qc.py` | 质检/不变量检查 | **上游新增** |
+| `archive.py` | 产物归档 | **上游新增** |
+| `crossproc.py` | 并发/跨进程 | **上游新增** |
+| `docid.py` | 文档编号 | **上游新增** |
+| `metapy/audit_invariant.py` | 不变量审计 | **上游新增** |
+| `metapy/audit_value.py` | 字段值后验审计 | **上游新增** |
+| `examples/13625974/metadata*.json` | 示例 metadata/audit | **上游新增** |
+
+**未直接采用**上游对 `pipeline.py`、`webapp.py`、`metadata.py`、`viewer.py` 等核心文件的重构，因为这些文件与本地日文抽取、复核队列、normalizer 改动直接冲突；当前保留本地主链，上游新增模块作为独立工具合入。
+
 ## 当前剔除的功能
 
 以下功能曾实现，但在“实体抽取准确性优先”的整理中从默认界面移除：

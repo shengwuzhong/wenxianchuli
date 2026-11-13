@@ -17,6 +17,15 @@ multidoc-ocr-compare/
 ├─ webapp.py                     拖拽式 Web 工作台
 ├─ viewer.py                     单渠道 / 1:3 查看器
 ├─ app.js                        Web 工作台前端脚本
+├─ gui.py                        桌面 GUI 工作台（上游新增）
+├─ dashboard.css                 GUI 样式（上游新增）
+├─ 启动GUI.bat                    Windows GUI 启动（上游新增）
+├─ stages.py                     阶段级重跑（上游新增）
+├─ qc.py                         质检/不变量检查（上游新增）
+├─ archive.py                    归档工具（上游新增）
+├─ crossproc.py                  并发/跨进程工具（上游新增）
+├─ docid.py                      文档编号工具（上游新增）
+├─ 推送GitHub.bat                 上游同步脚本（上游新增）
 ├─ ner_lite.py                   可选实体抽取（LLM 提名 + 程序定位）
 ├─ audit_accuracy.py             字段准确率自检
 ├─ regress.py                    回归辅助脚本
@@ -35,7 +44,9 @@ multidoc-ocr-compare/
 │  ├─ llmrep.py                  LLM 兜底/报告
 │  ├─ dual.py                    LLM 对照实验
 │  ├─ normalize.py               日文文本规范化核心
-│  └─ normalize_meta.py          metadata 规范化 sidecar
+│  ├─ normalize_meta.py          metadata 规范化 sidecar
+│  ├─ audit_invariant.py         不变量审计（上游新增）
+│  └─ audit_value.py             字段值后验审计（上游新增）
 │
 ├─ eval/                         评测与金标准
 │  ├─ gold_eval.py               字段金标准比对
