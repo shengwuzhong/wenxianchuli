@@ -60,6 +60,7 @@ multidoc-ocr-compare/
 │
 ├─ eval/                         评测与金标准
 │  ├─ gold_eval.py               字段金标准比对
+│  ├─ vertical_eval.py           竖排 10 篇题名/作者/字段评测
 │  ├─ validate_gold.py           金标准结构校验
 │  ├─ layout_eval.py             99 页版面检测门禁
 │  ├─ ja_gold.json               日文字段金标准
