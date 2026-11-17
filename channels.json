@@ -66,11 +66,24 @@
  "llm": {
   "enabled": false,
   "_note": "M5④LLM 兜底: 只对正则失败/低置信字段提问; endpoint 为 OpenAI 兼容 chat.completions; api_key 从环境变量读(不落盘)",
-  "endpoint": "",
-  "model": "",
+  "endpoint": "https://api.deepseek.com/chat/completions",
+  "model": "deepseek-flash",
   "api_key_env": "KCI_LLM_KEY",
   "temperature": 0,
-  "max_fields_per_call": 8,
-  "_ner_lite_note": "实体抽取已换代(2026-11-10): 根目录 ner_lite.py(LLM 提名+程序定位, 三kind开放词表), 产物/审计落 out_llm_trial/fds_extract/ner_lite/, 经 viewer.py 回显进 viewer_compare.html; 旧 --stage ner/ner_audit 与批注词典已删"
+  "ner_lite_auto": true,
+  "channels": [
+   {
+    "label": "zjlab-maas",
+    "endpoint": "http://i-nhi.zhejianglab.org/maas/v1/chat/completions",
+    "model": "DeepSeek-V4.1-Flash",
+    "api_key_env": "KCI_ZJLAB_KEY"
+   },
+   {
+    "label": "deepseek-official",
+    "endpoint": "https://api.deepseek.com/chat/completions",
+    "model": "deepseek-flash",
+    "api_key_env": "KCI_LLM_KEY"
+   }
+  ]
  }
 }

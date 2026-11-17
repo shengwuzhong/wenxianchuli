@@ -231,16 +231,42 @@ def _ssl_ctx():
 
 def call_llm(cfg, prompt):
     import urllib.request
+    key_env = cfg.get("api_key_env") or "KCI_LLM_KEY"
+    key = (os.environ.get(key_env) or os.environ.get("KCI_LLM_KEY")
+           or os.environ.get("KCI_ZJLAB_KEY", ""))
     body = json.dumps({"model": cfg.get("model"),
                        "temperature": float(cfg.get("temperature") or 0),
                        "messages": [{"role": "system", "content": PROMPT_SYS},
                                     {"role": "user", "content": prompt}]}).encode("utf-8")
     req = urllib.request.Request(cfg["endpoint"], data=body, headers={
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + (os.environ.get("KCI_LLM_KEY") or os.environ.get("KCI_ZJLAB_KEY", ""))})
+        "Authorization": "Bearer " + key})
     with urllib.request.urlopen(req, timeout=180, context=_ssl_ctx()) as resp:
         out = json.loads(resp.read().decode("utf-8"))
     return out["choices"][0]["message"]["content"]
+
+
+def make_model(cfg=None):
+    """按 channels.json 的 llm.channels 选择可用模型；优先使用环境变量里有 key 的渠道。
+
+    上游配置提供 zjlab-maas(DeepSeek-V4.1-Flash) 与 deepseek-official(deepseek-flash)。
+    返回可调用模型，附带 model_name 供审计记录。
+    """
+    cfg = dict(cfg or {})
+    selected = None
+    for ch in (cfg.get("channels") or []):
+        env = ch.get("api_key_env") or "KCI_LLM_KEY"
+        if os.environ.get(env):
+            selected = dict(cfg)
+            selected.update(ch)
+            break
+    if selected is None:
+        selected = cfg
+    if not selected.get("endpoint") or not selected.get("model"):
+        raise RuntimeError("LLM endpoint/model 未配置")
+    model = lambda prompt, _cfg=None: call_llm(selected, prompt)
+    model.model_name = selected.get("model")
+    return model
 
 
 # ---------- 主流程 ----------
@@ -514,8 +540,7 @@ def main(argv):
         print("usage: ner_lite.py selfcheck|<doc>...|all")
         return 1
     cfg = json.load(io.open(os.path.join(ROOT, "channels.json"), encoding="utf-8")).get("llm") or {}
-    model = lambda prompt, _cfg=None: call_llm(cfg, prompt)
-    model.model_name = cfg.get("model")
+    model = make_model(cfg)
     for doc in docs:
         product, audit = run_doc(doc, model)
         d = write_outputs(doc, product, audit)

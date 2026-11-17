@@ -411,7 +411,7 @@ def main(argv=None):
         log(u"⑥ 元数据链导入失败(不阻断): %s" % str(e)[:120])
     _llm_cfg = (load_cfg().get("llm") or {})
     # KCI_SKIP_NER=1: 本次调用跳过 ner 阶段(GUI "快速重跑" 用; 元数据/查看器照出, 只是不烧 LLM)
-    if _llm_cfg.get("ner_lite_auto", True) and os.environ.get("KCI_LLM_KEY") \
+    if _llm_cfg.get("ner_lite_auto", True) and (os.environ.get("KCI_LLM_KEY") or os.environ.get("KCI_ZJLAB_KEY")) \
             and not os.environ.get("KCI_SKIP_NER"):
         try:
             import ner_lite as _nl
