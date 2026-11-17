@@ -14,6 +14,7 @@ import re
 from .front_vertical import extract_page
 from .ja_names import enrich_author
 from .vertical_notes import collect as collect_notes
+from .vertical_refs import build_candidates as build_refs, to_references
 
 _SECTION = re.compile(r"^\s*(?:[一二三四五六七八九十]+[、.．]|"
                       r"第[一二三四五六七八九十]+[、.．]|はじめに|目次|序)")
@@ -114,6 +115,15 @@ def apply_doc(doc, out_root):
             new["footnote_count"] = len(notes)
             info["notes"] = len(notes)
             changed = True
+        refs = build_refs(doc, out_root)
+        if refs:
+            new["reference_candidates"] = refs
+            strict = to_references(refs)
+            if strict and not new.get("references"):
+                new["references"] = strict
+                new["reference_source"] = "vertical_notes"
+                info["refs"] = len(strict)
+                changed = True
     if changed:
         tmp = mfp + ".tmp"
         with io.open(tmp, "w", encoding="utf-8") as f:

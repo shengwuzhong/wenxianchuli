@@ -39,9 +39,15 @@ python stages.py <doc> vertical,normalize,viewer
   "footnote_candidates": [
     {"page": 1, "uid": "...", "text": "注1 ..."}
   ],
+  "reference_candidates": [
+    {"page": 14, "uid": "...", "title": "...", "year": "1924", "source": "...", "confidence": "high"}
+  ],
   "footnote_count": 1
 }
 ```
+
+有明确题名/来源/年份的高置信注记会写入 `references`，其余只留在
+`reference_candidates`；不用说明性注记伪造参考文献。
 
 旧题名/作者保留在：
 
