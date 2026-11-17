@@ -15,6 +15,7 @@ __pycache__/
 _state_mineru.json
 _server.lock
 gui_runs.jsonl
+.locks/
 
 # 编辑器/系统
 .vscode/
