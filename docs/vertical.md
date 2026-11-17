@@ -42,6 +42,9 @@ python stages.py <doc> vertical,normalize,viewer
   "reference_candidates": [
     {"page": 14, "uid": "...", "title": "...", "year": "1924", "source": "...", "confidence": "high"}
   ],
+  "citation_spans": [
+    {"page": 6, "uid": "...", "citation_text": "前掲", "kind": "vertical_inline"}
+  ],
   "footnote_count": 1
 }
 ```

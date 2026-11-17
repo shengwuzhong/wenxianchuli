@@ -55,6 +55,7 @@ multidoc-ocr-compare/
 │  ├─ vertical_meta.py           竖排题名/作者回写 metadata
 │  ├─ vertical_notes.py          竖排脚注/尾注候选
 │  ├─ vertical_refs.py           竖排注记 -> 参考文献候选
+│  ├─ vertical_cspan.py          竖排正文引文候选
 │  ├─ vertical_reorder.py        unify 后竖排全文重排
 │  ├─ ja_search.py               日文语料级规范化检索索引
 │  ├─ normalize_meta.py          主字段 normalized + sidecar

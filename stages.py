@@ -209,8 +209,9 @@ def _st_vertical(ctx):
     info = apply_doc(ctx["doc"], ctx["out_root"])
     if not info or not info.get("vertical"):
         return "非竖排，跳过"
-    return "竖排: %s; 脚注候选 %d; refs %d" % (
-        (info.get("title") or "-")[:60], info.get("notes") or 0, info.get("refs") or 0)
+    return "竖排: %s; 脚注候选 %d; refs %d; cspan %d" % (
+        (info.get("title") or "-")[:60], info.get("notes") or 0,
+        info.get("refs") or 0, info.get("cspan") or 0)
 
 
 def _st_vreorder(ctx):

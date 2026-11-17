@@ -386,6 +386,28 @@ class VerticalFrontTest(unittest.TestCase):
                          "守覚法親王略年譜——和歌活動の面を中心に——")
 
 
+class VerticalCspanTest(unittest.TestCase):
+    def test_note_marker(self):
+        import json
+        import os
+        import shutil
+        import tempfile
+        from metapy.vertical_cspan import collect
+        root = tempfile.mkdtemp()
+        try:
+            d = os.path.join(root, "d", "unified")
+            os.makedirs(d)
+            page = {"w": 800, "h": 1200, "unified": [
+                {"uid": "u", "type": "Text", "box": [0, 0, 100, 100],
+                 "main_text": "これは前掲の説である。"}]}
+            with open(os.path.join(d, "page_0.json"), "w", encoding="utf-8") as f:
+                json.dump(page, f, ensure_ascii=False)
+            rows = collect("d", root)
+            self.assertTrue(rows and rows[0]["citation_text"] == "前掲")
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+
 class VerticalReorderTest(unittest.TestCase):
     def test_reorder_page(self):
         import json

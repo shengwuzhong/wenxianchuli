@@ -34,11 +34,11 @@
 | 参考文献二次切分 | 修复题名/作者/刊名错位、截断、缺失页卷 | `metapy/ref_split.py` | `[新增]` |
 | 引文消歧 | 同書/前掲/ibid/同著者同年；歧义时记 resolve_note | `metapy/cite_resolve.py` | `[新增]` |
 | 竖排阅读序 | 竖排检测、右到左分列、列内 y 序；横向路径不变 | `metapy/vertical_layout.py` | `[P0]` |
-| 竖排全文重排 | unify 后对所有竖排页重写 unified 顺序 | `metapy/vertical_reorder.py` | `[P1]` |
-| 竖排题名/作者候选 | 右列题名打分、作者候选；章节标题排除 | `metapy/front_vertical.py` | `[P1]` |
+| 竖排全文重排 | unify 后对所有竖排页重写 unified 顺序 | `metapy/vertical_reorder.py` | `[P1]` || 竖排题名/作者候选 | 右列题名打分、作者候选；章节标题排除 | `metapy/front_vertical.py` | `[P1]` |
 | 竖排字段回写 | 仅替换明显错误题名、补空作者；raw/旧值保留 | `metapy/vertical_meta.py` | `[P2]` |
 | 竖排脚注候选 | 注N/※/＊/〔注〕候选；不伪造 references | `metapy/vertical_notes.py` | `[P3]` |
 | 竖排 refs 候选 | 从明确题名/来源/年份的注记提取；严格过滤后写 refs | `metapy/vertical_refs.py` | `[P4]` |
+| 竖排引文候选 | 注N/前掲/同書/ibid/作者年份；不伪造链接 | `metapy/vertical_cspan.py` | `[P5]` |
 | 竖排评测 | 10 篇题名/作者/字段 GT + 前后对比 | `eval/vertical_eval.py` | `[P4]` |
 | 日文语料检索 | 规范化索引 + CLI 查询，支持 glossary | `metapy/ja_search.py` | `[P5]` |
 | 规范化 sidecar | `metadata_normalized.json` + 主字段 normalized（raw 保留） | `metapy/normalize_meta.py` + `metadata.py --stage normalize` | `[新增]` |

@@ -15,6 +15,7 @@ from .front_vertical import extract_page
 from .ja_names import enrich_author
 from .vertical_notes import collect as collect_notes
 from .vertical_refs import build_candidates as build_refs, to_references
+from .vertical_cspan import collect as collect_cspan
 
 _SECTION = re.compile(r"^\s*(?:[一二三四五六七八九十]+[、.．]|"
                       r"第[一二三四五六七八九十]+[、.．]|はじめに|目次|序)")
@@ -124,6 +125,21 @@ def apply_doc(doc, out_root):
                 new["reference_source"] = "vertical_notes"
                 info["refs"] = len(strict)
                 changed = True
+        spans = collect_cspan(doc, out_root)
+        if spans and not new.get("citation_spans"):
+            # 同页/同块/同标记去重
+            seen = set()
+            uniq = []
+            for s in spans:
+                k = (s.get("page"), s.get("uid"), s.get("citation_text"), s.get("sentence"))
+                if k in seen:
+                    continue
+                seen.add(k)
+                uniq.append(s)
+            new["citation_spans"] = uniq
+            new["citation_source"] = "vertical_cspan"
+            info["cspan"] = len(uniq)
+            changed = True
     if changed:
         tmp = mfp + ".tmp"
         with io.open(tmp, "w", encoding="utf-8") as f:
