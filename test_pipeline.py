@@ -241,6 +241,23 @@ class UnifiedSafetyTest(unittest.TestCase):
         self.assertNotIn("<sub>", plain)
 
 
+class JapaneseTokenizerTest(unittest.TestCase):
+    def test_tokenize_offsets_and_sentences(self):
+        from metapy.ja_tokenize import tokenize, split_sentences
+        s = "日本語の文献を処理する。次に引用を確認する。"
+        toks = tokenize(s)
+        self.assertTrue(toks)
+        self.assertEqual("".join(t["surface"] for t in toks), s)
+        self.assertEqual(split_sentences(s),
+                         ["日本語の文献を処理する。", "次に引用を確認する。"])
+
+    def test_content_words(self):
+        from metapy.ja_tokenize import content_words
+        words = content_words("日本語の文献を処理する。文献を確認する。")
+        self.assertTrue(words)
+        self.assertTrue(any("文献" in w["word"] for w in words))
+
+
 class MergeReadingOrderTest(unittest.TestCase):
     @staticmethod
     def _b(x0, y0, x1, y1, cat="Text", text=""):
