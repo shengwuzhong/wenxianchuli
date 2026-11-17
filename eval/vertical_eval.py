@@ -43,6 +43,21 @@ def _doc_metrics(gold, meta):
     prec = tp / len(got) if got else (1.0 if not expected else 0.0)
     rec = tp / len(expected) if expected else 1.0
     f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
+    gold_refs = [str(x.get("title") or "") for x in (gold.get("references") or []) if x.get("title")]
+    got_refs = [str(x.get("title") or "") for x in (meta.get("references") or []) if x.get("title")]
+    rg = {_norm_title(x) for x in gold_refs}
+    rt = {_norm_title(x) for x in got_refs}
+    rtp = len(rg & rt)
+    ref_prec = rtp / len(rt) if rt else (1.0 if not rg else 0.0)
+    ref_rec = rtp / len(rg) if rg else 1.0
+    ref_ok = (not rg) or (rg <= rt)
+    abstract_expected = bool(gold.get("abstract_expected", False))
+    refs_expected = bool(gold.get("refs_expected", False))
+    cspan_expected = bool(gold.get("cspan_expected", False))
+    applicable_ok = bool(exact and ((not expected) or (expected <= got))
+                         and ((not abstract_expected) or len(str(_val(meta, "abstract") or "")) > 0)
+                         and ((not refs_expected) or ref_ok)
+                         and ((not cspan_expected) or len(meta.get("citation_spans") or []) > 0))
     return {
         "title": t, "title_norm": tn, "gold_title": g,
         "title_exact": exact, "title_ratio": round(ratio, 3),
@@ -53,9 +68,12 @@ def _doc_metrics(gold, meta):
         "authors_ok": (not expected) or (expected <= got),
         "abstract_len": len(str(_val(meta, "abstract") or "")),
         "refs": len(meta.get("references") or []),
+        "refs_f1": round(2 * ref_prec * ref_rec / (ref_prec + ref_rec), 3) if (ref_prec + ref_rec) else 0.0,
+        "refs_ok": ref_ok,
         "cspan": len(meta.get("citation_spans") or []),
         "keywords": len(meta.get("keywords") or []),
         "footnotes": len(meta.get("footnote_candidates") or []),
+        "applicable_ok": applicable_ok,
     }
 
 
@@ -98,6 +116,9 @@ def evaluate(gold_fp, after_root, before_root=None):
         "cspan_docs": sum(1 for r in rows if r.get("cspan", 0) > 0),
         "keywords_docs": sum(1 for r in rows if r.get("keywords", 0) > 0),
         "footnote_docs": sum(1 for r in rows if r.get("footnotes", 0) > 0),
+        "refs_f1_avg": round(sum(r.get("refs_f1", 0) for r in rows if r.get("refs", 0) > 0) /
+                             max(1, sum(1 for r in rows if r.get("refs", 0) > 0)), 3),
+        "applicable_core_ok": sum(1 for r in rows if r.get("applicable_ok")),
         "strict_core_ok": 0,
     }
     summary["strict_core_ok"] = sum(
@@ -133,23 +154,25 @@ def to_md(res):
         "| 作者 F1 平均 | %.3f |" % s["author_f1_avg"],
         "| 有摘要 | %d/%d |" % (s["abstract_docs"], s["docs"]),
         "| 有 refs | %d/%d |" % (s["refs_docs"], s["docs"]),
+        "| refs F1 平均(有 refs 文档) | %.3f |" % s["refs_f1_avg"],
         "| 有 cspan | %d/%d |" % (s["cspan_docs"], s["docs"]),
         "| 有关键词 | %d/%d |" % (s["keywords_docs"], s["docs"]),
         "| 有脚注候选 | %d/%d |" % (s["footnote_docs"], s["docs"]),
         "| 六字段覆盖 | %d/%d |" % (s["field_coverage"], s["field_coverage_max"]),
+        "| 适用字段核心通过 | %d/%d |" % (s["applicable_core_ok"], s["docs"]),
         "| 严格核心完整 | %d/%d |" % (s["strict_core_ok"], s["docs"]),
         "",
         "## 逐篇",
         "",
-        "| 文档 | title exact | ratio | authors_ok | refs | cspan | kw | notes |",
-        "| --- | --- | ---: | --- | ---: | ---: | ---: | ---: |",
+        "| 文档 | title exact | ratio | authors_ok | refs | cspan | kw | notes | applicable |",
+        "| --- | --- | ---: | --- | ---: | ---: | ---: | ---: | --- |",
     ]
     for r in res["rows"]:
-        lines.append("| %s | %s | %.3f | %s | %d | %d | %d | %d |" % (
+        lines.append("| %s | %s | %.3f | %s | %d | %d | %d | %d | %s |" % (
             r.get("doc"), "Y" if r.get("title_exact") else "N",
             r.get("title_ratio", 0), "Y" if r.get("authors_ok") else "N",
             r.get("refs", 0), r.get("cspan", 0), r.get("keywords", 0),
-            r.get("footnotes", 0)))
+            r.get("footnotes", 0), "Y" if r.get("applicable_ok") else "N"))
     return "\n".join(lines) + "\n"
 
 

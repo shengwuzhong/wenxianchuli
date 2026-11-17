@@ -9,61 +9,257 @@
    "doc": "01_文藝言語研究_1984_犬井善壽",
    "source_pdf": "uploads/01_文藝言語研究_1984_犬井善壽.pdf",
    "title": "『月詣和歌集』所載西行歌本文小考",
-   "authors": ["犬井善壽"]
+   "authors": [
+    "犬井善壽"
+   ],
+   "refs_expected": false,
+   "abstract_expected": false,
+   "cspan_expected": false
   },
   {
    "doc": "02_文藝言語研究_2011_清登典子",
    "source_pdf": "uploads/02_文藝言語研究_2011_清登典子.pdf",
    "title": "「恋の詞」と蕉風俳諧",
-   "authors": ["清登典子"]
+   "authors": [
+    "清登典子"
+   ],
+   "refs_expected": false,
+   "abstract_expected": false,
+   "cspan_expected": false
   },
   {
    "doc": "03_中国文化_1980_小谷一郎",
    "source_pdf": "uploads/03_中国文化_1980_小谷一郎.pdf",
    "title": "創造社と少年中国学会・新人会——田漢の文学及び文学観を中心に——",
-   "authors": ["小谷一郎"]
+   "authors": [
+    "小谷一郎"
+   ],
+   "refs_expected": true,
+   "abstract_expected": false,
+   "cspan_expected": false,
+   "references": [
+    {
+     "num": null,
+     "title": "編輯余談",
+     "authors_raw": "郭沫若",
+     "year": "1924",
+     "source": "創造",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注一 郭沫若「編輯余談」《創造》季刊二卷二期（一九二四年二月）",
+     "page": 14,
+     "uid": "u13_2"
+    },
+    {
+     "num": null,
+     "title": "創造社年表",
+     "authors_raw": null,
+     "year": "1979",
+     "source": "創造社研究",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注二 「創造社年表」（伊藤虎丸編『創造社研究』所収 アジア出版 一九七九年十月）",
+     "page": 14,
+     "uid": "u13_2"
+    },
+    {
+     "num": null,
+     "title": "少年中国学会規約",
+     "authors_raw": null,
+     "year": "1979",
+     "source": "五四時期的社団",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注五 「少年中国学会規約」(張允侯等編『五四時期的社団』所収 香港三聯書店 一九七九)なおこの宗旨は七月一月の成立大会で発起人の提議により、より簡潔な表現を求めて改訂されたものである。改訂前の宗旨は「少年精神を発揮し、真の学術を研究し、社会事業を発展させ、末世の風気を転移する」である。",
+     "page": 14,
+     "uid": "u13_8"
+    },
+    {
+     "num": null,
+     "title": "白梅之園的内外",
+     "authors_raw": "田漢",
+     "year": "1936",
+     "source": "田漢散文集",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注一八 田漢「白梅之園的内外」(《田漢散文集》所収 上海今代書店 一九三六年七月)",
+     "page": 15,
+     "uid": "u14_0"
+    },
+    {
+     "num": null,
+     "title": "新人会記事",
+     "authors_raw": null,
+     "year": "1920",
+     "source": "先駆",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注一七 「新人会記事」(《先駆》一九二〇年六月号)",
+     "page": 15,
+     "uid": "u14_0"
+    },
+    {
+     "num": null,
+     "title": "国民文学の問題点",
+     "authors_raw": "竹内好",
+     "year": "1954",
+     "source": "国民文学論",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注二七 竹内好「国民文学の問題点」（『国民文学論』所収 東京大学出版会 一九五四年一月）",
+     "page": 15,
+     "uid": "u14_5"
+    },
+    {
+     "num": null,
+     "title": "少年中国学会之精神及其進行計画",
+     "authors_raw": "王光祈",
+     "year": "1919",
+     "source": "少年中国",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注二六 王光祈「少年中国学会之精神及其進行計画」(《少年中国》一卷六期 一九一九年一二月)",
+     "page": 15,
+     "uid": "u14_6"
+    },
+    {
+     "num": null,
+     "title": "会務紀聞",
+     "authors_raw": null,
+     "year": "1919",
+     "source": "少年中国",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注二四 「会務紀聞」（《少年中国》一卷二期 一九一九年七月）",
+     "page": 15,
+     "uid": "u14_7"
+    },
+    {
+     "num": null,
+     "title": "離鄉的滋味",
+     "authors_raw": "田漢",
+     "year": "1936",
+     "source": "田漢創作選",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注二一 田漢「離鄉的滋味」(筱梅編『田漢創作選』所収 上海仿古書店 一九三六年十月)",
+     "page": 15,
+     "uid": "u14_8"
+    },
+    {
+     "num": null,
+     "title": "憶創造社",
+     "authors_raw": "鄭伯奇",
+     "year": "1959",
+     "source": "文芸月報",
+     "volume": null,
+     "issue": null,
+     "pages": null,
+     "doi": null,
+     "raw": "注三七 鄭伯奇「憶創造社」(《文芸月報》一九五九年第五期)",
+     "page": 16,
+     "uid": "u15_1"
+    }
+   ]
   },
   {
    "doc": "04_漢文學會々報_1935_大島正健",
    "source_pdf": "uploads/04_漢文學會々報_1935_大島正健.pdf",
    "title": "元の韻の構造に就いて",
-   "authors": ["大島 正健"]
+   "authors": [
+    "大島 正健"
+   ],
+   "refs_expected": false,
+   "abstract_expected": false,
+   "cspan_expected": false
   },
   {
    "doc": "05_漢文學會々報_1935_小澤文四郎",
    "source_pdf": "uploads/05_漢文學會々報_1935_小澤文四郎.pdf",
    "title": "卦氣説に就いて",
-   "authors": ["小澤文四郎"]
+   "authors": [
+    "小澤文四郎"
+   ],
+   "refs_expected": false,
+   "abstract_expected": false,
+   "cspan_expected": false
   },
   {
    "doc": "06_漢文學會々報_1934_上島一夫",
    "source_pdf": "uploads/06_漢文學會々報_1934_上島一夫.pdf",
    "title": "楚辭遠遊篇作成年代考",
-   "authors": ["上島一夫"]
+   "authors": [
+    "上島一夫"
+   ],
+   "refs_expected": false,
+   "abstract_expected": false,
+   "cspan_expected": false
   },
   {
    "doc": "07_東大国文学論集_2017_長島弘明",
    "source_pdf": "uploads/07_東大国文学論集_2017_長島弘明.pdf",
    "title": "観音教寺所蔵俳諧資料目録",
-   "authors": []
+   "authors": [],
+   "refs_expected": false,
+   "abstract_expected": false,
+   "cspan_expected": false
   },
   {
    "doc": "08_平家部会論集_2007_小野のぞみ",
    "source_pdf": "uploads/08_平家部会論集_2007_小野のぞみ.pdf",
    "title": "『宇治拾遺物語』第五十一話「一条摂政歌の事」の和歌について",
-   "authors": ["小野 のぞみ"]
+   "authors": [
+    "小野 のぞみ"
+   ],
+   "refs_expected": false,
+   "abstract_expected": true,
+   "cspan_expected": false,
+   "notes_policy": "footnote_candidates_only",
+   "notes_only": true
   },
   {
    "doc": "09_平家部会論集_1992_千草聡",
    "source_pdf": "uploads/09_平家部会論集_1992_千草聡.pdf",
    "title": "守覚法親王略年譜——和歌活動の面を中心に——",
-   "authors": ["千草 聡"]
+   "authors": [
+    "千草 聡"
+   ],
+   "refs_expected": false,
+   "abstract_expected": true,
+   "cspan_expected": false,
+   "notes_policy": "footnote_candidates_only",
+   "notes_only": true
   },
   {
    "doc": "10_平家部会論集_2002_千草聡",
    "source_pdf": "uploads/10_平家部会論集_2002_千草聡.pdf",
    "title": "元性法印の和歌活動について",
-   "authors": ["千草 聡"]
+   "authors": [
+    "千草 聡"
+   ],
+   "refs_expected": false,
+   "abstract_expected": true,
+   "cspan_expected": false,
+   "notes_policy": "footnote_candidates_only",
+   "notes_only": true
   }
  ]
 }
