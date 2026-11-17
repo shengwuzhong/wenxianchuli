@@ -42,6 +42,22 @@ def _load_cfg():
     except Exception:
         return {}
 
+def _effective_cfg():
+    """面板展示用: channels.json 叠加 channels.local.json 后的有效值(与 pipeline 实际取用一致)。
+
+    只读基线会让本地覆盖在界面上"显示不出来"(如 local 里 language=japan, 面板仍显示基线的
+    korean), 用户再点保存就把旧值写回本地, 等于覆盖掉自己的设置。
+    """
+    try:
+        import pipeline
+        cfg = pipeline.load_cfg(use_env=False)
+        if cfg:
+            return {s: cfg.get(s, {}) for s in API_SECTIONS}
+    except Exception:
+        pass
+    return {s: _load_cfg().get(s, {}) for s in API_SECTIONS}
+
+
 def _save_cfg(updates):
     """合并 web 端提交的 API 配置(仅白名单段、忽略 _ 前缀键), 写入 channels.local.json。
 
@@ -78,7 +94,7 @@ def _save_cfg(updates):
     tmp = path + ".tmp"
     io.open(tmp, "w", encoding="utf-8").write(json.dumps(cfg, ensure_ascii=False, indent=1))
     os.replace(tmp, path)
-    return {x: _load_cfg().get(x, {}) for x in API_SECTIONS}
+    return _effective_cfg()
 
 
 def _new_job(job, doc, rescue=""):
@@ -396,7 +412,7 @@ class H(BaseHTTPRequestHandler):
                 data["log"] = list(j.get("log", [])[-100:]) if j else []
             return self._send(200, json.dumps(data, ensure_ascii=False), "application/json")
         if self.path.startswith("/api/config"):
-            return self._send(200, json.dumps({s: _load_cfg().get(s, {}) for s in API_SECTIONS}, ensure_ascii=False), "application/json")
+            return self._send(200, json.dumps(_effective_cfg(), ensure_ascii=False), "application/json")
         if self.path.startswith("/trial/"):   # NER 审计页等 trial 产物(static, 同 /out/ 越界守卫)
             rel = unquote(self.path[len("/trial/"):].split("?")[0])
             fp = os.path.abspath(os.path.join(OUT_LLM_TRIAL, rel.lstrip("/").replace("/", os.sep)))
@@ -628,7 +644,25 @@ def watch_uploads():
 class SingleServer(ThreadingHTTPServer):
     allow_reuse_address = False  # 禁止同端口重复绑定(Windows 的 SO_REUSEADDR 会允许多实例叠听!)
 
+def _missing_deps(mods=("pypdfium2", "PIL")):
+    """返回当前解释器缺失的必需依赖(见 requirements.txt)。
+
+    服务与 pipeline 跑在同一解释器里, 少一个包就会“每个任务 0 秒失败、五个环节全未执行”,
+    错误只在任务日志里留一行(如 No module named 'pypdfium2'), 排查成本很高, 故启动时先拦。
+    """
+    import importlib.util
+    return [m for m in mods if importlib.util.find_spec(m) is None]
+
+
 if __name__ == "__main__":
+    _miss = _missing_deps()
+    if _miss:  # 例: 用工具内置 3.13 启动, 而依赖装在 3.11 -> 任务必然全失败
+        print("错误: 当前 Python 缺少必需依赖: %s" % ", ".join(_miss))
+        print("  当前解释器: %s" % sys.executable)
+        print("  请换成装好依赖的解释器启动, 或先安装依赖:")
+        print("  %s -m pip install -r requirements.txt" % sys.executable)
+        sys.exit(2)
+
     LOCK = os.path.join(ROOT, "_server.lock")
     if os.path.exists(LOCK):  # 单实例锁: 防重复双击 start.bat 叠出多服务
         try:
@@ -636,8 +670,8 @@ if __name__ == "__main__":
             print("服务已在运行(见另一个控制台窗口), 请勿重复启动。")
             print("浏览器访问: http://127.0.0.1:8765")
             sys.exit(0)
-        except (OSError, ValueError):
-            pass  # 残留锁(进程已死)
+        except (OSError, ValueError, SystemError):
+            pass  # 残留锁(进程已死); Windows 对失效 PID 可能抛 SystemError
     io.open(LOCK, "w", encoding="ascii").write(str(os.getpid()))
 
     port = 0
@@ -655,6 +689,7 @@ if __name__ == "__main__":
     print("  解析对比工作台已启动:", url)
     print("  用法1: 浏览器里把 PDF 拖入页面")
     print("  用法2: 把 PDF 复制到  %s" % UP)
+    print("  解释器: %s" % sys.executable)
     print("  本窗口保持开着服务才运行; 关闭窗口 = 停止服务")
     print("=" * 60)
     threading.Thread(target=watch_uploads, daemon=True).start()

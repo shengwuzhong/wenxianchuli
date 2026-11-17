@@ -173,7 +173,9 @@ var SCHEMA = [
         sec: 'mineru_api', label: 'MinerU 云端 API（唯一获取方式）', fields: [
             { k: 'token', label: 'Token', ph: 'sk-...' },
             { k: 'model_version', label: '模型版本', sel: ['pipeline', 'vlm', 'MinerU-HTML'] },
-            { k: 'language', label: '语言', ph: 'korean（韩文）/ ch（中英）' },
+            { k: 'language', label: '语言（日文=japan）',
+              sel: ['japan', 'ch', 'en', 'korean', 'chinese_cht', 'latin', 'arabic',
+                    'east_slavic', 'cyrillic', 'devanagari', 'th', 'ta', 'te', 'ka', 'el'] },
             { k: 'is_ocr', label: '启用 OCR（默认关=非OCR）', bool: 1 },
             { k: 'enable_formula', label: '公式识别', bool: 1 },
             { k: 'enable_table', label: '表格识别', bool: 1 },
