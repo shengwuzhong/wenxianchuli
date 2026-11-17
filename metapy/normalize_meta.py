@@ -23,11 +23,12 @@ import os
 import sys
 
 from .normalize import normalize_text
+from .ja_date import normalize_year
 
 SCALAR = ["title", "title_en", "journal", "journal_en", "year", "volume",
           "issue", "pages", "abstract", "abstract_en"]
 LIST_TEXT = ["keywords"]
-REF_FIELDS = ["title", "authors_raw", "source", "container_title", "publisher", "doi"]
+REF_FIELDS = ["title", "authors_raw", "year", "source", "container_title", "publisher", "doi"]
 
 
 def _glossary_terms(path):
@@ -42,19 +43,23 @@ def _glossary_terms(path):
     return []
 
 
-def _norm(text, glossary):
+def _norm(text, glossary, kind=None):
     r = normalize_text(text, glossary)
+    if kind == "year":
+        y = normalize_year(text)
+        if y:
+            r["normalized"] = y
     return {"raw": r["raw"], "normalized": r["normalized"],
             "map": r["map"]}
 
 
-def _norm_scalar(obj, glossary):
+def _norm_scalar(obj, glossary, kind=None):
     if not isinstance(obj, dict):
         return None
     v = obj.get("value")
     if v is None:
         return None
-    return _norm(v, glossary)
+    return _norm(str(v), glossary, kind)
 
 
 def _norm_authors(items, glossary):
@@ -77,7 +82,7 @@ def _norm_refs(refs, glossary):
         for k in REF_FIELDS:
             v = r.get(k)
             if v:
-                fields[k] = _norm(v, glossary)
+                fields[k] = _norm(str(v), glossary, kind=("year" if k == "year" else None))
         out.append({"index": i, "num": r.get("num"), "page": r.get("page"),
                     "uid": r.get("uid"), "fields": fields})
     return out
@@ -87,7 +92,7 @@ def normalize_meta(meta, glossary=()):
     """metadata dict -> sidecar dict（纯函数，便于测试）。"""
     fields = {}
     for k in SCALAR:
-        n = _norm_scalar(meta.get(k), glossary)
+        n = _norm_scalar(meta.get(k), glossary, kind=("year" if k == "year" else None))
         if n:
             fields[k] = n
     fields["authors"] = _norm_authors(meta.get("authors"), glossary)
@@ -145,7 +150,7 @@ def apply_normalized(meta, glossary=()):
         obj = out.get(k)
         if not isinstance(obj, dict) or obj.get("value") is None:
             continue
-        n = _norm(str(obj.get("value")), glossary)
+        n = _norm(str(obj.get("value")), glossary, kind=("year" if k == "year" else None))
         obj["normalized"] = n["normalized"]
         obj["normalized_map"] = n["map"]
     authors = out.get("authors") or []
@@ -170,7 +175,7 @@ def apply_normalized(meta, glossary=()):
         for k in REF_FIELDS:
             v = r.get(k)
             if v:
-                nr[k] = _norm(str(v), glossary)["normalized"]
+                nr[k] = _norm(str(v), glossary, kind=("year" if k == "year" else None))["normalized"]
         r["normalized"] = nr
     return out
 
@@ -178,13 +183,16 @@ def apply_normalized(meta, glossary=()):
 def _selftest():
     meta = {
         "doc": "d", "title": {"value": "ＡＢＣ 舊"}, "abstract": {"value": "行なう"},
+        "year": {"value": "令和6年"},
         "authors": [{"name": "山田 太郎"}], "affiliations": ["東京大学"],
         "keywords": ["ＡＢＣ"], "body": "DOI:10.1234/AbC_Def",
         "references": [{"num": 1, "title": "舊題", "authors_raw": "山田，太郎",
-                        "source": "10.1234/AbC_Def"}],
+                        "year": "平成30", "source": "10.1234/AbC_Def"}],
     }
     s = normalize_meta(meta, ["東京大学"])
     assert s["fields"]["title"]["normalized"] == "ABC 旧"
+    assert s["fields"]["year"]["normalized"] == "2024"
+    assert s["references"][0]["fields"]["year"]["normalized"] == "2018"
     assert s["fields"]["abstract"]["normalized"] == "行う"
     assert s["fields"]["authors"][0]["normalized"] == "山田 太郎"
     assert s["fields"]["keywords"][0]["normalized"] == "ABC"
@@ -195,10 +203,12 @@ def _selftest():
     m = apply_normalized(meta, ["東京大学"])
     assert m["title"]["value"] == "ＡＢＣ 舊"
     assert m["title"]["normalized"] == "ABC 旧"
+    assert m["year"]["normalized"] == "2024"
     assert m["authors"][0]["name"] == "山田 太郎"
     assert m["authors"][0]["normalized"] == "山田 太郎"
     assert m["keywords_normalized"] == ["ABC"]
     assert m["references"][0]["normalized"]["title"] == "旧題"
+    assert m["references"][0]["normalized"]["year"] == "2018"
     assert m["references"][0]["normalized"]["source"] == "10.1234/AbC_Def"
     print("normalize_meta selftest: PASS")
     return 0

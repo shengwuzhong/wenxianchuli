@@ -25,12 +25,14 @@ r"""本篇期刊/出版年/卷/期/页/关键词 (--stage issue): 页眉页脚+�
 import os, re, io, json, datetime, collections
 
 from .common import *
+from .ja_date import era_to_year
 
 _Y_GUARD = re.compile(r"권|호|집|Vol|No|pp|ISSN|DOI|doi|Journal|Letters|Review|학회지|학술지|『|』|AUTUMN|SPRING|SUMMER|WINTER|FALL|"
                       r"巻|号|第\s*\d+\s*[巻号]|\(\s*(?:19|20)\d{2}\s*\)|(?:19|20)\d{2}\s*[;:]|"
                       r"(?<![\dA-Za-z])\d{1,3}\s*:\s*\d|"  # 2026-11-12 日文「卷:页」刊头信号('脳卒中 40: 343-349, 2018')
                       r"(?:19|20)\d{2}\s*,\s*\d{1,3}(?=\s*[\(\s])")  # 2026-11-12 日文「年, 卷 (期)」刊头信号('診断病理 2025, 42 (2)')
 _YEAR = re.compile(r"(?<![\d\-])((?:19|20)\d{2})(?![\d\-])")
+_ERA_YEAR = re.compile(r"(令和|平成|昭和|大正|明治)\s*(元|\d{1,2})\s*年")
 _JBOOK = re.compile(r"『([^』]{2,40})』")
 _KWAN = re.compile(r"제\s*(\d{1,4})\s*권")
 _JIP = re.compile(r"(?<!\d)(\d{1,4})\s*집")
@@ -231,6 +233,11 @@ def extract(source, n_pages, excluded_folds):
                 y = int(m.group(1))
                 if y in YEAR_OK:
                     _add(year, y, page)
+        # 日文元号年份（令和6年/平成30年/昭和55年）
+        for m in _ERA_YEAR.finditer(s):
+            y = era_to_year(m.group(1), m.group(2))
+            if y and y in YEAR_OK:
+                _add(year, y, page)
         # 卷(三组)/期(통권 旁路)
         for m in _KWAN.finditer(s):
             _add(vol_kwan, int(m.group(1)), page)

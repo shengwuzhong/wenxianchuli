@@ -258,6 +258,17 @@ class JapaneseTokenizerTest(unittest.TestCase):
         self.assertTrue(any("文献" in w["word"] for w in words))
 
 
+class JapaneseDateTest(unittest.TestCase):
+    def test_era_to_gregorian(self):
+        from metapy.ja_date import normalize_year, normalize_date
+        self.assertEqual(normalize_year("令和6年"), "2024")
+        self.assertEqual(normalize_year("平成30年"), "2018")
+        self.assertEqual(normalize_year("昭和55年"), "1980")
+        self.assertEqual(normalize_year("R6"), "2024")
+        d = normalize_date("令和6年3月1日")
+        self.assertEqual(d["normalized"], "2024-03-01")
+
+
 class MergeReadingOrderTest(unittest.TestCase):
     @staticmethod
     def _b(x0, y0, x1, y1, cat="Text", text=""):
