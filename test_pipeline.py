@@ -386,6 +386,48 @@ class VerticalFrontTest(unittest.TestCase):
                          "守覚法親王略年譜——和歌活動の面を中心に——")
 
 
+class VerticalReorderTest(unittest.TestCase):
+    def test_reorder_page(self):
+        import json
+        import os
+        import shutil
+        import tempfile
+        from metapy.vertical_reorder import reorder_doc
+        root = tempfile.mkdtemp()
+        try:
+            d = os.path.join(root, "d", "unified")
+            os.makedirs(d)
+            page = {"w": 793, "h": 1192, "unified": [
+                {"uid": "body", "type": "Text", "box": [303, 154, 454, 1097], "main_text": "b"},
+                {"uid": "title", "type": "Section-header", "box": [655, 255, 695, 702], "main_text": "t"}]}
+            with open(os.path.join(d, "page_0.json"), "w", encoding="utf-8") as f:
+                json.dump(page, f, ensure_ascii=False)
+            self.assertEqual(reorder_doc("d", root)["reordered"], 1)
+            with open(os.path.join(d, "page_0.json"), encoding="utf-8") as f:
+                out = json.load(f)
+            self.assertEqual(out["unified"][0]["uid"], "title")
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_ja_search(self):
+        import json
+        import os
+        import shutil
+        import tempfile
+        from metapy.ja_search import build_index, search
+        root = tempfile.mkdtemp()
+        try:
+            d = os.path.join(root, "d1")
+            os.makedirs(d)
+            with open(os.path.join(d, "metadata.json"), "w", encoding="utf-8") as f:
+                json.dump({"title": {"value": "アプタマー技術"}}, f, ensure_ascii=False)
+            fp = os.path.join(root, "idx.json")
+            build_index(root, fp)
+            self.assertEqual(search(fp, "アプタマー")[0]["doc"], "d1")
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+
 class VerticalLayoutTest(unittest.TestCase):
     @staticmethod
     def _units():

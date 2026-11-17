@@ -237,7 +237,7 @@
    "author_recall": 1.0,
    "author_f1": 1.0,
    "authors_ok": true,
-   "abstract_len": 156,
+   "abstract_len": 110,
    "refs": 0,
    "refs_f1": 1.0,
    "refs_ok": true,

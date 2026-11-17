@@ -29,6 +29,7 @@ PIPELINE_STAGES = (
     ("acquire", "渠道解析"),
     ("adapt", "结果适配"),
     ("unify", "合并归一化"),
+    ("vreorder", "竖排重排"),
     ("metadata", "元数据提取"),
     ("vertical", "竖排题名"),
     ("normalize", "字段规范化"),

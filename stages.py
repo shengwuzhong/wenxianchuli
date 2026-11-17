@@ -213,6 +213,12 @@ def _st_vertical(ctx):
         (info.get("title") or "-")[:60], info.get("notes") or 0, info.get("refs") or 0)
 
 
+def _st_vreorder(ctx):
+    from metapy.vertical_reorder import reorder_doc
+    r = reorder_doc(ctx["doc"], ctx["out_root"])
+    return "竖排重排 %d 页" % (r.get("reordered") or 0)
+
+
 def _st_index(ctx):
     """按磁盘产物重建总览: 渠道块数/韩文字符/FFFD 从 merged.json 统计, 不重跑适配。"""
     import pipeline
@@ -255,6 +261,7 @@ STAGES = [
     ("adapt",   "① 取数", "渠道适配",     "raw/ → 单渠道查看器",            ("pages", "raw"), False),
     ("merge",   "② 归一", "跨渠道合并",   "merged/ + merged.json + .md",   ("pages", "raw"), False),
     ("unify",   "② 归一", "归一化层",     "merged/ → unified/",            ("merged",), False),
+    ("vreorder", "② 归一", "竖排重排",     "unified 按右到左重排",           ("unified",), False),
     ("m3",      "③ 元数据", "跨页拼接",   "unified 跨页块拼接(会写回)",      ("unified",), False),
     ("refs",    "③ 元数据", "参考文献",   "references[] + 条目校验",        ("unified",), False),
     ("frefs",   "③ 元数据", "脚注引文",   "footnote_refs[]",               ("unified",), False),
@@ -288,6 +295,7 @@ META_FN = {"m3": "m3_doc", "refs": "refs_doc", "frefs": "frefs_doc", "front": "f
 RUNNERS = {
     "render": _st_render, "acquire": _st_acquire, "adapt": _st_adapt,
     "merge": _st_merge, "unify": _st_unify, "ner": _st_ner,
+    "vreorder": _st_vreorder,
     "vertical": _st_vertical,
     "normalize": _st_normalize,
     "viewer": _st_viewer, "index": _st_index,
@@ -297,7 +305,7 @@ for _m in META_IDS:
 
 PRESETS = [
     ("全链(等价一键重跑)", ORDER),
-    ("只后链(元数据+实体)", list(META_IDS) + ["vertical", "normalize", "ner"]),
+    ("只后链(元数据+实体)", list(META_IDS) + ["vreorder", "vertical", "normalize", "ner"]),
     ("只重建呈现(查看器+总览)", ["viewer", "index"]),
     ("只归一化及以下", ["merge", "unify"]),
 ]

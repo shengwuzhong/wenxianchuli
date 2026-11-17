@@ -371,6 +371,13 @@ def main(argv=None):
                 import unify
                 ustat = unify.unify_doc(doc, os.path.dirname(os.path.abspath(out)))
                 log("④ 归一化层: %s" % (ustat if isinstance(ustat, str) else json.dumps(ustat, ensure_ascii=False)[:400]))
+                try:
+                    from metapy.vertical_reorder import reorder_doc
+                    vr = reorder_doc(doc, os.path.dirname(os.path.abspath(out)))
+                    if vr.get("reordered"):
+                        log("④ 竖排阅读序: %d 页重排" % vr["reordered"])
+                except Exception as e:
+                    log("④ 竖排阅读序失败(不阻断): %s" % str(e)[:120])
             except Exception as e:
                 log("④ 归一化层失败(👁 退回临时聚组): %s" % e)
         upages, unified_driven = _load_fresh_unified(udir, t0)

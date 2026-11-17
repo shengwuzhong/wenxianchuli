@@ -129,8 +129,24 @@ _STOP = {
 }
 
 
+def _chunks(text, max_chars=12000):
+    text = text or ""
+    for i in range(0, len(text), max_chars):
+        yield text[i:i + max_chars]
+
+
 def content_words(text, limit=None, min_len=2):
     """抽取内容词（名词/专名/动词/形容词），按频次与长度排序；用于关键词候选。"""
+    # SudachiPy 单次输入上限约 49KB；长文按句/段切块后合并计数
+    if len(str(text).encode("utf-8")) > 40000:
+        merged = {}
+        for chunk in _chunks(text):
+            for row in content_words(chunk, None, min_len):
+                key = row["word"]
+                d = merged.setdefault(key, dict(row))
+                d["count"] = d.get("count", 0) + row.get("count", 0)
+        rows = sorted(merged.values(), key=lambda x: (-x["count"], -len(x["word"]), x["word"]))
+        return rows[:limit] if limit else rows
     counts = {}
     for t in tokenize(text, "C"):
         pos = t.get("pos") or []
