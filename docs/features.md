@@ -41,6 +41,7 @@
 | 竖排引文候选 | 注N/前掲/同書/ibid/作者年份；不伪造链接 | `metapy/vertical_cspan.py` | `[P5]` |
 | 竖排评测 | 10 篇题名/作者/字段 GT + 前后对比 | `eval/vertical_eval.py` | `[P4]` |
 | 日文语料检索 | 规范化索引 + CLI 查询，支持 glossary | `metapy/ja_search.py` | `[P5]` |
+| 术语表检查 | 推荐表记/揺れ検出，术语一致性扫描 | `metapy/ja_terms.py` | `[P5]` |
 | 规范化 sidecar | `metadata_normalized.json` + 主字段 normalized（raw 保留） | `metapy/normalize_meta.py` + `metadata.py --stage normalize` | `[新增]` |
 
 ## 2. 可选功能

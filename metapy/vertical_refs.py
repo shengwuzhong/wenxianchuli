@@ -7,8 +7,9 @@
 import re
 
 from .ja_date import normalize_year
+from .vertical_cite_link import jpnum
 
-_NUM = re.compile(r"^\s*注?\s*[0-9一二三四五六七八九十百〇]+\s*[、.．:：]?\s*")
+_NUM = re.compile(r"^\s*注?\s*([0-9一二三四五六七八九十百〇]+)\s*[、.．:：]?\s*")
 _TITLE = re.compile(r"「([^」]{2,120})」")
 _TITLE2 = re.compile(r"『([^』]{2,120})』")
 _SOURCE = re.compile(r"《([^》]{1,100})》")
@@ -46,6 +47,8 @@ def _parse_line(line, page, uid):
     raw = line.strip()
     if not raw:
         return None
+    mnum = _NUM.match(raw)
+    num = jpnum(mnum.group(1)) if mnum else None
     body = _NUM.sub("", raw)
     mt = _TITLE.search(body) or _TITLE2.search(body)
     if not mt:
@@ -66,7 +69,7 @@ def _parse_line(line, page, uid):
     if mp:
         pages = "%s-%s" % mp.groups()
     conf = "high" if (title and year and source) else ("medium" if title and source else "low")
-    return {"num": None, "title": title, "authors_raw": authors or None,
+    return {"num": num, "title": title, "authors_raw": authors or None,
             "year": year, "source": source, "pages": pages,
             "raw": raw, "page": page, "uid": uid,
             "confidence": conf, "source_kind": "vertical_note"}

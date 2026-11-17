@@ -58,6 +58,7 @@ multidoc-ocr-compare/
 │  ├─ vertical_cspan.py          竖排正文引文候选
 │  ├─ vertical_reorder.py        unify 后竖排全文重排
 │  ├─ ja_search.py               日文语料级规范化检索索引
+│  ├─ ja_terms.py                日文术语表/揺れ检查
 │  ├─ normalize_meta.py          主字段 normalized + sidecar
 │  ├─ audit_invariant.py         不变量审计（上游新增）
 │  └─ audit_value.py             字段值后验审计（上游新增）
