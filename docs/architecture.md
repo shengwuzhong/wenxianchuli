@@ -1,4 +1,6 @@
-# 架构
+﻿# 架构
+
+> 当前项目以**日文文献**为主要目标；韩 / 中 / 英能力保留，仓库中的韩国期刊示例作为通用参考。
 
 一个文档从 PDF 到"可对照的查看器 + 归一化层"要过六步。每一步的产物都落盘, 因此可以中断、重跑、
 单渠道替换, 而不必把整条链路重算一遍。
@@ -10,7 +12,7 @@ input.pdf
   │
   ├─② 获取(三路并行)      mineru / dots / paddle 各拿一份"引擎原生产物"
   │      缓存优先: out/<doc>/raw/<渠道>_api
-  │      缺失才调云端 API(enabled 为假则跳过 / mineru 转 CDP 桌面版)
+  │      缺失才调云端 API(enabled 为假则跳过 / mineru 的 desktop_enabled=true 时转 CDP 桌面版)
   │
   ├─③ adapt_*()            统一中间表示 {页号: [{"cat","box","text","img"}]}
   │      box 一律换算到 150dpi 页图像素(见 docs/calibration.md)
@@ -103,8 +105,8 @@ out/<文档名>/
 unify.py  ->  out/<doc>/unified/page_N.json
 metadata.py --stage m3     跨页拼接(四信号全满足才拼), 结果写回 unified/page_N.json
            --stage refs     ①参考文献条目
-           --stage front    ②标题 / 作者 / 机构(韩 + 罗马拼音)
-           --stage abs      ③韩文摘要 + 英文摘要
+           --stage front    ②标题 / 作者 / 机构(日文 + 罗马拼音；韩文兼容)
+           --stage abs      ③日文摘要 + 英文摘要(韩文兼容)
            --stage llm      ④只对正则失败/低置信字段提问(默认关闭, 密钥走环境变量)
            --stage report   落 metadata.json + _metadata_report.html
            --viewer         用现有 merged/unified 重建 viewer_compare.html

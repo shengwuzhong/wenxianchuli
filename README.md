@@ -1,4 +1,4 @@
-# multidoc-ocr-compare
+﻿# multidoc-ocr-compare
 
 **[English](README.md) · [中文](README.zh-CN.md)**
 
@@ -7,7 +7,7 @@
 Run **several OCR / document-parsing engines on the same PDF**, put every block into one coordinate
 space, and look at them side by side — per page, per block, with the original scan behind them.
 
-Built for scanned academic PDFs (Korean / Chinese / English) where single-engine output *looks* fine
+Built for scanned academic PDFs. **Japanese is the current primary target**; Korean / Chinese / English support remains for the original corpus and demo. Where single-engine output *looks* fine
 but silently disagrees with itself across pages. The point is not "which engine scores higher": it is
 **attribution** — when three engines disagree on a page, is the document weird or is one engine broken?
 
@@ -134,7 +134,7 @@ labelled "not provided" in the report instead of failing the run.
 | --- | --- | --- | --- |
 | **dots.ocr** | a Gradio 5 endpoint; the default is the public Xiaohongshu instance `https://dotsocr.xiaohongshu.com` | **none — no token field** | the quickest way to get a first real run; override `dots_api.base` only if you self-host |
 | **PaddleOCR-VL** | `token` in `channels.local.json` | key from the AI Studio service (`paddleocr.aistudio-app.com`) | async job, normalized coordinates, no calibration |
-| **MinerU** | `token` in `channels.local.json` | key from mineru.net | batch signed upload; falls back to driving the desktop app over CDP (Windows) |
+| **MinerU** | `token` in `channels.local.json` | key from mineru.net | batch signed upload; optional CDP fallback (Windows, off by default via `mineru.desktop_enabled`) |
 
 ```bash
 cp channels.local.example.json channels.local.json   # fill in only the tokens you have; gitignored
@@ -224,8 +224,8 @@ restart. Details: [docs/channels.md](docs/channels.md).
 ## Structured metadata (optional, runs after unify)
 
 The comparison chain above tells you *who read what*. `metadata.py` turns the surviving evidence into
-*citable fields* — title (Korean + English), authors, affiliations, abstract, bilingual
-keywords (`keywords` Korean / `keywords_en` English, each the first matching panel in page
+*citable fields* — title (Japanese + English; Korean/Chinese fields remain for legacy data), authors, affiliations, abstract, bilingual
+keywords (`keywords` Japanese / `keywords_en` English, each the first matching panel in page
 order), and reference entries — each with a confidence level and a page anchor back into the 1:3 viewer.
 
 ```bash
@@ -233,8 +233,8 @@ python unify.py <doc>                      # produces out/<doc>/unified/ (pipeli
 python metadata.py <doc> --stage m3        # cross-page join: glue a paragraph split by the page break
 python metadata.py <doc> --stage refs      # reference entries -> a list of {authors, year, title, vol, no, pages}
 python metadata.py <doc> --stage frefs     # all numbered footnotes (references and notes) -> footnote_refs
-python metadata.py <doc> --stage front     # title / authors / affiliations (Korean + romanised)
-python metadata.py <doc> --stage abs       # Korean + English abstracts
+python metadata.py <doc> --stage front     # title / authors / affiliations (Japanese + romanised; Korean legacy)
+python metadata.py <doc> --stage abs       # Japanese + English abstracts (Korean legacy)
 python metadata.py <doc> --stage issue     # journal / year / volume / issue / pages + keywords
 python metadata.py <doc> --stage cspan     # in-text citation sentences
 python metadata.py <doc> --stage report    # -> _metadata_report.html
@@ -296,22 +296,22 @@ omits the column when it is not.
   their endpoints and request formats can change at any time, and their terms apply to you.
 - `dots_api.base` defaults to a public community instance; if it disappears, point it at your own
   Gradio 5 deployment (or use `inbox/` with output you already have).
-- **Accuracy is not uniform.** The reference-entry and front-matter heuristics are tuned on a 13-document
-  Korean/Chinese journal corpus and were validated by diffing the checked-in example. Known weak spots
+- **Accuracy is not uniform.** The reference-entry and front-matter heuristics are tuned on a Japanese
+  journal corpus; the checked-in Korean example is retained as a general reference. Known weak spots
   (all reproducible on that corpus) are: citation styles where the year is preceded only by a period
   ("Author. 1999. Title."), all-Hanzi author lines, `N.`-style footnote markers, documents whose
   reference list shares its last page with an abstract in the other column, and title/author zones on
   layouts where the abstract begins without a recognisable lead-in. Treat `metadata.json` as a
   high-precision draft: check the confidence level on each field (and cross-check against
   `viewer_compare.html`) before citing.
-- **Entity extraction is recall-limited, not precision-limited.** On the 13-document corpus `ner_lite.py`
+- **Entity extraction is recall-limited, not precision-limited.** On the original Korean/Chinese corpus `ner_lite.py`
   returns 57 records (35 dataset / 15 software / 7 funding) with 61/61 nominations admitted and zero
   network or parse failures — but its recovery against hand-checked `verified.json` is uneven: software
   6/7, funding 3/4 (the miss is a split record: funder and programme land as two names instead of one),
   dataset 0/0 (35 false positives, mostly titles of old books and ICC reports containing `史` / `報告書`).
   Every one of the 35 dataset records is still *verifiable* — each `slice` is verbatim in the source —
   which is exactly the difference between "located" and "correct".
-- Only the MinerU desktop fallback is Windows-specific; `pipeline.py`, `webapp.py`, `metadata.py`
+- Only the optional MinerU desktop fallback is Windows-specific; `pipeline.py`, `webapp.py`, `metadata.py`
   and the views are platform-neutral. `start.bat` / `start.sh` are convenience wrappers.
 - No live-service tests are included (they would need credentials and quota). CI compiles every module,
   runs the unit tests, `ner_lite.py selfcheck` and the offline demo; it does not call an LLM.
@@ -325,7 +325,7 @@ viewer.py           single/compare viewers + md2html + metadata panels
 webapp.py app.js    drag & drop workbench (stdlib HTTP server + channel config panel)
 merge_out.py        per-page merge across channels
 unify.py            cross-engine grouping -> unified/ + summary metrics (frozen)
-metadata.py         structured metadata CLI (11-line shell; implementation lives in metapy/)
+metadata.py         compatibility metadata CLI (normalize/LLM/report stages; core lives in metapy/)
 ner_lite.py         entity extraction (funding / software / dataset): LLM nominates, code locates
 regress.py          reference-entry quality checks (truncation, authors, page joins)
 test_pipeline.py    unified freshness, data-preservation and viewer regression tests

@@ -1,4 +1,4 @@
-# multidoc-ocr-compare
+﻿# multidoc-ocr-compare
 
 **[English](README.md) · [中文](README.zh-CN.md)**
 
@@ -6,7 +6,7 @@
 
 把**多个 OCR / 文档解析引擎跑在同一份 PDF 上**，把每一块文本放进同一个坐标系，然后逐页、逐块地并排看——底下垫着原始扫描图。
 
-它是为扫描版学术 PDF（韩 / 中 / 英）写的：这类文档单引擎输出*看着*没问题，却在跨页时悄悄自相矛盾。本项目要回答的不是"谁得分高"，而是**归因**——三个引擎在某页对不上时，到底是文档本身怪，还是某个引擎坏了。
+它是为扫描版学术 PDF 写的，**当前主要以日文文献为目标**；韩 / 中 / 英支持保留，仓库里的韩国期刊示例继续作为通用参考。这类文档单引擎输出*看着*没问题，却在跨页时悄悄自相矛盾。本项目要回答的不是"谁得分高"，而是**归因**——三个引擎在某页对不上时，到底是文档本身怪，还是某个引擎坏了。
 
 ```
  PDF --> 渲染 150 dpi 页图 --> 取三渠道产物（缓存 -> API -> 桌面版兜底）
@@ -112,7 +112,7 @@ python -m http.server -d _attic/examples/demo/out/demo_kr  # 然后打开 /index
 | --- | --- | --- | --- |
 | **dots.ocr** | 一个 Gradio 5 端点，默认用小红书公共实例 `https://dotsocr.xiaohongshu.com` | **不需要——没有 token 字段** | 拿到第一次真实运行最快的路；只有自建时才需要改 `dots_api.base` |
 | **PaddleOCR-VL** | `channels.local.json` 里的 `token` | AI Studio 服务（`paddleocr.aistudio-app.com`）申请的 key | 异步任务，归一化坐标，免标定 |
-| **MinerU** | `channels.local.json` 里的 `token` | mineru.net 申请的 key | batch 签名上传；兜底走 CDP 驱动桌面版（仅 Windows） |
+| **MinerU** | `channels.local.json` 里的 `token` | mineru.net 申请的 key | batch 签名上传；可选 CDP 桌面兜底（仅 Windows，默认 `mineru.desktop_enabled=false`） |
 
 ```bash
 cp channels.local.example.json channels.local.json   # 只填你有的 token，该文件已被 gitignore
@@ -177,15 +177,15 @@ python ner_lite.py selfcheck         # 离线：7 个合成块 + mock 模型，�
 
 ## 结构化元数据（可选，在 unify 之后运行）
 
-上面的对照链路告诉你**谁读到了什么**。`metadata.py` 把留下来的证据变成**可引用的字段**——题目（韩文 + 英文）、作者、单位、摘要、双语关键词（`keywords` 韩文 / `keywords_en` 英文，各取页序中第一个匹配到的面板），以及参考文献条目——每项都带置信度和一个能跳回 1:3 查看器的页锚点。
+上面的对照链路告诉你**谁读到了什么**。`metadata.py` 把留下来的证据变成**可引用的字段**——题目（日文 + 英文；韩文/中文字段保留兼容）、作者、单位、摘要、双语关键词（`keywords` 日文 / `keywords_en` 英文，各取页序中第一个匹配到的面板），以及参考文献条目——每项都带置信度和一个能跳回 1:3 查看器的页锚点。
 
 ```bash
 python unify.py <doc>                      # 产出 out/<doc>/unified/（pipeline.py 自己就会跑；只有已有 merged/ 数据时才需要单独跑）
 python metadata.py <doc> --stage m3        # 跨页拼接：把被换页切断的段落接回来
 python metadata.py <doc> --stage refs      # 参考文献条目 -> {authors, year, title, vol, no, pages} 列表
 python metadata.py <doc> --stage frefs     # 所有编了号的脚注（文献与注释）-> footnote_refs
-python metadata.py <doc> --stage front     # 题目 / 作者 / 单位（韩文 + 罗马化）
-python metadata.py <doc> --stage abs       # 韩文 + 英文摘要
+python metadata.py <doc> --stage front     # 题目 / 作者 / 单位（日文 + 罗马化；韩文兼容）
+python metadata.py <doc> --stage abs       # 日文 + 英文摘要（韩文兼容）
 python metadata.py <doc> --stage issue     # 刊名 / 年 / 卷 / 期 / 页 + 关键词
 python metadata.py <doc> --stage cspan     # 正文中的引用句
 python metadata.py <doc> --stage report    # -> _metadata_report.html
@@ -225,8 +225,8 @@ python ner_lite.py all                     # out/ 下所有带 unified/ 的文�
 
 - 研究与工程工具，不是托管服务。三个云渠道都是第三方服务：端点和请求格式随时可能变，它们的条款约束的是你。
 - `dots_api.base` 默认指向一个社区公共实例；万一它没了，请指向你自己的 Gradio 5 部署（或者用 `inbox/` 喂已有产物）。
-- **准确率并不均匀。** 文献条目与前置信息（题目/作者区）的启发式是在 13 篇韩中期刊语料上调的，并用仓库里这份实例做 diff 验证。已知弱点（都能在该语料上复现）：年份前只有句点的引文样式（"Author. 1999. Title."）、全汉字作者行、`N.` 式脚注标记、文献表最后一页与另一栏摘要同页、以及摘要没有可识别引导词时的题目/作者区越界。把 `metadata.json` 当高精度草稿用：引用前请检查每个字段的置信度（并对照 `viewer_compare.html`）。
-- **实体抽取是召回受限，不是精度受限。** 在 13 篇语料上，`ner_lite.py` 产出 57 条记录（数据集 35 / 软件 15 / 基金 7），61 条提名全部通过定位闸门，网络与解析零失败；但对人工核过的 `verified.json` 的召回并不齐：软件 6/7、基金 3/4（漏的是被拆成两条——机构与项目各成一条）、数据集 0/0（35 条全是误报，多为含「史」「報告書」的旧书与国际法院报告题名）。这 35 条仍然**每条都可验**——每个 `slice` 都逐字在原文里——这正是「定位到」和「抽对了」的区别。
+- **准确率并不均匀。** 文献条目与前置信息（题目/作者区）的启发式是在日文期刊语料上调的；仓库里的韩国示例继续作为通用参考，并用仓库里这份实例做 diff 验证。已知弱点（都能在该语料上复现）：年份前只有句点的引文样式（"Author. 1999. Title."）、全汉字作者行、`N.` 式脚注标记、文献表最后一页与另一栏摘要同页、以及摘要没有可识别引导词时的题目/作者区越界。把 `metadata.json` 当高精度草稿用：引用前请检查每个字段的置信度（并对照 `viewer_compare.html`）。
+- **实体抽取是召回受限，不是精度受限。** 在原始韩中语料上，`ner_lite.py` 产出 57 条记录（数据集 35 / 软件 15 / 基金 7），61 条提名全部通过定位闸门，网络与解析零失败；但对人工核过的 `verified.json` 的召回并不齐：软件 6/7、基金 3/4（漏的是被拆成两条——机构与项目各成一条）、数据集 0/0（35 条全是误报，多为含「史」「報告書」的旧书与国际法院报告题名）。这 35 条仍然**每条都可验**——每个 `slice` 都逐字在原文里——这正是「定位到」和「抽对了」的区别。
 - 只有 MinerU 的桌面版兜底是 Windows 专属；`pipeline.py`、`webapp.py`、`metadata.py` 和各查看器都是跨平台的。`start.bat` / `start.sh` 只是便捷包装。
 - 不包含在线服务测试（需要凭据和额度）。CI 会编译每个模块、跑单元测试、`ner_lite.py selfcheck` 和离线 demo；CI 不调用 LLM。
 
@@ -239,7 +239,7 @@ viewer.py          单渠道 / 对照查看器 + md2html + 元数据面板
 webapp.py app.js   拖拽工作台（stdlib HTTP 服务 + 渠道配置面板）
 merge_out.py       跨渠道逐页合并
 unify.py           跨引擎归并 -> unified/ + 汇总指标（已冻结）
-metadata.py        结构化元数据 CLI（11 行壳；实现在 metapy/）
+metadata.py        兼容性元数据 CLI（normalize/LLM/report 阶段；核心实现在 metapy/）
 ner_lite.py        实体抽取（基金 / 软件 / 数据集）：LLM 提名，代码定位
 regress.py         参考文献质量检查（截断、作者、页拼接）
 test_pipeline.py   unified 新旧判定、数据保全与查看器回归测试
