@@ -39,6 +39,23 @@ def _bad_title(t):
     return False
 
 
+def _author_bad(a):
+    if not isinstance(a, dict):
+        return True
+    n = str(a.get("name") or "").strip()
+    if not n or len(n) > 20:
+        return True
+    if re.search(r"[。！？!?〈〉]", n):
+        return True
+    if re.search(r"(?:を参照|——|『|』|（|）|\(|\))", n):
+        return True
+    return False
+
+
+def _authors_bad(authors):
+    return not authors or any(_author_bad(a) for a in authors)
+
+
 def apply_to_meta(meta, page):
     """meta + unified page dict -> (new_meta, changed, info)。"""
     units = page.get("unified") or []
@@ -63,9 +80,11 @@ def apply_to_meta(meta, page):
         "title_candidates": cand.get("title_candidates") or [],
         "author_candidates": cand.get("author_candidates") or [],
     }
-    # 只补空作者，不覆盖已有作者
+    # 只补空作者，或在作者明显是正文/注记时替换；正常作者不覆盖
     authors = out.get("authors") or []
-    if not authors and cand.get("author_candidates"):
+    if cand.get("author_candidates") and _authors_bad(authors):
+        if authors:
+            out["authors_before_vertical"] = copy.deepcopy(authors)
         out["authors"] = []
         for a in cand["author_candidates"]:
             row = {"name": a["name"], "markers": [], "affiliation": None,

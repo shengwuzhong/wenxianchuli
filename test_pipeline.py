@@ -371,6 +371,21 @@ class VerticalFrontTest(unittest.TestCase):
         self.assertEqual(rows[0]["text"], "「恋の詞」と蕉風俳諧")
 
 
+    def test_subtitle_merge(self):
+        from metapy.front_vertical import extract_page
+        units = [
+            {"uid": "title", "type": "Section-header", "box": [864, 168, 893, 483],
+             "main_text": "守覚法親王略年譜"},
+            {"uid": "sub", "type": "Text", "box": [833, 251, 857, 1193],
+             "main_text": "——和歌活動の面を中心に——\n〈平〉——『平家物語』"},
+            {"uid": "body", "type": "Text", "box": [646, 130, 738, 722],
+             "main_text": "守覚法親王は、平安末期から鎌倉初期にかけて…"},
+        ]
+        out = extract_page(units, 1009, 1460)
+        self.assertEqual(out["title"]["text"],
+                         "守覚法親王略年譜——和歌活動の面を中心に——")
+
+
 class VerticalLayoutTest(unittest.TestCase):
     @staticmethod
     def _units():

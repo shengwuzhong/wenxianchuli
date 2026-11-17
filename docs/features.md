@@ -37,6 +37,7 @@
 | 竖排题名/作者候选 | 右列题名打分、作者候选；章节标题排除 | `metapy/front_vertical.py` | `[P1]` |
 | 竖排字段回写 | 仅替换明显错误题名、补空作者；raw/旧值保留 | `metapy/vertical_meta.py` | `[P2]` |
 | 竖排脚注候选 | 注N/※/＊/〔注〕候选；不伪造 references | `metapy/vertical_notes.py` | `[P3]` |
+| 竖排评测 | 10 篇题名/作者/字段 GT + 前后对比 | `eval/vertical_eval.py` | `[P4]` |
 | 规范化 sidecar | `metadata_normalized.json` + 主字段 normalized（raw 保留） | `metapy/normalize_meta.py` + `metadata.py --stage normalize` | `[新增]` |
 
 ## 2. 可选功能

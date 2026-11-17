@@ -117,10 +117,38 @@ def author_candidates(units, W, H, title_uids=(), limit=8):
     return out
 
 
+def _subtitle_for(title, units, W, H):
+    """找题名附近的副题（——…——），返回首行文本或 None。"""
+    if not title:
+        return None
+    tx0, ty0, tx1, ty1 = title["box"]
+    best = None
+    for u in units:
+        if u.get("uid") == title.get("uid") or _type(u) == "Page-number":
+            continue
+        t = _text(u).splitlines()[0].strip()
+        if not re.match(r"^[—―-]{2,}.+[—―-]{2,}$", t):
+            continue
+        if len(t) > 80:
+            continue
+        x0, y0, x1, y1 = _box(u)
+        if abs(x1 - tx1) > 0.2 * W or abs(y0 - ty0) > 0.3 * H:
+            continue
+        d = abs(x1 - tx1) + abs(y0 - ty0)
+        if best is None or d < best[0]:
+            best = (d, t)
+    return best[1] if best else None
+
+
 def extract_page(units, W, H):
     info = detect_page(units, W, H)
     ordered, _ = order_units(units, W, H)
     titles = title_candidates(ordered, W, H)
+    if titles:
+        sub = _subtitle_for(titles[0], ordered, W, H)
+        if sub:
+            titles[0]["subtitle"] = sub
+            titles[0]["text"] = titles[0]["text"].rstrip("。") + sub
     authors = author_candidates(ordered, W, H,
                                 [titles[0]["uid"]] if titles else [])
     return {"vertical": info["vertical"], "confidence": info["confidence"],

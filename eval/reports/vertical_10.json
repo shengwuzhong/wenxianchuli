@@ -1,0 +1,280 @@
+{
+ "summary": {
+  "docs": 10,
+  "title_exact": 10,
+  "title_acceptable": 10,
+  "title_avg_ratio": 1.0,
+  "author_docs_ok": 9,
+  "author_docs_expected": 9,
+  "author_not_applicable": 1,
+  "author_f1_avg": 1.0,
+  "abstract_docs": 3,
+  "refs_docs": 0,
+  "cspan_docs": 0,
+  "keywords_docs": 9,
+  "footnote_docs": 4,
+  "strict_core_ok": 0,
+  "field_coverage": 31,
+  "field_coverage_max": 60,
+  "before_title_exact": 2,
+  "before_authors_ok": 3
+ },
+ "rows": [
+  {
+   "title": "『月詣和歌集』所載西行歌本文小考",
+   "title_norm": "『月詣和歌集』所載西行歌本文小考",
+   "gold_title": "『月詣和歌集』所載西行歌本文小考",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [
+    "犬井善壽"
+   ],
+   "gold_authors": [
+    "犬井善壽"
+   ],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 0,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 5,
+   "footnotes": 0,
+   "doc": "01_文藝言語研究_1984_犬井善壽",
+   "before_title_exact": false,
+   "before_title_ratio": 0.026,
+   "before_authors_ok": false
+  },
+  {
+   "title": "「恋の詞」と蕉風俳諧",
+   "title_norm": "「恋の詞」と蕉風俳諧",
+   "gold_title": "「恋の詞」と蕉風俳諧",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [
+    "清登典子"
+   ],
+   "gold_authors": [
+    "清登典子"
+   ],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 0,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 2,
+   "footnotes": 0,
+   "doc": "02_文藝言語研究_2011_清登典子",
+   "before_title_exact": false,
+   "before_title_ratio": 0.5,
+   "before_authors_ok": false
+  },
+  {
+   "title": "創造社と少年中国学会・新人会 ——田漢の文学及び文学観を中心に——",
+   "title_norm": "創造社と少年中国学会・新人会——田漢の文学及び文学観を中心に——",
+   "gold_title": "創造社と少年中国学会・新人会——田漢の文学及び文学観を中心に——",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [
+    "小谷一郎"
+   ],
+   "gold_authors": [
+    "小谷一郎"
+   ],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 0,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 8,
+   "footnotes": 20,
+   "doc": "03_中国文化_1980_小谷一郎",
+   "before_title_exact": true,
+   "before_title_ratio": 1.0,
+   "before_authors_ok": true
+  },
+  {
+   "title": "元の韻の構造に就いて",
+   "title_norm": "元の韻の構造に就いて",
+   "gold_title": "元の韻の構造に就いて",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [
+    "大島正健"
+   ],
+   "gold_authors": [
+    "大島正健"
+   ],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 0,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 1,
+   "footnotes": 0,
+   "doc": "04_漢文學會々報_1935_大島正健",
+   "before_title_exact": true,
+   "before_title_ratio": 1.0,
+   "before_authors_ok": true
+  },
+  {
+   "title": "卦氣説に就いて",
+   "title_norm": "卦氣説に就いて",
+   "gold_title": "卦氣説に就いて",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [
+    "小澤文四郎"
+   ],
+   "gold_authors": [
+    "小澤文四郎"
+   ],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 0,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 0,
+   "footnotes": 0,
+   "doc": "05_漢文學會々報_1935_小澤文四郎",
+   "before_title_exact": false,
+   "before_title_ratio": 0.25,
+   "before_authors_ok": true
+  },
+  {
+   "title": "楚辭遠遊篇作成年代考",
+   "title_norm": "楚辭遠遊篇作成年代考",
+   "gold_title": "楚辭遠遊篇作成年代考",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [
+    "上島一夫"
+   ],
+   "gold_authors": [
+    "上島一夫"
+   ],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 0,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 2,
+   "footnotes": 0,
+   "doc": "06_漢文學會々報_1934_上島一夫",
+   "before_title_exact": false,
+   "before_title_ratio": 0.0,
+   "before_authors_ok": false
+  },
+  {
+   "title": "観音教寺所蔵俳諧資料目録",
+   "title_norm": "観音教寺所蔵俳諧資料目録",
+   "gold_title": "観音教寺所蔵俳諧資料目録",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [],
+   "gold_authors": [],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 0,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 5,
+   "footnotes": 0,
+   "doc": "07_東大国文学論集_2017_長島弘明",
+   "before_title_exact": false,
+   "before_title_ratio": 0.089,
+   "before_authors_ok": true
+  },
+  {
+   "title": "『宇治拾遺物語』第五十一話\n「一条摂政歌の事」の和歌について",
+   "title_norm": "『宇治拾遺物語』第五十一話「一条摂政歌の事」の和歌について",
+   "gold_title": "『宇治拾遺物語』第五十一話「一条摂政歌の事」の和歌について",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [
+    "小野のぞみ"
+   ],
+   "gold_authors": [
+    "小野のぞみ"
+   ],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 156,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 8,
+   "footnotes": 1,
+   "doc": "08_平家部会論集_2007_小野のぞみ",
+   "before_title_exact": false,
+   "before_title_ratio": 0.148,
+   "before_authors_ok": false
+  },
+  {
+   "title": "守覚法親王略年譜——和歌活動の面を中心に——",
+   "title_norm": "守覚法親王略年譜——和歌活動の面を中心に——",
+   "gold_title": "守覚法親王略年譜——和歌活動の面を中心に——",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [
+    "千草聡"
+   ],
+   "gold_authors": [
+    "千草聡"
+   ],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 156,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 8,
+   "footnotes": 1,
+   "doc": "09_平家部会論集_1992_千草聡",
+   "before_title_exact": false,
+   "before_title_ratio": 0.2,
+   "before_authors_ok": false
+  },
+  {
+   "title": "元性法印の和歌活動について",
+   "title_norm": "元性法印の和歌活動について",
+   "gold_title": "元性法印の和歌活動について",
+   "title_exact": true,
+   "title_ratio": 1.0,
+   "authors": [
+    "千草聡"
+   ],
+   "gold_authors": [
+    "千草聡"
+   ],
+   "author_precision": 1.0,
+   "author_recall": 1.0,
+   "author_f1": 1.0,
+   "authors_ok": true,
+   "abstract_len": 288,
+   "refs": 0,
+   "cspan": 0,
+   "keywords": 8,
+   "footnotes": 1,
+   "doc": "10_平家部会論集_2002_千草聡",
+   "before_title_exact": false,
+   "before_title_ratio": 0.116,
+   "before_authors_ok": false
+  }
+ ]
+}
