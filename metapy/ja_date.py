@@ -31,6 +31,9 @@ _WEST_DATE_RE = re.compile(
 _ERA_DATE_RE = re.compile(
     r"(令和|平成|昭和|大正|明治)\s*(元|\d{1,2})\s*年"
     r"(?:\s*(\d{1,2})\s*月)?(?:\s*(\d{1,2})\s*日?)?")
+_ABBR_DATE_RE = re.compile(
+    r"(?<![A-Za-z])([RHSTM])\s*(元|\d{1,2})(?:\s*年)?"
+    r"(?:\s*(\d{1,2})\s*月)?(?:\s*(\d{1,2})\s*日?)?(?![A-Za-z])", re.I)
 
 
 def _nfkc(text):
@@ -104,6 +107,19 @@ def normalize_date(value):
         if day is not None and not (1 <= day <= 31):
             day = None
         return _date_result(y, mo, day, m.group(1))
+    m = _ABBR_DATE_RE.search(s)
+    if m:
+        era = ERA_ABBR.get(m.group(1).upper())
+        y = era_to_year(era, m.group(2))
+        if not y:
+            return None
+        mo = int(m.group(3)) if m.group(3) else None
+        day = int(m.group(4)) if m.group(4) else None
+        if mo is not None and not (1 <= mo <= 12):
+            mo = None
+        if day is not None and not (1 <= day <= 31):
+            day = None
+        return _date_result(y, mo, day, era)
     m = _WEST_DATE_RE.search(s)
     if m:
         y = int(m.group(1))
@@ -148,6 +164,8 @@ def _selftest():
     assert d and d["normalized"] == "2024-03-01", d
     d = normalize_date("2024/3/1")
     assert d and d["normalized"] == "2024-03-01", d
+    d = normalize_date("R6")
+    assert d and d["normalized"] == "2024", d
     d = normalize_date("平成30年度")
     assert d and d["normalized"] == "2018", d
     print("ja_date selftest: PASS")
