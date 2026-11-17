@@ -28,7 +28,7 @@
 | 金标准评测 | 字段 GT 比对、版面 99 页门禁 | `eval/` | `[新增]` |
 | 文本规范化 | NFKC/旧字体/送假名/保护/映射 | `metapy/normalize.py` | `[新增]` |
 | 日文分词 | SudachiPy 分词、句子切分、内容词候选；缺依赖时正则降级 | `metapy/ja_tokenize.py` | `[新增]` |
-| 规范化 sidecar | `metadata_normalized.json`，不改原 metadata | `metapy/normalize_meta.py` + `metadata.py --stage normalize` | `[新增]` |
+| 规范化 sidecar | `metadata_normalized.json` + 主字段 normalized（raw 保留） | `metapy/normalize_meta.py` + `metadata.py --stage normalize` | `[新增]` |
 
 ## 2. 可选功能
 

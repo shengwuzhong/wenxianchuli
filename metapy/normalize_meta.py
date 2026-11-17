@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-r"""日文 metadata 规范化 sidecar。
+r"""日文 metadata 规范化：主字段 normalized + sidecar。
 
-不修改 metadata.json；在 <out>/<doc>/metadata_normalized.json 生成：
+在 <out>/<doc>/metadata.json 的字段旁增加 normalized 值（raw 原值保留），并生成：
+  - metadata_normalized.json
   - title / title_en / journal / journal_en / year / volume / issue / pages
   - abstract / abstract_en
   - authors / affiliations
@@ -117,10 +118,61 @@ def normalize_doc(doc, out_root, glossary=()):
     dst = os.path.join(dd, "metadata_normalized.json")
     with io.open(dst, "w", encoding="utf-8") as f:
         json.dump(side, f, ensure_ascii=False, indent=1)
-    print("== normalize %s == title=%s authors=%d refs=%d -> %s" % (
+    # 同时把 normalized 写回主字段；raw 值不移除、不覆盖
+    applied = apply_normalized(meta, glossary)
+    tmp = fp + ".tmp"
+    with io.open(tmp, "w", encoding="utf-8") as f:
+        json.dump(applied, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, fp)
+    print("== normalize %s == title=%s authors=%d refs=%d -> %s + metadata.json" % (
         doc, bool(side["fields"].get("title")), len(side["fields"]["authors"]),
         len(side["references"]), os.path.basename(dst)))
     return dst
+
+
+def apply_normalized(meta, glossary=()):
+    """把 normalized 值写进主字段的副本；raw/原有字段保持不变。
+
+    - scalar 字段：obj["normalized"] / obj["normalized_map"]
+    - authors：每个作者 dict["normalized"]
+    - affiliations/keywords：顶层 *_normalized 列表
+    - body：顶层 normalized_body
+    - references：每条 ref["normalized"] = {字段: 规范值}
+    """
+    import copy
+    out = copy.deepcopy(meta)
+    for k in SCALAR:
+        obj = out.get(k)
+        if not isinstance(obj, dict) or obj.get("value") is None:
+            continue
+        n = _norm(str(obj.get("value")), glossary)
+        obj["normalized"] = n["normalized"]
+        obj["normalized_map"] = n["map"]
+    authors = out.get("authors") or []
+    for a in authors:
+        if isinstance(a, dict) and a.get("name"):
+            a["normalized"] = _norm(str(a["name"]), glossary)["normalized"]
+    aff = []
+    for a in out.get("affiliations") or []:
+        name = a.get("name") if isinstance(a, dict) else a
+        if name:
+            aff.append(_norm(str(name), glossary)["normalized"])
+    out["affiliations_normalized"] = aff
+    out["keywords_normalized"] = [_norm(str(x), glossary)["normalized"]
+                                  for x in (out.get("keywords") or []) if x]
+    body = out.get("body")
+    if body:
+        out["normalized_body"] = _norm(str(body), glossary)["normalized"]
+    for r in out.get("references") or []:
+        if not isinstance(r, dict):
+            continue
+        nr = {}
+        for k in REF_FIELDS:
+            v = r.get(k)
+            if v:
+                nr[k] = _norm(str(v), glossary)["normalized"]
+        r["normalized"] = nr
+    return out
 
 
 def _selftest():
@@ -140,6 +192,14 @@ def _selftest():
     assert s["references"][0]["fields"]["title"]["normalized"] == "旧題"
     assert s["references"][0]["fields"]["source"]["normalized"] == "10.1234/AbC_Def"
     assert all("raw" in x and "normalized" in x for x in s["fields"]["authors"])
+    m = apply_normalized(meta, ["東京大学"])
+    assert m["title"]["value"] == "ＡＢＣ 舊"
+    assert m["title"]["normalized"] == "ABC 旧"
+    assert m["authors"][0]["name"] == "山田 太郎"
+    assert m["authors"][0]["normalized"] == "山田 太郎"
+    assert m["keywords_normalized"] == ["ABC"]
+    assert m["references"][0]["normalized"]["title"] == "旧題"
+    assert m["references"][0]["normalized"]["source"] == "10.1234/AbC_Def"
     print("normalize_meta selftest: PASS")
     return 0
 

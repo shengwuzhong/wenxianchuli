@@ -5,7 +5,7 @@ r"""M5 元数据字段层 —— `metapy` 包的薄壳(兼容入口, 不是常�
 abs / issue / cspan 全部字段阶段, 而且会校验上游产物、按依赖顺序执行、跑完还能接着建查看器。
 这里保留 `metadata.py` 作为兼容入口，并额外支持本地新增的：
 
-    --stage normalize   metadata_normalized.json sidecar
+    --stage normalize   主字段 normalized + metadata_normalized.json sidecar
     --stage llm         LLM 兜底填空(与启发式结果对比)
     --stage dual        双渠道逐块对比(数据落 out_llm_trial/)
     --stage report      全量字段报告

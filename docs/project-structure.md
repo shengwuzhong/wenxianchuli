@@ -45,7 +45,7 @@ multidoc-ocr-compare/
 │  ├─ dual.py                    LLM 对照实验
 │  ├─ normalize.py               日文文本规范化核心
 │  ├─ ja_tokenize.py             日文分词/形态素分析（SudachiPy，可降级）
-│  ├─ normalize_meta.py          metadata 规范化 sidecar
+│  ├─ normalize_meta.py          主字段 normalized + sidecar
 │  ├─ audit_invariant.py         不变量审计（上游新增）
 │  └─ audit_value.py             字段值后验审计（上游新增）
 │
