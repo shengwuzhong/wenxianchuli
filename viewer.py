@@ -1115,7 +1115,8 @@ def _unified_group_panes(u, chs):
         if c in u["members"]:
             us = u["members"][c]
             nch = sum(len(re.sub(r"\s+", "", m.get("text") or "")) for m in us)  # 非空白字符数(空格风格不干扰漏字判断)
-            mark = " ".join(rd[c]["flags"]) or "-"
+            # members 有该渠道但 readings 缺记录(如 u5_9: 三家成员齐全, readings 只有 dots), 退化为无标记
+            mark = " ".join((rd.get(c) or {}).get("flags") or []) or "-"
             rows.append("<tr><td><i class='dot %s'></i>%s</td><td>✓ %s×%d</td><td>%d</td><td>%s</td></tr>"
                         % (_CMP_DOT[c], _CMP_CN[c], us[0]["cat"], len(us), nch, mark))
         else:
