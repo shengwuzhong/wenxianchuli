@@ -34,6 +34,7 @@
 | 参考文献二次切分 | 修复题名/作者/刊名错位、截断、缺失页卷 | `metapy/ref_split.py` | `[新增]` |
 | 引文消歧 | 同書/前掲/ibid/同著者同年；歧义时记 resolve_note | `metapy/cite_resolve.py` | `[新增]` |
 | 竖排阅读序 | 竖排检测、右到左分列、列内 y 序；横向路径不变 | `metapy/vertical_layout.py` | `[P0]` |
+| 竖排题名/作者候选 | 右列题名打分、作者候选；章节标题排除 | `metapy/front_vertical.py` | `[P1]` |
 | 规范化 sidecar | `metadata_normalized.json` + 主字段 normalized（raw 保留） | `metapy/normalize_meta.py` + `metadata.py --stage normalize` | `[新增]` |
 
 ## 2. 可选功能

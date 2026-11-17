@@ -315,6 +315,33 @@ class JapaneseCitationResolveTest(unittest.TestCase):
         self.assertEqual(out["citation_spans"][1]["resolve_method"], "ibid")
 
 
+class VerticalFrontTest(unittest.TestCase):
+    def test_title_and_author(self):
+        from metapy.front_vertical import extract_page
+        units = [
+            {"uid": "body", "type": "Text", "box": [303, 154, 454, 1097],
+             "main_text": "西行は、元永元年に生れ、数多くの歌を詠んだ。"},
+            {"uid": "title", "type": "Section-header", "box": [655, 255, 695, 702],
+             "main_text": "『月詣和歌集』所載西行歌本文小考"},
+            {"uid": "author", "type": "Section-header", "box": [572, 900, 602, 1053],
+             "main_text": "犬 井 善 壽"},
+        ]
+        out = extract_page(units, 793, 1192)
+        self.assertEqual(out["title"]["text"], "『月詣和歌集』所載西行歌本文小考")
+        self.assertEqual(out["author_candidates"][0]["name"], "犬井善壽")
+
+    def test_page_header_title_beats_author(self):
+        from metapy.front_vertical import title_candidates
+        units = [
+            {"uid": "author", "type": "Section-header", "box": [625, 896, 655, 1060],
+             "main_text": "清 登 典 子"},
+            {"uid": "title", "type": "Page-header", "box": [711, 186, 746, 446],
+             "main_text": "「恋の詞」と蕉風俳諧"},
+        ]
+        rows = title_candidates(units, 875, 1241)
+        self.assertEqual(rows[0]["text"], "「恋の詞」と蕉風俳諧")
+
+
 class VerticalLayoutTest(unittest.TestCase):
     @staticmethod
     def _units():
