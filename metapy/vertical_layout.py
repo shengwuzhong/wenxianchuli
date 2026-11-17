@@ -17,8 +17,13 @@ BODY = {"Text", "Section-header", "Caption", "Table", "Picture",
 
 
 def _box(u):
-    b = u.get("box") or [0, 0, 0, 0]
-    return float(b[0]), float(b[1]), float(b[2]), float(b[3])
+    b = u.get("box") or []
+    if not isinstance(b, (list, tuple)) or len(b) < 4:
+        return 0.0, 0.0, 0.0, 0.0
+    try:
+        return float(b[0]), float(b[1]), float(b[2]), float(b[3])
+    except (TypeError, ValueError):
+        return 0.0, 0.0, 0.0, 0.0
 
 
 def _type(u):

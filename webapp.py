@@ -182,7 +182,7 @@ def _public_job(job_id, j):
             "stage": j.get("stage", ""), "logline": j.get("logline", ""),
             "err": j.get("err", ""), "warnings": j.get("warnings", [])[-10:],
             "channels": j.get("channels", {}), "channel_err": j.get("channel_err", {}),
-            "stages": j.get("stages", {}),
+            "stages": j.get("stages", {}), "quality": j.get("quality") or {},
             "created_at": j.get("created_at"), "started_at": j.get("started_at"),
             "updated_at": j.get("updated_at"), "finished_at": j.get("finished_at"),
             "elapsed": max(0, int(end - start)), "rescue": j.get("rescue", "")}
@@ -291,6 +291,26 @@ def run_pipeline(job, pdf_path):
                 pipeline.main(argv)
                 idx = os.path.join(OUT, doc, "index.html")   # 只认本次跑出来的 index: 上一轮残留的旧文件不能算成功
                 ok = os.path.exists(idx) and os.path.getmtime(idx) >= t0 - 2
+                # 数据质量与渠道成功分开记：done 不再等于“题名/作者都对”。
+                try:
+                    mfp = os.path.join(OUT, doc, "metadata.json")
+                    if os.path.isfile(mfp):
+                        with io.open(mfp, encoding="utf-8-sig") as mf:
+                            qm = json.load(mf)
+                        q = qm.get("quality") or {
+                            "document_type": qm.get("document_type"),
+                            "is_single_article": qm.get("is_single_article"),
+                            "flags": qm.get("quality_flags") or [],
+                        }
+                        with JOB_LOCK:
+                            JOBS[job]["quality"] = q
+                            flags = q.get("flags") or []
+                            if "needs_manual_review" in flags:
+                                line = "质量待复核: " + ",".join(flags)[:160]
+                                if line not in JOBS[job]["warnings"]:
+                                    JOBS[job]["warnings"].append(line)
+                except (OSError, ValueError):
+                    pass
                 with JOB_LOCK:
                     JOBS[job]["state"] = ("degraded" if JOBS[job]["warnings"] else "done") if ok else "error"
                     JOBS[job]["stage"] = "已完成" if ok else "未生成本次总览"

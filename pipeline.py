@@ -4,7 +4,7 @@
 pipeline_io.py 负责获取/归档/标定/适配，viewer.py 负责查看器与元数据面板。
 本模块保留原有函数与常量 re-export，兼容 merge_out/unify/metapy/_attic 的旧 import。
 """
-import os, re, io, json, argparse, datetime, time
+import os, re, io, json, argparse, datetime, time, traceback
 import pipeline_io as _io
 from docid import doc_of
 import viewer as _viewer
@@ -423,6 +423,8 @@ def main(argv=None):
             log(u"⑥ 竖排题名: %s" % (_vinfo.get("title") or "-")[:60])
     except Exception as e:
         log(u"⑥ 竖排题名失败(不阻断): %s" % str(e)[:120])
+        # 保留栈，避免 9/30 那种 IndexError 只剩一句“list index out of range”。
+        log(u"⑥ 竖排题名 traceback:\n%s" % traceback.format_exc())
     try:
         from metapy.normalize_meta import normalize_doc
         normalize_doc(doc, _out_root)

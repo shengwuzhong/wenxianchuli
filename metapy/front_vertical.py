@@ -10,14 +10,28 @@ from .vertical_layout import detect_page, order_units, _box, _type, FURNITURE
 
 _SECTION_PREFIX = re.compile(
     r"^\s*(?:[一二三四五六七八九十]+[、.．]|第[一二三四五六七八九十]+[、.．]|"
-    r"はじめに|序|目次|注|〈|（|\(|—{2,}|―{2,})")
+    r"はじめに|序|目次|注|〈|（|\(|【|〔|—{2,}|―{2,}|―)")
 _TITLEISH = re.compile(r"(?:年譜|目録|について|考|論|研究|序|史|集|記|抄|"
                        r"物語|和歌|資料|分析|考察|概説|説|篇|編|稿)")
 _AUTHORISH = re.compile(r"^[\u3040-\u30ff\u3400-\u9fffA-Za-z .・\-]{2,20}$")
 
+# 页眉/版权/会议集等“看起来像题名”的固定噪声。保留 Page-header 候选
+# （部分竖排题名确实落在 Page-header），只排除明显的版面噪声。
+_BOILER_TITLE = re.compile(
+    r"^(?:Copyright|©|ISSN|DOI|https?://|第\s*\d+\s*回|EDITORIAL\b|"
+    r"Journal of\b|Vol\.?\s*\d|No\.?\s*\d|Proceedings\b|NII-Electronic\b)",
+    re.I)
+
 
 def _text(u):
     return str(u.get("main_text") or u.get("text") or "").strip()
+
+
+def _first_line(u):
+    """空文本块（Picture/空 Text）返回空串，调用方必须跳过。
+    2026-11-17: 原实现直接 splitlines()[0]，9/30 文档因此 IndexError。"""
+    lines = _text(u).splitlines()
+    return lines[0].strip() if lines else ""
 
 
 def _looks_like_person(t):
@@ -70,6 +84,9 @@ def title_candidates(units, W, H, limit=5):
     for u in units:
         if _type(u) == "Page-number":
             continue
+        t = _text(u)
+        if not t or _BOILER_TITLE.search(t) or t.startswith("<"):
+            continue
         s = _score_title(u, W, H)
         if s > 0:
             rows.append((s, u))
@@ -101,11 +118,13 @@ def author_candidates(units, W, H, title_uids=(), limit=8):
     for u in units:
         if u.get("uid") in title_uids:
             continue
-        t = _text(u).splitlines()[0].strip()
+        t = _first_line(u)
+        if not t:
+            continue
         if not _name_like(u, t):
             continue
         x0, y0, x1, y1 = _box(u)
-        if y0 < 0.35 * H:
+        if H and y0 < 0.35 * H:
             continue
         s = 2.0 * (x1 / float(W or 1)) + (1.0 if _type(u) == "Section-header" else 0.0)
         rows.append((s, u, t))
@@ -119,14 +138,19 @@ def author_candidates(units, W, H, title_uids=(), limit=8):
 
 def _subtitle_for(title, units, W, H):
     """找题名附近的副题（——…——），返回首行文本或 None。"""
-    if not title:
+    if not title or not W or not H:
         return None
     tx0, ty0, tx1, ty1 = title["box"]
     best = None
     for u in units:
-        if u.get("uid") == title.get("uid") or _type(u) == "Page-number":
+        if u.get("uid") == title.get("uid"):
             continue
-        t = _text(u).splitlines()[0].strip()
+        if _type(u) in ("Page-number", "Page-header", "Page-footer",
+                        "Picture", "Table", "Formula"):
+            continue
+        t = _first_line(u)
+        if not t:
+            continue
         if not re.match(r"^[—―-]{2,}.+[—―-]{2,}$", t):
             continue
         if len(t) > 80:
@@ -142,6 +166,12 @@ def _subtitle_for(title, units, W, H):
 
 def extract_page(units, W, H):
     info = detect_page(units, W, H)
+    # 非竖排页不应进入竖排题名/作者链路。此前横向页也会走到 _subtitle_for，
+    # 9/30 文档因空 Picture 触发 IndexError；也避免把横排页眉误当竖排题名。
+    if not info["vertical"]:
+        return {"vertical": False, "confidence": info["confidence"],
+                "title": None, "title_candidates": [],
+                "author_candidates": []}
     ordered, _ = order_units(units, W, H)
     titles = title_candidates(ordered, W, H)
     if titles:

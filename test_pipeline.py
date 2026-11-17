@@ -504,5 +504,108 @@ class MergeReadingOrderTest(unittest.TestCase):
         self.assertEqual(ordered, ["A", "B"])
 
 
+class QualityRegressionTest(unittest.TestCase):
+    def test_empty_picture_does_not_crash(self):
+        from metapy.front_vertical import extract_page, author_candidates
+        page = [
+            {"uid": "title", "type": "Section-header",
+             "box": [600, 200, 650, 700], "main_text": "測試題名"},
+            {"uid": "fig", "type": "Picture",
+             "box": [100, 800, 400, 1000], "main_text": ""},
+        ]
+        out = extract_page(page, 1200, 1600)
+        self.assertFalse(out["vertical"])
+        self.assertEqual(author_candidates([page[1]], 1200, 1600), [])
+
+    def test_empty_picture_on_vertical_page(self):
+        from metapy.front_vertical import extract_page
+        units = [
+            {"uid": "body1", "type": "Text", "box": [303, 154, 454, 1097],
+             "main_text": "本文"},
+            {"uid": "body2", "type": "Text", "box": [246, 191, 298, 993],
+             "main_text": "本文2"},
+            {"uid": "title", "type": "Section-header", "box": [655, 255, 695, 702],
+             "main_text": "『月詣和歌集』所載西行歌本文小考"},
+            {"uid": "fig", "type": "Picture", "box": [100, 800, 400, 1000],
+             "main_text": ""},
+        ]
+        out = extract_page(units, 793, 1192)
+        self.assertTrue(out["vertical"])
+        self.assertEqual(out["title"]["text"], "『月詣和歌集』所載西行歌本文小考")
+
+    def test_subtitle_and_label_not_title(self):
+        from metapy.front_vertical import extract_page
+        units = [
+            {"uid": "label", "type": "Section-header", "box": [710.7, 197.3, 738.5, 349.1],
+             "main_text": "【シンポジウム】"},
+            {"uid": "sub", "type": "Section-header", "box": [633.3, 243.9, 660.5, 511.7],
+             "main_text": "―企業法の観点から―"},
+            {"uid": "title", "type": "Text", "box": [659.4, 222.1, 702.2, 876.0],
+             "main_text": "原発事故の被害者救済システムについての一考察"},
+            {"uid": "body", "type": "Text", "box": [303, 154, 454, 1097],
+             "main_text": "本文"},
+            {"uid": "author", "type": "Text", "box": [582.3, 822.2, 617.8, 1037.2],
+             "main_text": "松嶋 隆弘"},
+        ]
+        out = extract_page(units, 793, 1192)
+        self.assertTrue(out["vertical"])
+        self.assertEqual(out["title"]["text"],
+                         "原発事故の被害者救済システムについての一考察")
+
+    def test_vertical_title_on_page_two(self):
+        from metapy.vertical_meta import apply_doc
+        with tempfile.TemporaryDirectory() as td:
+            out_root = pathlib.Path(td) / "out"
+            dd = out_root / "paper"
+            udir = dd / "unified"
+            udir.mkdir(parents=True)
+            (dd / "metadata.json").write_text(json.dumps(
+                {"title": {"value": ""}, "authors": []}), encoding="utf-8")
+            (udir / "page_0.json").write_text(json.dumps(
+                {"w": 1200, "h": 1600, "unified": [
+                    {"uid": "w", "type": "Text", "box": [80, 100, 1100, 180],
+                     "main_text": "横向页"}]}), encoding="utf-8")
+            (udir / "page_1.json").write_text(json.dumps(
+                {"w": 793, "h": 1192, "unified": [
+                    {"uid": "b1", "type": "Text", "box": [303, 154, 454, 1097],
+                     "main_text": "本文"},
+                    {"uid": "b2", "type": "Text", "box": [246, 191, 298, 993],
+                     "main_text": "本文2"},
+                    {"uid": "t", "type": "Section-header", "box": [655, 255, 695, 702],
+                     "main_text": "二ページ目の題名"},
+                    {"uid": "a", "type": "Section-header", "box": [572, 900, 602, 1053],
+                     "main_text": "犬 井 善 壽"}]}), encoding="utf-8")
+            info = apply_doc("paper", str(out_root))
+            self.assertTrue(info["vertical"])
+            meta = json.loads((dd / "metadata.json").read_text(encoding="utf-8"))
+            self.assertEqual(meta["title"]["value"], "二ページ目の題名")
+            self.assertEqual(meta["title"]["page"], 2)
+
+    def test_quality_repairs_title_and_authors(self):
+        from metapy.doc_quality import repair_metadata
+        with tempfile.TemporaryDirectory() as td:
+            dd = pathlib.Path(td) / "paper"
+            (dd / "raw" / "mineru_api").mkdir(parents=True)
+            (dd / "raw" / "mineru_api" / "full.md").write_text(
+                "# 正しい題名\n", encoding="utf-8")
+            meta = {"title": {"value": "185 古い題名"},
+                    "authors": [{"name": "研究の目的"}, {"name": "大石 朋子"}]}
+            out, info = repair_metadata(meta, str(dd))
+            self.assertEqual(out["title"]["value"], "正しい題名")
+            self.assertEqual([a["name"] for a in out["authors"]], ["大石 朋子"])
+            self.assertEqual(out["document_type"], "article")
+
+    def test_bare_reference_does_not_use_author_as_title(self):
+        from metapy.ref_split import normalize_ref
+        r = {"raw": "1) Sugioka Y., Fujii-Kuriyama Y., Kitagawa Y., Muramatsu M., "
+                    "Cancer Res., 45, 365—378 (1985).",
+             "title": "Fujii-Kuriyama Y", "source": None, "num": 1}
+        self.assertTrue(normalize_ref(r))
+        self.assertIsNone(r["title"])
+        self.assertEqual(r["source"], "Cancer Res")
+        self.assertEqual(r["volume"], "45")
+        self.assertEqual(r["pages"], "365—378")
+
+
 if __name__ == "__main__":
     unittest.main()

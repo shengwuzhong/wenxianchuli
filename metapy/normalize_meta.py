@@ -28,6 +28,7 @@ from .ja_names import enrich_authors, enrich_affiliations, normalize_person_name
 from .ja_keywords import ensure_keywords
 from .ref_split import normalize_refs
 from .cite_resolve import resolve_citations
+from .doc_quality import repair_metadata
 
 SCALAR = ["title", "title_en", "journal", "journal_en", "year", "volume",
           "issue", "pages", "abstract", "abstract_en"]
@@ -109,6 +110,9 @@ def normalize_meta(meta, glossary=()):
         "doc": meta.get("doc"),
         "source": "metadata.json",
         "generated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "document_type": meta.get("document_type"),
+        "is_single_article": meta.get("is_single_article"),
+        "quality_flags": meta.get("quality_flags") or [],
         "field_order": SCALAR + ["authors", "affiliations", "keywords", "body"],
         "fields": fields,
         "references": _norm_refs(meta.get("references"), glossary),
@@ -124,7 +128,24 @@ def normalize_doc(doc, out_root, glossary=()):
     with io.open(fp, encoding="utf-8-sig") as f:
         meta = json.load(f)
     applied = apply_normalized(meta, glossary)
+    applied, qinfo = repair_metadata(applied, dd)
     side = normalize_meta(applied, glossary)
+    audit_fp = os.path.join(dd, "metadata_audit.json")
+    if os.path.exists(audit_fp):
+        try:
+            with io.open(audit_fp, encoding="utf-8-sig") as f:
+                audit = json.load(f)
+            audit["quality"] = {
+                "document_type": qinfo.get("document_type"),
+                "is_single_article": qinfo.get("is_single_article"),
+                "flags": qinfo.get("flags") or [],
+            }
+            tmpa = audit_fp + ".tmp"
+            with io.open(tmpa, "w", encoding="utf-8") as f:
+                json.dump(audit, f, ensure_ascii=False, indent=1)
+            os.replace(tmpa, audit_fp)
+        except (OSError, ValueError):
+            pass
     dst = os.path.join(dd, "metadata_normalized.json")
     with io.open(dst, "w", encoding="utf-8") as f:
         json.dump(side, f, ensure_ascii=False, indent=1)
@@ -133,9 +154,10 @@ def normalize_doc(doc, out_root, glossary=()):
     with io.open(tmp, "w", encoding="utf-8") as f:
         json.dump(applied, f, ensure_ascii=False, indent=1)
     os.replace(tmp, fp)
-    print("== normalize %s == title=%s authors=%d refs=%d -> %s + metadata.json" % (
+    print("== normalize %s == title=%s authors=%d refs=%d type=%s flags=%s -> %s + metadata.json" % (
         doc, bool(side["fields"].get("title")), len(side["fields"]["authors"]),
-        len(side["references"]), os.path.basename(dst)))
+        len(side["references"]), qinfo.get("document_type"),
+        ",".join(qinfo.get("flags") or []) or "-", os.path.basename(dst)))
     return dst
 
 

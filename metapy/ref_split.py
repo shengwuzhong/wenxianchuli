@@ -19,7 +19,8 @@ _SPLIT = re.compile(r"(?<=[.．。])\s+")
 
 def _nfkc(s):
     import unicodedata
-    return unicodedata.normalize("NFKC", str(s or "")).strip()
+    s = str(s or "").replace("\u00ad", "-")
+    return unicodedata.normalize("NFKC", s).strip()
 
 
 def _suspicious(ref):
@@ -37,8 +38,12 @@ def _suspicious(ref):
         return True
     if re.match(r"^\s*\d{1,3}\s*[\)）\.、]", a):
         return True
+    # 刊名缺失通常意味着字段串位，值得用 raw 重新解析。
+    if not ref.get("source"):
+        return True
     # 已有字段缺失但 raw 明确有页/卷：值得二次切分
-    if not ref.get("pages") and _PAGES.search(raw):
+    if not ref.get("pages") and (_PAGES.search(raw)
+                                 or re.search(r"\((?:\d{4})\)", raw)):
         return True
     if not ref.get("volume") and re.search(r"(?:Vol\.?|巻)\s*\d", raw, re.I):
         return True
@@ -139,11 +144,91 @@ def split_ref(ref):
     return out
 
 
+_TAIL_PAGES = re.compile(
+    r"(?P<pages>[A-Za-z]?\d{1,6}(?:\s*[-–—~～]\s*[A-Za-z]?\d{1,6})?"
+    r"(?:\([A-Z]\))?)\s*$")
+
+
+def _journal_ok(s):
+    s = str(s or "").strip(" ,，、;；:：.．")
+    if len(s) < 3 or len(s) > 90:
+        return False
+    if not re.search(r"[A-Za-z]", s):
+        return False
+    if re.search(r"\b(?:and|et al)\b", s, re.I):
+        return False
+    return True
+
+
+def _bare_parse(raw):
+    """解析“作者, 刊名, 卷, 页 (年)”与“作者. 刊名 年;卷:页”两种常见格式。
+
+    这类格式通常没有论文题名（只有作者/刊名/卷页），旧逻辑会把作者姓氏
+    当作 title；这里返回 title=None，让下游知道“题名确实不存在”。
+    """
+    s = _nfkc(raw)
+    s = _NUM.sub("", s).strip()
+    s = s.strip(" .．。")
+
+    # A) Authors: [Title.] Journal Vol (Year) Pages
+    m = re.match(r"^(?P<authors>.+?):\s*(?P<rest>.+)$", s)
+    if m:
+        authors = m.group("authors").strip(" ,，、;；")
+        rest = m.group("rest").strip()
+        j = re.search(
+            r"(?P<journal>[A-Z][A-Za-z.&'’\- ]{2,80}?)\s+"
+            r"(?P<vol>\d{1,4})\s*\((?P<year>(?:18|19|20|21)\d{2})\)\s*"
+            r"(?P<pages>[A-Za-z]?\d{1,6}(?:\s*[-–—~～]\s*[A-Za-z]?\d{1,6})?)",
+            rest)
+        if j and _journal_ok(j.group("journal")):
+            title = rest[:j.start()].strip(" .．。")
+            return {"authors_raw": authors, "title": title if len(title) >= 4 else None,
+                    "source": j.group("journal").strip(" ,，、;；.．"),
+                    "year": j.group("year"), "volume": j.group("vol"),
+                    "pages": re.sub(r"\s+", "", j.group("pages")),
+                    "no_title": len(title) < 4}
+
+    # B) Authors. Journal Year; Vol: Pages  (e.g. "Lommel S, et al. EMBO Rep. 2001;2:850-857.")
+    m = re.match(
+        r"^(?P<authors>.+?)\.\s+(?P<journal>[A-Z][A-Za-z.&'’\- ]{2,80}?)\.?\s+"
+        r"(?P<year>(?:18|19|20|21)\d{2})\s*;\s*(?P<vol>\d{1,4})\s*:\s*"
+        r"(?P<pages>[A-Za-z]?\d{1,6}(?:\s*[-–—~～]\s*[A-Za-z]?\d{1,6})?)", s)
+    if m and _journal_ok(m.group("journal")):
+        return {"authors_raw": m.group("authors").strip(" ,，、;；"),
+                "title": None,
+                "source": m.group("journal").strip(" ,，、;；.．"),
+                "year": m.group("year"), "volume": m.group("vol"),
+                "pages": re.sub(r"\s+", "", m.group("pages")),
+                "no_title": True}
+
+    # C) Authors, Journal, Vol, Pages (Year)  /  Authors, Journal Vol, Pages (Year)
+    my = re.search(r"\((?P<year>(?:18|19|20|21)\d{2})\)\s*\.?$", s)
+    if my:
+        prefix = s[:my.start()].strip(" ,，、;；")
+        mp = _TAIL_PAGES.search(prefix)
+        if mp:
+            pages = re.sub(r"\s+", "", mp.group("pages"))
+            before_pages = prefix[:mp.start()].strip(" ,，、;；")
+            mv = re.search(r"(?P<vol>\d{1,4})\s*$", before_pages)
+            if mv:
+                vol = mv.group("vol")
+                head = before_pages[:mv.start()].strip(" ,，、;；")
+                idx = head.rfind(", ")
+                if idx > 0:
+                    authors = head[:idx].strip(" ,，、;；")
+                    journal = head[idx + 2:].strip(" ,，、;；.．")
+                    if authors and _journal_ok(journal):
+                        return {"authors_raw": authors, "title": None,
+                                "source": journal, "year": my.group("year"),
+                                "volume": vol, "pages": pages, "no_title": True}
+    return None
+
+
 def normalize_ref(ref):
     """按需修复单条 ref；返回是否有改动。"""
     if not _suspicious(ref):
         return False
-    got = split_ref(ref)
+    got = _bare_parse(ref.get("raw")) or split_ref(ref)
     if not got:
         return False
     changed = False
@@ -153,9 +238,13 @@ def normalize_ref(ref):
             if str(ref.get(k) or "") != str(v):
                 ref[k] = v
                 changed = True
-    if got.get("journal"):
-        if str(ref.get("source") or "") != str(got["journal"]):
-            ref["source"] = got["journal"]
+    if got.get("title") is None and got.get("no_title"):
+        if ref.get("title"):
+            ref["title"] = None
+            changed = True
+    if got.get("source"):
+        if str(ref.get("source") or "") != str(got["source"]):
+            ref["source"] = got["source"]
             changed = True
     if changed:
         ref["ref_split"] = True
@@ -169,9 +258,22 @@ def raw(ref):
 
 def normalize_refs(refs):
     n = 0
+    keep = []
     for r in refs or []:
-        if isinstance(r, dict) and normalize_ref(r):
+        if not isinstance(r, dict):
+            keep.append(r)
+            continue
+        raw = str(r.get("raw") or "")
+        # 明显是正文段落而非参考文献（53_7 首条实证）：无编号、无页码、
+        # 超长且以叙述词开头。只删这一种高置信噪声，不动普通无编号条目。
+        if not r.get("num") and not r.get("pages") and len(raw) > 220 \
+                and re.match(r"^(?:Regarding|The|In|This|These|We|It)\b", raw):
+            continue
+        if normalize_ref(r):
             n += 1
+        keep.append(r)
+    if isinstance(refs, list):
+        refs[:] = keep
     return n
 
 

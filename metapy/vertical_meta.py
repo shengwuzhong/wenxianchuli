@@ -13,6 +13,8 @@ import re
 
 from .front_vertical import extract_page
 from .ja_names import enrich_author
+from .vertical_layout import detect_page
+from .doc_quality import is_person_name
 from .vertical_notes import collect as collect_notes
 from .vertical_refs import build_candidates as build_refs, to_references
 from .vertical_cspan import collect as collect_cspan
@@ -37,6 +39,10 @@ def _bad_title(t):
         return True
     if re.search(r"[。！？!?]\s*$", t):
         return True
+    if re.match(r"^[―—–-].*[―—–-]$", t):
+        return True   # 副题/栏目标签，不是主标题
+    if t.startswith("【") or t.startswith("##"):
+        return True
     if _SECTION.search(t):
         return True
     return False
@@ -45,71 +51,120 @@ def _bad_title(t):
 def _author_bad(a):
     if not isinstance(a, dict):
         return True
-    n = str(a.get("name") or "").strip()
-    if not n or len(n) > 20:
-        return True
-    if re.search(r"[。！？!?〈〉]", n):
-        return True
-    if re.search(r"(?:を参照|——|『|』|（|）|\(|\))", n):
-        return True
-    return False
+    return not is_person_name(a.get("name"))
 
 
 def _authors_bad(authors):
     return not authors or any(_author_bad(a) for a in authors)
 
 
-def apply_to_meta(meta, page):
+def apply_to_meta(meta, page, page_no=1):
     """meta + unified page dict -> (new_meta, changed, info)。"""
     units = page.get("unified") or []
     W, H = page.get("w"), page.get("h")
+    # 先判竖排，避免横向页进入竖排题名/作者链路（原实现会在这里对空
+    # Picture 调 splitlines()[0]，9/30 文档因此 IndexError）。
+    pinfo = detect_page(units, W, H)
+    if not pinfo.get("vertical"):
+        return meta, False, {"vertical": False}
     cand = extract_page(units, W, H)
-    if not cand.get("vertical") or not cand.get("title"):
+    if not cand.get("vertical"):
         return meta, False, {"vertical": False}
     out = copy.deepcopy(meta)
     cur = str(_value(out, "title") or "")
-    new_title = cand["title"]["text"]
+    new_title = (cand.get("title") or {}).get("text") or ""
     changed = False
     if new_title and _bad_title(cur) and new_title != cur:
         out["title_before_vertical"] = copy.deepcopy(out.get("title"))
-        out["title"] = {"value": new_title, "page": 1, "uid": cand["title"]["uid"],
+        out["title"] = {"value": new_title, "page": page_no,
+                        "uid": cand["title"]["uid"],
                         "confidence": {"level": "mid", "source": "vertical_layout"}}
         out["title_source"] = "vertical"
         changed = True
-    # 记录候选，便于审计
+    # 记录候选，便于审计；即使本次没有改动也保留，避免“为什么没采用”无法回查。
     out["vertical_layout"] = {
+        "page": page_no,
         "vertical": True,
         "confidence": cand.get("confidence"),
         "title_candidates": cand.get("title_candidates") or [],
         "author_candidates": cand.get("author_candidates") or [],
     }
-    # 只补空作者，或在作者明显是正文/注记时替换；正常作者不覆盖
+    # 只补空作者，或在作者明显是正文/注记时替换；正常作者不覆盖。
     authors = out.get("authors") or []
-    if cand.get("author_candidates") and _authors_bad(authors):
+    cand_authors = [a for a in (cand.get("author_candidates") or [])
+                    if is_person_name(a.get("name"))]
+    if cand_authors and _authors_bad(authors):
+        good = [a for a in authors if isinstance(a, dict) and not _author_bad(a)]
         if authors:
             out["authors_before_vertical"] = copy.deepcopy(authors)
-        out["authors"] = []
-        for a in cand["author_candidates"]:
+        seen = {str((a or {}).get("name_key") or (a or {}).get("name") or "")
+                for a in good if isinstance(a, dict)}
+        out["authors"] = good
+        for a in cand_authors:
             row = {"name": a["name"], "markers": [], "affiliation": None,
-                   "role": None, "roman": None, "page": 1, "uid": a.get("uid")}
-            out["authors"].append(enrich_author(row))
-        out["authors_source"] = "vertical"
-        changed = True
+                   "role": None, "roman": None, "page": page_no, "uid": a.get("uid")}
+            row = enrich_author(row)
+            k = row.get("name_key") or row.get("name")
+            if k in seen:
+                continue
+            seen.add(k)
+            out["authors"].append(row)
+        if out["authors"]:
+            out["authors_source"] = "vertical"
+            changed = True
     return out, changed, {"vertical": True, "title": new_title,
-                          "authors": len(out.get("authors") or [])}
+                          "authors": len(out.get("authors") or []),
+                          "page": page_no}
+
+
+def _pages(ddir):
+    udir = os.path.join(ddir, "unified")
+    if not os.path.isdir(udir):
+        return []
+    files = [f for f in os.listdir(udir) if re.match(r"page_\d+\.json$", f)]
+    files.sort(key=lambda s: int(re.search(r"(\d+)", s).group(1)))
+    out = []
+    for f in files:
+        try:
+            with io.open(os.path.join(udir, f), encoding="utf-8-sig") as fh:
+                out.append((f, json.load(fh)))
+        except (OSError, ValueError):
+            continue
+    return out
 
 
 def apply_doc(doc, out_root):
     ddir = os.path.join(out_root, doc)
     mfp = os.path.join(ddir, "metadata.json")
-    pfp = os.path.join(ddir, "unified", "page_0.json")
-    if not os.path.exists(mfp) or not os.path.exists(pfp):
+    if not os.path.exists(mfp):
         return None
     with io.open(mfp, encoding="utf-8-sig") as f:
         meta = json.load(f)
-    with io.open(pfp, encoding="utf-8-sig") as f:
-        page = json.load(f)
-    new, changed, info = apply_to_meta(meta, page)
+    pages = _pages(ddir)
+    if not pages:
+        return None
+
+    # 竖排题名可能不在 page_0（封面/目录在前）。扫描所有页，优先取
+    # “竖排且有题名候选”的页；只取第一张，避免多页互相覆盖。
+    new, changed, info = meta, False, {"vertical": False}
+    fallback = None
+    for idx, (_fn, page) in enumerate(pages, 1):
+        cand_meta, cand_changed, cand_info = apply_to_meta(meta, page, page_no=idx)
+        if not cand_info.get("vertical"):
+            continue
+        if fallback is None:
+            fallback = (cand_meta, cand_changed, cand_info)
+        if cand_info.get("title"):
+            new, changed, info = cand_meta, cand_changed, cand_info
+            break
+    if not info.get("vertical") and fallback is not None:
+        new, changed, info = fallback
+    if not info.get("vertical"):
+        return info
+    # 即使题名/作者未变，也持久化 vertical_layout 候选，便于审计“为什么没采用”。
+    if not changed:
+        changed = True
+
     if info.get("vertical"):
         notes = collect_notes(doc, out_root)
         if notes:
