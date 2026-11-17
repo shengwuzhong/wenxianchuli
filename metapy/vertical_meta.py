@@ -3,6 +3,7 @@
 
 只处理 detect_page 判定为竖排的页面，并且只替换明显错误/缺失的题名；
 已有可信题名和作者不覆盖。raw/旧值保留在 *_before_vertical 字段。
+同时收集有明确标记的脚注候选（footnote_candidates），不伪造 references。
 """
 import copy
 import io
@@ -12,6 +13,7 @@ import re
 
 from .front_vertical import extract_page
 from .ja_names import enrich_author
+from .vertical_notes import collect as collect_notes
 
 _SECTION = re.compile(r"^\s*(?:[一二三四五六七八九十]+[、.．]|"
                       r"第[一二三四五六七八九十]+[、.．]|はじめに|目次|序)")
@@ -86,6 +88,13 @@ def apply_doc(doc, out_root):
     with io.open(pfp, encoding="utf-8-sig") as f:
         page = json.load(f)
     new, changed, info = apply_to_meta(meta, page)
+    if info.get("vertical"):
+        notes = collect_notes(doc, out_root)
+        if notes:
+            new["footnote_candidates"] = notes
+            new["footnote_count"] = len(notes)
+            info["notes"] = len(notes)
+            changed = True
     if changed:
         tmp = mfp + ".tmp"
         with io.open(tmp, "w", encoding="utf-8") as f:

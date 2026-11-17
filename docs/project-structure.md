@@ -53,6 +53,7 @@ multidoc-ocr-compare/
 │  ├─ vertical_layout.py         竖排检测与从右到左阅读序
 │  ├─ front_vertical.py          竖排题名/作者候选
 │  ├─ vertical_meta.py           竖排题名/作者回写 metadata
+│  ├─ vertical_notes.py          竖排脚注/尾注候选
 │  ├─ normalize_meta.py          主字段 normalized + sidecar
 │  ├─ audit_invariant.py         不变量审计（上游新增）
 │  └─ audit_value.py             字段值后验审计（上游新增）
