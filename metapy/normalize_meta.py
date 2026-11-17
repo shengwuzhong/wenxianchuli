@@ -27,6 +27,7 @@ from .ja_date import normalize_year
 from .ja_names import enrich_authors, enrich_affiliations, normalize_person_name
 from .ja_keywords import ensure_keywords
 from .ref_split import normalize_refs
+from .cite_resolve import resolve_citations
 
 SCALAR = ["title", "title_en", "journal", "journal_en", "year", "volume",
           "issue", "pages", "abstract", "abstract_en"]
@@ -152,6 +153,7 @@ def apply_normalized(meta, glossary=()):
     enrich_authors(out.get("authors"))
     ensure_keywords(out)
     normalize_refs(out.get("references"))
+    out = resolve_citations(out)
     for k in SCALAR:
         obj = out.get(k)
         if not isinstance(obj, dict) or obj.get("value") is None:

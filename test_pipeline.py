@@ -297,6 +297,24 @@ class JapaneseMetadataTest(unittest.TestCase):
         self.assertEqual(r["pages"], "547-554")
 
 
+class JapaneseCitationResolveTest(unittest.TestCase):
+    def test_ibid_and_author_year(self):
+        from metapy.cite_resolve import resolve_citations
+        refs = [
+            {"num": 1, "authors_raw": "山田 太郎", "year": "2020", "title": "地震探査", "uid": "u1"},
+            {"num": 2, "authors_raw": "佐藤 花子", "year": "2021", "title": "断層", "uid": "u2"},
+        ]
+        spans = [
+            {"page": 1, "uid": "a", "sentence": "山田 (2020)", "citation_text": "山田 (2020)",
+             "authors": ["山田"], "year": "2020", "linked_refs": []},
+            {"page": 1, "uid": "b", "sentence": "前掲の手法", "citation_text": "前掲",
+             "authors": [], "year": None, "linked_refs": []},
+        ]
+        out = resolve_citations({"references": refs, "citation_spans": spans})
+        self.assertEqual(out["citation_spans"][0]["linked_refs"][0]["index"], 0)
+        self.assertEqual(out["citation_spans"][1]["resolve_method"], "ibid")
+
+
 class MergeReadingOrderTest(unittest.TestCase):
     @staticmethod
     def _b(x0, y0, x1, y1, cat="Text", text=""):

@@ -32,6 +32,7 @@
 | 人名/机构规范化 | 姓名/罗马字/机构 key，去邮编和地址，统一法人写法 | `metapy/ja_names.py` | `[新增]` |
 | 自动关键词 | 无关键词行时从题名/摘要/正文抽内容词 | `metapy/ja_keywords.py` | `[新增]` |
 | 参考文献二次切分 | 修复题名/作者/刊名错位、截断、缺失页卷 | `metapy/ref_split.py` | `[新增]` |
+| 引文消歧 | 同書/前掲/ibid/同著者同年；歧义时记 resolve_note | `metapy/cite_resolve.py` | `[新增]` |
 | 规范化 sidecar | `metadata_normalized.json` + 主字段 normalized（raw 保留） | `metapy/normalize_meta.py` + `metadata.py --stage normalize` | `[新增]` |
 
 ## 2. 可选功能

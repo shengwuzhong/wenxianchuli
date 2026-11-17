@@ -49,6 +49,7 @@ multidoc-ocr-compare/
 │  ├─ ja_names.py                日本人名/机构规范化
 │  ├─ ja_keywords.py             无关键词行时的关键词抽取
 │  ├─ ref_split.py               参考文献二次切分
+│  ├─ cite_resolve.py            同書/前掲/ibid/同著者同年消歧
 │  ├─ normalize_meta.py          主字段 normalized + sidecar
 │  ├─ audit_invariant.py         不变量审计（上游新增）
 │  └─ audit_value.py             字段值后验审计（上游新增）
