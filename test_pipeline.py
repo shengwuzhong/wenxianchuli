@@ -315,6 +315,33 @@ class JapaneseCitationResolveTest(unittest.TestCase):
         self.assertEqual(out["citation_spans"][1]["resolve_method"], "ibid")
 
 
+class VerticalLayoutTest(unittest.TestCase):
+    @staticmethod
+    def _units():
+        return [
+            {"uid": "p", "type": "Page-number", "box": [95, 116, 126, 136]},
+            {"uid": "body1", "type": "Text", "box": [303, 154, 454, 1097]},
+            {"uid": "body2", "type": "Text", "box": [246, 191, 298, 993]},
+            {"uid": "title", "type": "Section-header", "box": [655, 255, 695, 702]},
+            {"uid": "author", "type": "Section-header", "box": [572, 900, 602, 1053]},
+            {"uid": "page2", "type": "Page-number", "box": [90, 1108, 102, 1125]},
+        ]
+
+    def test_vertical_order(self):
+        from metapy.vertical_layout import detect_page, order_units, first_content
+        units = self._units()
+        self.assertTrue(detect_page(units, 793, 1192)["vertical"])
+        ordered, _ = order_units(units, 793, 1192)
+        self.assertEqual([u["uid"] for u in ordered][:3], ["title", "author", "body1"])
+        self.assertEqual(first_content(ordered)["uid"], "title")
+
+    def test_horizontal_not_vertical(self):
+        from metapy.vertical_layout import detect_page
+        wide = [{"uid": "w%d" % i, "type": "Text",
+                 "box": [80, 150 + i * 120, 1100, 210 + i * 120]} for i in range(4)]
+        self.assertFalse(detect_page(wide, 1200, 1600)["vertical"])
+
+
 class MergeReadingOrderTest(unittest.TestCase):
     @staticmethod
     def _b(x0, y0, x1, y1, cat="Text", text=""):
