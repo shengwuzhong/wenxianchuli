@@ -237,7 +237,7 @@ def call_llm(cfg, prompt):
                                     {"role": "user", "content": prompt}]}).encode("utf-8")
     req = urllib.request.Request(cfg["endpoint"], data=body, headers={
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + os.environ.get("KCI_LLM_KEY", "")})
+        "Authorization": "Bearer " + (os.environ.get("KCI_LLM_KEY") or os.environ.get("KCI_ZJLAB_KEY", ""))})
     with urllib.request.urlopen(req, timeout=180, context=_ssl_ctx()) as resp:
         out = json.loads(resp.read().decode("utf-8"))
     return out["choices"][0]["message"]["content"]

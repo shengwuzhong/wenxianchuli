@@ -1,4 +1,6 @@
-# 渠道配置与获取
+# 渠道配置
+
+> 当前项目以日文文献为主；韩 / 中 / 英能力保留。
 
 ## 配置文件的三层结构
 
@@ -17,9 +19,10 @@
 ```json
 {
   "keep_api_zip": false,
-  "mineru":     {"src_w": 1034, "src_h": 1012, "x_off": 17.8, "y_off": 12.3},
+  "mineru":     {"src_w": 1034, "src_h": 1012, "x_off": 17.8, "y_off": 12.3,
+                 "desktop_enabled": false},
   "mineru_api": {"token": "", "enabled": true, "src_w": 1017, "src_h": 1008, "x_off": 13, "y_off": 8,
-                 "model_version": "vlm", "language": "korean", "is_ocr": false,
+                 "model_version": "vlm", "language": "japan", "is_ocr": false,
                  "enable_formula": true, "enable_table": true,
                  "run_timeout": 300, "queue_timeout": 7200},
   "dots_api":   {"base": "https://dotsocr.xiaohongshu.com", "model": "dots.mocr",
@@ -34,7 +37,7 @@
 要点:
 
 - `enabled`: 各 `*_api` 段默认 `true`。置 `false` 即跳过该云端渠道; mineru 置 `false` 时
-  直接落到 CDP 桌面版, 其余两家则视为"未提供"。
+  在 `mineru.desktop_enabled=true` 时转 CDP 桌面版; 默认关闭, 其余两家则视为"未提供"。
 - `run_timeout` / `queue_timeout`: 单次推理与服务端排队各自的上限(秒)。`run_timeout` 只累计
   `running` 状态的时长, 排队久不会误杀。
 - `keep_api_zip`: 是否保留 dots 下载的 `api_result.zip`(默认 `false`)。
@@ -49,7 +52,7 @@
 
 ## 每个渠道怎么拿产物
 
-优先级: **已有产物 → 云端 API(未禁用时) → (仅 mineru)CDP 桌面版兜底**。
+优先级: **已有产物 → 云端 API(未禁用时) → (仅 mineru，且 `desktop_enabled=true`)CDP 桌面版兜底**。
 
 | 渠道 | 缓存目录 | 命中判据 | 上游要点 |
 | --- | --- | --- | --- |

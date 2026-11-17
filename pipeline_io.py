@@ -776,8 +776,9 @@ def fetch_mineru_api(pdf_path, out_dir):
 
     # 1) 申请上传 URL(参数同官方文档; is_ocr 默认 false, 即非OCR)
     finfo = {"name": os.path.basename(pdf_path), "is_ocr": bool(meta.get("is_ocr", False))}
+    # language 取 MinerU 官方代码(japan=日文, ch=中英, korean=韩文); 本仓库面向日文文献, 缺省落 japan
     payload = {"files": [finfo], "model_version": meta.get("model_version", "pipeline"),
-               "language": meta.get("language", "korean")}
+               "language": meta.get("language", "japan")}
     for k in ("enable_formula", "enable_table"):
         if k in meta:
             payload[k] = bool(meta[k])

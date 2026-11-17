@@ -124,9 +124,8 @@ def fetch_channels(doc, pdf, out, chans_in, echo=None):
     返回 (chans, SRC_KIND)。chans_in 里已给的渠道(命令行/inbox 指定)原样保留不再获取;
     其余走 API/缓存/inbox 兜底。产物只落 out/raw/<ch>(_api), 无 PDF 就无法重取。
 
-    MinerU 只走云端 API(2026-11-13 移除桌面版 CDP 驱动): API 失败就是这一路失败,
-    不再回落到驱动本地 App。理由见 README「渠道获取」——桌面驱动的成功依赖窗口焦点、
-    依赖 App 版本, 且失败方式是"卡住"而不是"报错", 与并发调度天然冲突。
+    MinerU 默认只走云端 API；`mineru.desktop_enabled=true` 时才启用 CDP 桌面版兜底。
+    桌面驱动的成功依赖窗口焦点与 App 版本，默认关闭，避免并发调度时卡住。
     """
     log_ = echo or log
     chans = dict(chans_in)
@@ -147,10 +146,25 @@ def fetch_channels(doc, pdf, out, chans_in, echo=None):
     # 缓存命中时这一段秒过, 名额等于没有成本。KCI_API_PARALLEL 可调。
     import crossproc as _xp
     _api_n = int(os.environ.get("KCI_API_PARALLEL") or 3)
+
+    def _mineru_cdp():
+        if not (CFG.get("mineru") or {}).get("desktop_enabled", False):
+            return None
+        try:
+            import mineru_drive
+            mu_dir = mineru_drive.drive(pdf)   # CDP 驱动桌面版: 启动 -> 上传 -> 等解析
+            if mu_dir and os.path.isdir(mu_dir):
+                log_("② 渠道[mineru] 经 CDP 驱动 App 获取 -> %s" % mu_dir)
+                SRC_KIND["mineru"] = "CDP"
+                return mu_dir
+        except Exception as e:
+            log_("② mineru CDP 驱动失败(可手动跑 App 走归仓): %s" % e)
+        return None
+
     def _resolve_mineru():
         if not (CFG.get("mineru_api") or {}).get("enabled", True):
-            SRC_KIND["mineru"] = "API禁用"
-            return None
+            SRC_KIND["mineru"] = "API禁用(转CDP)"
+            return _mineru_cdp()
         cached = os.path.join(out, "raw", "mineru_api")
         if any(x.endswith("_content_list_v2.json") for _, _, fs in os.walk(cached) for x in fs):
             log_("② 渠道[mineru] 复用缓存: %s" % cached)   # 强制重跑请删除 raw\mineru_api
@@ -163,8 +177,8 @@ def fetch_channels(doc, pdf, out, chans_in, echo=None):
                 SRC_KIND["mineru"] = "API新获取"
                 return api_dir
         except Exception as e:
-            log_("② mineru 云端 API 失败(该路留空, 不回落桌面版): %s" % e)
-        return None
+            log_("② mineru 云端 API 失败, 尝试 CDP 兜底: %s" % e)
+        return _mineru_cdp()
     def _resolve_dots():
         if not (CFG.get("dots_api") or {}).get("enabled", True):
             return None

@@ -6,7 +6,8 @@
   "src_h": 1012,
   "x_off": 17.8,
   "y_off": 12.3,
-  "_note": "桌面版 content_list_v2 的 bbox 空间各向异性; 换渲染设置后重跑校准。"
+  "desktop_enabled": false,
+  "_note": "桌面版 content_list_v2 的 bbox 空间各向异性; 换渲染设置后重跑校准。desktop_enabled=true 才启用 CDP 兜底(默认关, 避免并发卡住)。"
  },
  "mineru_api": {
   "token": "",
@@ -17,7 +18,7 @@
   "y_off": 8,
   "_calib_note": "API content_list_v2 的 bbox 空间(与桌面版 1034x1012 差~1.6%, 故单列); 偏移为150dpi页图像素",
   "model_version": "vlm",
-  "language": "korean",
+  "language": "japan",
   "is_ocr": false,
   "timeout": 1800,
   "_note": "MinerU 云端 API(file-urls/batch 签名上传 -> 裸PUT -> 轮询 -> zip)。渠道优先走 API, 失败转 CDP 桌面版; raw\\mineru_api 有 content_list_v2 则优先复用。token 失效(A0202)时更新。",
