@@ -410,6 +410,13 @@ def main(argv=None):
     except Exception as e:
         log(u"⑥ 元数据链导入失败(不阻断): %s" % str(e)[:120])
     try:
+        from metapy.vertical_meta import apply_doc as apply_vertical
+        _vinfo = apply_vertical(doc, _out_root)
+        if _vinfo and _vinfo.get("vertical"):
+            log(u"⑥ 竖排题名: %s" % (_vinfo.get("title") or "-")[:60])
+    except Exception as e:
+        log(u"⑥ 竖排题名失败(不阻断): %s" % str(e)[:120])
+    try:
         from metapy.normalize_meta import normalize_doc
         normalize_doc(doc, _out_root)
         log(u"⑥ 元数据 normalize 完成")

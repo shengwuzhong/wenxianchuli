@@ -35,6 +35,7 @@
 | 引文消歧 | 同書/前掲/ibid/同著者同年；歧义时记 resolve_note | `metapy/cite_resolve.py` | `[新增]` |
 | 竖排阅读序 | 竖排检测、右到左分列、列内 y 序；横向路径不变 | `metapy/vertical_layout.py` | `[P0]` |
 | 竖排题名/作者候选 | 右列题名打分、作者候选；章节标题排除 | `metapy/front_vertical.py` | `[P1]` |
+| 竖排字段回写 | 仅替换明显错误题名、补空作者；raw/旧值保留 | `metapy/vertical_meta.py` | `[P2]` |
 | 规范化 sidecar | `metadata_normalized.json` + 主字段 normalized（raw 保留） | `metapy/normalize_meta.py` + `metadata.py --stage normalize` | `[新增]` |
 
 ## 2. 可选功能

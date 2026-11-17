@@ -204,6 +204,14 @@ def _st_normalize(ctx):
     return "normalized 主字段 + %s" % (os.path.basename(dst) if dst else "跳过")
 
 
+def _st_vertical(ctx):
+    from metapy.vertical_meta import apply_doc
+    info = apply_doc(ctx["doc"], ctx["out_root"])
+    if not info or not info.get("vertical"):
+        return "非竖排，跳过"
+    return "竖排: %s" % (info.get("title") or "-")[:60]
+
+
 def _st_index(ctx):
     """按磁盘产物重建总览: 渠道块数/韩文字符/FFFD 从 merged.json 统计, 不重跑适配。"""
     import pipeline
@@ -253,6 +261,7 @@ STAGES = [
     ("abs",     "③ 元数据", "摘要关键词", "abstract/keywords",             ("unified",), False),
     ("issue",   "③ 元数据", "期刊年卷期", "journal/year/volume/issue",     ("unified", "metadata"), False),
     ("cspan",   "③ 元数据", "引文句",     "citation_spans[]",              ("unified", "metadata"), False),
+    ("vertical", "③ 元数据", "竖排题名",   "竖排题名/作者候选",              ("unified", "metadata"), False),
     ("normalize", "③ 元数据", "字段规范化", "normalized 主字段 + sidecar",   ("metadata",), False),
     ("ner",     "④ 实体/呈现", "实体抽取", "ner_lite.json(需 LLM key)",     ("unified",), False),
     ("viewer",  "④ 实体/呈现", "对照查看器", "viewer_compare.html 重建",     ("merged",), False),
@@ -278,6 +287,7 @@ META_FN = {"m3": "m3_doc", "refs": "refs_doc", "frefs": "frefs_doc", "front": "f
 RUNNERS = {
     "render": _st_render, "acquire": _st_acquire, "adapt": _st_adapt,
     "merge": _st_merge, "unify": _st_unify, "ner": _st_ner,
+    "vertical": _st_vertical,
     "normalize": _st_normalize,
     "viewer": _st_viewer, "index": _st_index,
 }
@@ -286,7 +296,7 @@ for _m in META_IDS:
 
 PRESETS = [
     ("全链(等价一键重跑)", ORDER),
-    ("只后链(元数据+实体)", list(META_IDS) + ["normalize", "ner"]),
+    ("只后链(元数据+实体)", list(META_IDS) + ["vertical", "normalize", "ner"]),
     ("只重建呈现(查看器+总览)", ["viewer", "index"]),
     ("只归一化及以下", ["merge", "unify"]),
 ]
