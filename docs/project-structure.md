@@ -46,6 +46,9 @@ multidoc-ocr-compare/
 │  ├─ normalize.py               日文文本规范化核心
 │  ├─ ja_tokenize.py             日文分词/形态素分析（SudachiPy，可降级）
 │  ├─ ja_date.py                 元号/日期 -> 西历规范化
+│  ├─ ja_names.py                日本人名/机构规范化
+│  ├─ ja_keywords.py             无关键词行时的关键词抽取
+│  ├─ ref_split.py               参考文献二次切分
 │  ├─ normalize_meta.py          主字段 normalized + sidecar
 │  ├─ audit_invariant.py         不变量审计（上游新增）
 │  └─ audit_value.py             字段值后验审计（上游新增）

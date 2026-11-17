@@ -8,7 +8,7 @@ r"""日文 metadata 规范化：主字段 normalized + sidecar。
   - authors / affiliations
   - keywords
   - body
-  - references（逐条 title / authors_raw / source / container_title / publisher / doi）
+  - references（先经 ref_split 二次切分，再逐条规范化）
 每个字段保留 raw + normalized + 段级映射；原文不动。
 
 用法:
@@ -24,6 +24,9 @@ import sys
 
 from .normalize import normalize_text
 from .ja_date import normalize_year
+from .ja_names import enrich_authors, enrich_affiliations, normalize_person_name
+from .ja_keywords import ensure_keywords
+from .ref_split import normalize_refs
 
 SCALAR = ["title", "title_en", "journal", "journal_en", "year", "volume",
           "issue", "pages", "abstract", "abstract_en"]
@@ -119,12 +122,12 @@ def normalize_doc(doc, out_root, glossary=()):
         return None
     with io.open(fp, encoding="utf-8-sig") as f:
         meta = json.load(f)
-    side = normalize_meta(meta, glossary)
+    applied = apply_normalized(meta, glossary)
+    side = normalize_meta(applied, glossary)
     dst = os.path.join(dd, "metadata_normalized.json")
     with io.open(dst, "w", encoding="utf-8") as f:
         json.dump(side, f, ensure_ascii=False, indent=1)
-    # 同时把 normalized 写回主字段；raw 值不移除、不覆盖
-    applied = apply_normalized(meta, glossary)
+    # normalized 写回主字段；raw 值不移除、不覆盖
     tmp = fp + ".tmp"
     with io.open(tmp, "w", encoding="utf-8") as f:
         json.dump(applied, f, ensure_ascii=False, indent=1)
@@ -146,6 +149,9 @@ def apply_normalized(meta, glossary=()):
     """
     import copy
     out = copy.deepcopy(meta)
+    enrich_authors(out.get("authors"))
+    ensure_keywords(out)
+    normalize_refs(out.get("references"))
     for k in SCALAR:
         obj = out.get(k)
         if not isinstance(obj, dict) or obj.get("value") is None:
@@ -156,13 +162,8 @@ def apply_normalized(meta, glossary=()):
     authors = out.get("authors") or []
     for a in authors:
         if isinstance(a, dict) and a.get("name"):
-            a["normalized"] = _norm(str(a["name"]), glossary)["normalized"]
-    aff = []
-    for a in out.get("affiliations") or []:
-        name = a.get("name") if isinstance(a, dict) else a
-        if name:
-            aff.append(_norm(str(name), glossary)["normalized"])
-    out["affiliations_normalized"] = aff
+            a["normalized"] = normalize_person_name(a["name"])
+    out["affiliations_normalized"] = enrich_affiliations(out.get("affiliations"))
     out["keywords_normalized"] = [_norm(str(x), glossary)["normalized"]
                                   for x in (out.get("keywords") or []) if x]
     body = out.get("body")

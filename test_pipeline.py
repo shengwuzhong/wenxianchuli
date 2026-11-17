@@ -269,6 +269,34 @@ class JapaneseDateTest(unittest.TestCase):
         self.assertEqual(d["normalized"], "2024-03-01")
 
 
+class JapaneseMetadataTest(unittest.TestCase):
+    def test_name_and_affiliation_keys(self):
+        from metapy.ja_names import name_key, affiliation_key, normalize_affiliation
+        self.assertEqual(name_key("山田 太郎"), name_key("山田　太郎"))
+        self.assertEqual(normalize_affiliation("東京大学：113-8654 本郷"), "東京大学")
+        self.assertEqual(affiliation_key("東京大学：113-8654 本郷"), "東京大学")
+
+    def test_auto_keywords_only_when_empty(self):
+        from metapy.ja_keywords import ensure_keywords
+        m = {"title": {"value": "アプタマー技術による疾患プロテオミクス"},
+             "abstract": {"value": "アプタマーで血液中の蛋白質を解析する。"},
+             "keywords": []}
+        self.assertTrue(ensure_keywords(m))
+        self.assertEqual(m["keywords_source"], "auto")
+        m2 = {"keywords": ["既存"]}
+        self.assertFalse(ensure_keywords(m2))
+        self.assertEqual(m2["keywords"], ["既存"])
+
+    def test_reference_split(self):
+        from metapy.ref_split import normalize_ref
+        r = {"raw": "2) Yoshimura S, Toyoda K, Ohara T, et al: Takotsubo cardiomyopathy in acute ischemic stroke. Ann Neurol 64: 547-554, 2008",
+             "title": "Toyoda K", "authors_raw": "Yoshimura S", "source": "Ohara T"}
+        self.assertTrue(normalize_ref(r))
+        self.assertEqual(r["title"], "Takotsubo cardiomyopathy in acute ischemic stroke")
+        self.assertEqual(r["year"], "2008")
+        self.assertEqual(r["pages"], "547-554")
+
+
 class MergeReadingOrderTest(unittest.TestCase):
     @staticmethod
     def _b(x0, y0, x1, y1, cat="Text", text=""):

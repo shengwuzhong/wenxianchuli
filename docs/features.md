@@ -29,6 +29,9 @@
 | 文本规范化 | NFKC/旧字体/送假名/保护/映射 | `metapy/normalize.py` | `[新增]` |
 | 日文分词 | SudachiPy 分词、句子切分、内容词候选；缺依赖时正则降级 | `metapy/ja_tokenize.py` | `[新增]` |
 | 元号/日期规范化 | 令和/平成/昭和/大正/明治及 R/H/S/T/M -> 西历；支持年月日 | `metapy/ja_date.py` | `[新增]` |
+| 人名/机构规范化 | 姓名/罗马字/机构 key，去邮编和地址，统一法人写法 | `metapy/ja_names.py` | `[新增]` |
+| 自动关键词 | 无关键词行时从题名/摘要/正文抽内容词 | `metapy/ja_keywords.py` | `[新增]` |
+| 参考文献二次切分 | 修复题名/作者/刊名错位、截断、缺失页卷 | `metapy/ref_split.py` | `[新增]` |
 | 规范化 sidecar | `metadata_normalized.json` + 主字段 normalized（raw 保留） | `metapy/normalize_meta.py` + `metadata.py --stage normalize` | `[新增]` |
 
 ## 2. 可选功能
