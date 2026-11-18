@@ -149,6 +149,7 @@ class TaskStore:
                     status TEXT NOT NULL DEFAULT 'queued',
                     attempts INTEGER NOT NULL DEFAULT 0,
                     pages INTEGER NOT NULL DEFAULT 0,
+                    account TEXT NOT NULL DEFAULT '',
                     created TEXT NOT NULL,
                     started TEXT,
                     finished TEXT,
@@ -156,6 +157,9 @@ class TaskStore:
                     pid INTEGER
                 )
             """)
+            cols = {r[1] for r in self.db.execute("PRAGMA table_info(tasks)").fetchall()}
+            if "account" not in cols:
+                self.db.execute("ALTER TABLE tasks ADD COLUMN account TEXT NOT NULL DEFAULT ''")
             self.db.execute("CREATE INDEX IF NOT EXISTS ix_tasks_status ON tasks(status)")
             self.db.execute("CREATE INDEX IF NOT EXISTS ix_tasks_doc ON tasks(doc)")
             self.db.commit()
@@ -185,7 +189,8 @@ class TaskStore:
                 "ORDER BY id DESC LIMIT 1", (doc,)).fetchone()
         return self._row(row)
 
-    def enqueue(self, doc, pdf, ids, clear=(), trigger="重跑", pages=0, status="queued"):
+    def enqueue(self, doc, pdf, ids, clear=(), trigger="重跑", pages=0, status="queued",
+                account=""):
         with self.lock:
             row = self.db.execute(
                 "SELECT * FROM tasks WHERE doc=? AND status IN ('queued','running','interrupted') "
@@ -193,11 +198,11 @@ class TaskStore:
             if row:
                 return None, self._row(row)
             cur = self.db.execute(
-                "INSERT INTO tasks(doc,pdf,ids,clear_json,trigger,status,pages,created) "
-                "VALUES(?,?,?,?,?,?,?,?)",
+                "INSERT INTO tasks(doc,pdf,ids,clear_json,trigger,status,pages,created,account) "
+                "VALUES(?,?,?,?,?,?,?,?,?)",
                 (doc, pdf, json.dumps(list(ids), ensure_ascii=False),
                  json.dumps(list(clear), ensure_ascii=False), trigger, status,
-                 int(pages or 0), _now()))
+                 int(pages or 0), _now(), account or ""))
             self.db.commit()
             row = self.db.execute("SELECT * FROM tasks WHERE id=?", (cur.lastrowid,)).fetchone()
         return self._row(row), None
@@ -338,6 +343,299 @@ class QuotaStore:
         return {"account": self.account, "date": self.data["date"],
                 "used": self.used(), "limit": self.data["limit"],
                 "remaining": self.remaining()}
+
+
+class QuotaBook:
+    """Per-Paddle-account page ledger.
+
+    Accounts are independent budgets.  A reservation is keyed by
+    ``<zone>/<doc>`` and belongs to exactly one account; two zones sharing the
+    same account therefore share its limit, while separate accounts do not.
+    """
+
+    def __init__(self, fp, daily_pages=20000):
+        self.fp = fp
+        self.default_daily = int(daily_pages or 20000)
+        self.lock = threading.RLock()
+        os.makedirs(os.path.dirname(fp), exist_ok=True)
+        self.data = self._load()
+
+    def _empty(self):
+        return {"date": _today(), "default_limit": self.default_daily, "accounts": {}}
+
+    def _load(self):
+        try:
+            with open(self.fp, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:
+            data = self._empty()
+        accounts = data.get("accounts")
+        if not isinstance(accounts, dict):
+            accounts = {}
+            data["accounts"] = accounts
+        old_limit = int(data.get("limit") or data.get("default_limit") or self.default_daily)
+        for key, val in list(accounts.items()):
+            if not isinstance(val, dict):
+                accounts[key] = {"limit": old_limit, "entries": {}}
+            else:
+                val["limit"] = max(1, int(val.get("limit") or old_limit))
+                val.setdefault("entries", {})
+        old_entries = data.get("entries")
+        if not accounts:
+            accounts["shared"] = {"limit": old_limit,
+                                  "entries": old_entries if isinstance(old_entries, dict) else {}}
+        elif isinstance(old_entries, dict) and "shared" in accounts:
+            accounts["shared"].setdefault("entries", {}).update(old_entries)
+        data.pop("entries", None)
+        data["default_limit"] = max(1, int(data.get("default_limit") or old_limit))
+        if data.get("date") != _today():
+            for val in accounts.values():
+                val["entries"] = {}
+            data["date"] = _today()
+        self._save_data(data)
+        return data
+
+    def _save_data(self, data):
+        tmp = self.fp + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, ensure_ascii=False, indent=1)
+        os.replace(tmp, self.fp)
+
+    def save(self):
+        with self.lock:
+            self._save_data(self.data)
+
+    def _roll(self):
+        if self.data.get("date") != _today():
+            for val in self.data["accounts"].values():
+                val["entries"] = {}
+            self.data["date"] = _today()
+            self._save_data(self.data)
+
+    def ensure(self, key, daily_pages=None):
+        key = str(key or "shared")
+        with self.lock:
+            self._roll()
+            val = self.data["accounts"].setdefault(
+                key, {"limit": int(daily_pages or self.default_daily), "entries": {}})
+            if daily_pages:
+                val["limit"] = max(1, int(daily_pages))
+            val.setdefault("entries", {})
+            self._save_data(self.data)
+            return key
+
+    def account(self, key, daily_pages=None):
+        key = self.ensure(key, daily_pages)
+        return QuotaAccount(self, key)
+
+    def set_limit(self, key, n):
+        with self.lock:
+            self.ensure(key)
+            self.data["accounts"][key]["limit"] = max(1, int(n))
+            self._save_data(self.data)
+
+    def limit(self, key):
+        with self.lock:
+            self.ensure(key)
+            return int(self.data["accounts"][key]["limit"])
+
+    def used(self, key):
+        with self.lock:
+            self.ensure(key)
+            return sum(int(v.get("pages") or 0)
+                       for v in self.data["accounts"][key]["entries"].values())
+
+    def remaining(self, key):
+        return max(0, self.limit(key) - self.used(key))
+
+    def reserve(self, key, reservation, pages):
+        pages = max(0, int(pages or 0))
+        with self.lock:
+            self.ensure(key)
+            e = self.data["accounts"][key]["entries"]
+            if reservation and reservation in e:
+                return True
+            if self.used(key) + pages > self.limit(key):
+                return False
+            if reservation:
+                e[reservation] = {"pages": pages, "at": _now()}
+            self._save_data(self.data)
+            return True
+
+    def release(self, key, reservation):
+        with self.lock:
+            self.ensure(key)
+            e = self.data["accounts"][key]["entries"]
+            if reservation in e:
+                e.pop(reservation, None)
+                self._save_data(self.data)
+
+    def summary(self, key):
+        with self.lock:
+            self.ensure(key)
+            used = self.used(key)
+            limit = self.limit(key)
+            return {"account": key, "date": self.data["date"], "used": used,
+                    "limit": limit, "remaining": max(0, limit - used)}
+
+    def summary_all(self):
+        with self.lock:
+            return {k: self.summary(k) for k in sorted(self.data["accounts"])}
+
+
+class QuotaAccount:
+    """A named view over a shared QuotaBook (the Runner only needs this view)."""
+
+    def __init__(self, book, account):
+        self.book = book
+        self.account = account
+
+    def used(self):
+        return self.book.used(self.account)
+
+    def remaining(self):
+        return self.book.remaining(self.account)
+
+    def reserve(self, key, pages):
+        return self.book.reserve(self.account, key, pages)
+
+    def release(self, key):
+        return self.book.release(self.account, key)
+
+    def set_limit(self, n):
+        self.book.set_limit(self.account, n)
+
+    def summary(self):
+        return self.book.summary(self.account)
+
+
+def mask_token(token):
+    token = token or ""
+    if len(token) <= 8:
+        return "*" * len(token)
+    return token[:4] + "…" + token[-4:]
+
+
+class AccountStore:
+    """Local Paddle account registry and zone assignment.
+
+    Tokens live in ``.workbench/accounts.json`` (gitignored, user-local).  The
+    GUI never logs a full token; the table shows a masked prefix/suffix only.
+    """
+
+    def __init__(self, fp, default_daily=20000):
+        self.fp = fp
+        self.default_daily = int(default_daily or 20000)
+        self.lock = threading.RLock()
+        os.makedirs(os.path.dirname(fp), exist_ok=True)
+        self.data = self._load()
+
+    def _empty(self):
+        return {"version": 1, "default_limit": self.default_daily,
+                "accounts": {}, "zones": {}}
+
+    def _load(self):
+        try:
+            with open(self.fp, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:
+            data = self._empty()
+        data.setdefault("version", 1)
+        data.setdefault("default_limit", self.default_daily)
+        data.setdefault("accounts", {})
+        data.setdefault("zones", {})
+        return data
+
+    def _save(self):
+        tmp = self.fp + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(self.data, fh, ensure_ascii=False, indent=1)
+        os.replace(tmp, self.fp)
+        try:
+            os.chmod(self.fp, 0o600)
+        except OSError:
+            pass
+
+    def bootstrap(self, token="", label="主账号", daily_pages=None):
+        """Create the first account and assign both zones to it (shared default)."""
+        with self.lock:
+            if self.data["accounts"]:
+                return self.data["accounts"]
+            key = "primary"
+            self.data["accounts"][key] = {
+                "label": label, "token": token or "",
+                "daily_pages": int(daily_pages or self.data.get("default_limit") or
+                                   self.default_daily)}
+            for zid in ("A", "B"):
+                self.data["zones"].setdefault(zid, key)
+            self._save()
+            return self.data["accounts"]
+
+    def list_accounts(self):
+        with self.lock:
+            out = []
+            for key, a in self.data["accounts"].items():
+                out.append({"key": key, "label": a.get("label") or key,
+                            "token": a.get("token") or "",
+                            "token_mask": mask_token(a.get("token") or ""),
+                            "daily_pages": int(a.get("daily_pages") or
+                                               self.data.get("default_limit") or
+                                               self.default_daily)})
+            return sorted(out, key=lambda x: x["key"])
+
+    def get(self, key):
+        with self.lock:
+            a = self.data["accounts"].get(key)
+            return dict(a, key=key) if a else None
+
+    def zones_of(self, key):
+        with self.lock:
+            return [z for z, a in self.data["zones"].items() if a == key]
+
+    def assignment(self, zone_id):
+        with self.lock:
+            key = self.data["zones"].get(zone_id)
+            if key not in self.data["accounts"]:
+                key = next(iter(self.data["accounts"]), "")
+                if key:
+                    self.data["zones"][zone_id] = key
+                    self._save()
+            return key
+
+    def assign(self, zone_id, key):
+        with self.lock:
+            if key not in self.data["accounts"]:
+                raise KeyError(key)
+            self.data["zones"][zone_id] = key
+            self._save()
+
+    def upsert(self, key, label, token=None, daily_pages=None):
+        """Create/update an account.  ``token=None`` keeps the stored token."""
+        with self.lock:
+            a = self.data["accounts"].setdefault(key, {"token": ""})
+            a["label"] = label or key
+            if token is not None:
+                a["token"] = token
+            if daily_pages is not None:
+                a["daily_pages"] = max(1, int(daily_pages))
+            else:
+                a.setdefault("daily_pages", int(self.data.get("default_limit") or
+                                                self.default_daily))
+            self._save()
+            return self.get(key)
+
+    def remove(self, key):
+        with self.lock:
+            if key not in self.data["accounts"]:
+                return False, "账号不存在"
+            if len(self.data["accounts"]) <= 1:
+                return False, "至少保留一个账号"
+            used = self.zones_of(key)
+            if used:
+                return False, "仍被工作区 %s 使用，不能删除" % "/".join(used)
+            self.data["accounts"].pop(key)
+            self._save()
+            return True, "已删除"
 
 
 def page_count(pdf):

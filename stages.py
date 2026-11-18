@@ -474,6 +474,10 @@ def _child_entry(job, q, out_root, ner_root=None):
             pass
 
     _sys.stdout = _sys.stderr = _W()
+    _tok = job.get("paddle_token")
+    if _tok:
+        # 每个子进程只拿到自己的 Paddle 账号；父进程的全局 token 不能跨区串用。
+        os.environ["PADDLE_API_TOKEN"] = str(_tok)
     try:
         import pipeline
         pipeline.log = lambda *a: _sys.stdout.write(

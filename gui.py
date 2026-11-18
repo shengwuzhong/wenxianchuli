@@ -34,6 +34,24 @@ SINGLE_PORT = 8790   # 单实例互斥端口: bind 由内核原子完成, 无文
 CH = ("mineru", "dots", "paddle")
 CH_ZH = {"mineru": "MinerU", "dots": "dots.ocr", "paddle": "PaddleOCR"}
 NER_ROOT = os.path.join(ROOT, "out_llm_trial")   # ner_lite 产物, 仅用于"机构"的口径对齐
+DEFAULT_DAILY_PAGES = 20000
+
+
+def _local_paddle_token():
+    """从本机私有配置取 Paddle token，仅用于首次建账号；之后以账号库为准。"""
+    tok = (os.environ.get("PADDLE_API_TOKEN") or "").strip()
+    if tok:
+        return tok
+    for name in ("channels.local.json", "channels.json"):
+        try:
+            with io.open(os.path.join(ROOT, name), encoding="utf-8-sig") as f:
+                cfg = json.load(f)
+            tok = str((cfg.get("paddle_api") or {}).get("token") or "").strip()
+            if tok:
+                return tok
+        except Exception:
+            continue
+    return ""
 
 # 质检口径已抽到 qc.py(2026-11-13): 归档要在**搬走产物之前**把质检状态快照进索引,
 # 而归档是 CLI 也能跑的路径, 不能为此把 tkinter 拖进依赖链。
@@ -218,11 +236,12 @@ class Runner(object):
     依赖校验; 全链预设等价于原 pipeline.main, 后链子集秒级完成。
     """
 
-    def __init__(self, zone, quota, log, parallel=None, paused=True):
+    def __init__(self, zone, quota, log, parallel=None, paused=True, accounts=None):
         self.zone = zone
         self.quota = quota
+        self.accounts = accounts
         self.log = log
-        self.q = queue.Queue()          # (task_id, doc, pdf, ids, clear_tuple, trigger)
+        self.q = queue.Queue()          # (task_id, doc, pdf, ids, clear, trigger, account_key)
         self.running = {}               # doc -> (trigger, started): 并发下"当前在跑"是一个集合
         self.queued = set()             # 运行中+排队中的 doc(去重)
         self.parallel = int(parallel or DEFAULT_PARALLEL)   # 同时跑几篇(可在界面调)
@@ -237,16 +256,17 @@ class Runner(object):
     # 每个任务都在新进程里跑, 天然 import 到磁盘上的最新代码, 不必再靠 mtime 猜。
     # 这里只留一条提醒 —— 代码改动在**下次任务**生效, 不影响正在跑的进程。
 
-    def submit(self, doc, pdf, ids, trigger="重跑", clear=()):
-        row, dup = self.store.enqueue(doc, pdf, ids, clear, trigger)
+    def submit(self, doc, pdf, ids, trigger="重跑", clear=(), account=None):
+        acct = account or self.zone.account
+        row, dup = self.store.enqueue(doc, pdf, ids, clear, trigger, account=acct)
         if row is None:
             self.log("[队列] %s 已有任务在跑/排队, 跳过重复提交" % doc)
             return False
         with self.lock:
             self.queued.add(doc)
-        self.q.put((row["id"], doc, pdf, tuple(ids), tuple(clear), trigger))
-        self.log("[队列] %s 已加入 (%s · %d 段)%s" % (
-            doc, trigger, len(ids), " · 等待「继续」" if self.paused else ""))
+        self.q.put((row["id"], doc, pdf, tuple(ids), tuple(clear), trigger, acct))
+        self.log("[队列] %s 已加入 (%s · %d 段 · 账号 %s)%s" % (
+            doc, trigger, len(ids), acct, " · 等待「继续」" if self.paused else ""))
         return True
 
     def _completed_since(self, r):
@@ -277,7 +297,8 @@ class Runner(object):
                     continue
                 self.queued.add(r["doc"])
             self.q.put((r["id"], r["doc"], r.get("pdf"), tuple(r.get("ids") or []),
-                        tuple(r.get("clear") or []), r.get("trigger") or "断点续跑"))
+                        tuple(r.get("clear") or []), r.get("trigger") or "断点续跑",
+                        r.get("account") or self.zone.account))
             n += 1
         self.paused = False
         if n:
@@ -307,9 +328,10 @@ class Runner(object):
                 time.sleep(0.2)
             while self._active_count() >= self.parallel:
                 time.sleep(0.15)
-            task_id, doc, pdf, ids, clear, trigger = self.q.get()
+            task_id, doc, pdf, ids, clear, trigger, account = self.q.get()
             self.store.mark_running(task_id)
-            t = threading.Thread(target=self._task, args=(task_id, doc, pdf, ids, clear, trigger),
+            t = threading.Thread(target=self._task,
+                                 args=(task_id, doc, pdf, ids, clear, trigger, account),
                                  daemon=True)
             t.start()
 
@@ -317,10 +339,10 @@ class Runner(object):
         with self.lock:
             return len(self.running)
 
-    def _task(self, task_id, doc, pdf, ids, clear, trigger):
+    def _task(self, task_id, doc, pdf, ids, clear, trigger, account=""):
         ok, err = False, ""
         try:
-            ok, err = self._run_one(doc, pdf, ids, clear, trigger)
+            ok, err = self._run_one(doc, pdf, ids, clear, trigger, account)
         except BaseException as e:   # 单任务异常不许杀死调度线程
             err = str(e)[:200]
             self.log("[异常] %s 任务抛出: %s" % (doc, e))
@@ -331,7 +353,15 @@ class Runner(object):
                 self.running.pop(doc, None)
             self.q.task_done()
 
-    def _run_one(self, doc, pdf, ids, clear, trigger):
+    def _run_one(self, doc, pdf, ids, clear, trigger, account=""):
+        account = account or self.zone.account
+        token = ""
+        if self.accounts is not None:
+            rec = self.accounts.get(account)
+            token = (rec or {}).get("token") or ""
+            if "paddle" in ids and not token:
+                self.log("[账号] %s 缺少 Paddle token，拒绝提交 (账号 %s)" % (doc, account))
+                return False, "账号 %s 缺少 Paddle token" % account
         try:
             snap = wb.snapshot_doc(self.zone, doc, "%s · %s" % (trigger, ",".join(ids)))
         except Exception as e:
@@ -355,16 +385,18 @@ class Runner(object):
             self.log("[%s] %s" % (doc, str(s)))
 
         res = {"ok": False, "results": {}, "error": ""}
+        job = {"doc": doc, "ids": list(ids), "pdf": pdf}
+        if token:
+            job["paddle_token"] = token
         try:
-            res = stages.run_one_child({"doc": doc, "ids": list(ids), "pdf": pdf},
-                                       log=_hook, out_root=self.zone.out,
+            res = stages.run_one_child(job, log=_hook, out_root=self.zone.out,
                                        ner_root=os.path.join(self.zone.ner, "fds_extract", "ner_lite"))
         except Exception as e:   # stages.run_one_child 内部已兜异常; 这里兜它自己(如进程起不来)
             res = {"ok": False, "results": {}, "error": str(e)[:200]}
         ok = bool(res.get("ok"))
         rec = {"doc": doc, "trigger": trigger, "started": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t0)),
                "elapsed_s": int(time.time() - t0), "ok": ok, "err": res.get("error") or None,
-               "selected": list(ids), "parallel": self.parallel,
+               "selected": list(ids), "parallel": self.parallel, "account": account,
                "stages": {k: ("ok" if v.get("ok") else ("skip" if v.get("skipped") else "fail"))
                           for k, v in (res.get("results") or {}).items()},
                "channels": {c: _ch_done(doc, c, self.zone.out) for c in CH}}
@@ -421,20 +453,29 @@ class App(tk.Tk):
         self.zone_id = zid if zid in self.zones else "A"
         self.zone = self.zones[self.zone_id]
         self._prefs = load_prefs(self.zone.prefs)
-        daily = int(self._prefs.get("paddle_daily_pages") or 20000)
-        self.quota = wb.QuotaStore(os.path.join(ROOT, ".workbench", "quota.json"),
-                                   "shared", daily)
+        daily = int(self._prefs.get("paddle_daily_pages") or DEFAULT_DAILY_PAGES)
+        self.accounts = wb.AccountStore(os.path.join(ROOT, ".workbench", "accounts.json"),
+                                        DEFAULT_DAILY_PAGES)
+        tok = _local_paddle_token()
+        if tok:
+            self.accounts.bootstrap(tok, "本机账号", daily_pages=daily)
+        self.qbook = wb.QuotaBook(os.path.join(ROOT, ".workbench", "quota.json"), daily)
         self.runners = {}
         for z in self.zones.values():
             p = load_prefs(z.prefs)
-            self.runners[z.zid] = Runner(z, self.quota, self._log,
-                                         parallel=p.get("parallel"), paused=True)
+            z.account = self.accounts.assignment(z.zid) or "primary"
+            rec = self.accounts.get(z.account) or {}
+            zq = self.qbook.account(z.account, rec.get("daily_pages") or DEFAULT_DAILY_PAGES)
+            self.runners[z.zid] = Runner(z, zq, self._log, parallel=p.get("parallel"),
+                                         paused=True, accounts=self.accounts)
         self.runner = self.runners[self.zone_id]
+        self.quota = self.runner.quota
         self._was_busy = False
         self._webapp_on = False
         self._entity_cache = {}
         self._page_cache = {}
         self._audit_win = None
+        self._acct_win = None
         self._paused = True
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build()
@@ -475,6 +516,19 @@ class App(tk.Tk):
                                     values=[str(i) for i in range(1, MAX_PARALLEL + 1)])
         self.par_box.pack(side="left")
         self.par_box.bind("<<ComboboxSelected>>", self._on_parallel)
+
+        # 账号单独一行: P2 起 Paddle 额度按账号计, 不能让 A/B 的 token 与页数混在一起。
+        acct = ttk.Frame(self)
+        acct.pack(fill="x", padx=10, pady=(0, 4))
+        ttk.Label(acct, text="Paddle 账号").pack(side="left")
+        self.acct_var = tk.StringVar(value="")
+        self.acct_box = ttk.Combobox(acct, textvariable=self.acct_var, width=24,
+                                     state="readonly", values=[])
+        self.acct_box.pack(side="left", padx=(4, 6))
+        self.acct_box.bind("<<ComboboxSelected>>", self._on_account)
+        ttk.Button(acct, text="账号与额度…", command=self._open_accounts).pack(side="left")
+        self.acct_hint = ttk.Label(acct, text="", foreground="#555")
+        self.acct_hint.pack(side="left", padx=12)
 
         # 状态栏单独占窗口底部一行: 并发跑 5 篇时它要报"哪几篇在跑", 挤在顶栏右侧会跟
         # 6 个按钮抢宽度(实测被压到 0 宽, 整条状态直接消失)。
@@ -548,6 +602,7 @@ class App(tk.Tk):
         self.logtxt.pack(fill="both", expand=True)
         mid.add(logw, weight=2)
 
+        self._sync_accounts()
         self.after(1000, self._tick_status)
 
     def _on_parallel(self, _ev=None):
@@ -558,6 +613,64 @@ class App(tk.Tk):
         self.par_var.set(str(n))
         self._prefs["parallel"] = n
         save_prefs(self._prefs, self.zone.prefs)
+
+    def _account_items(self):
+        return self.accounts.list_accounts()
+
+    def _sync_accounts(self):
+        """刷新账号下拉; 选中项跟随当前工作区分配。"""
+        items = self._account_items()
+        vals = ["%s · %s" % (a["label"], a["key"]) for a in items]
+        self.acct_box["values"] = vals
+        key = self.zone.account
+        idx = next((i for i, a in enumerate(items) if a["key"] == key), -1)
+        if idx >= 0:
+            self.acct_var.set(vals[idx])
+        elif vals:
+            self.acct_var.set(vals[0])
+        self._refresh_account_hint()
+
+    def _refresh_account_hint(self):
+        key = self.zone.account
+        if not self.accounts.list_accounts():
+            self.acct_hint.configure(text="未配置 Paddle 账号；点「账号与额度…」新增")
+            return
+        s = self.runner.quota.summary()
+        zones = self.accounts.zones_of(key)
+        shared = "A/B 共用" if len(zones) > 1 else ("区 %s" % zones[0] if zones else "未分配")
+        self.acct_hint.configure(
+            text="%s · 今日 %d/%d 页 · 余 %d · %s" %
+                 (key, s["used"], s["limit"], s["remaining"], shared))
+
+    def _on_account(self, _ev=None):
+        items = self._account_items()
+        idx = self.acct_box.current()
+        if idx < 0 or idx >= len(items):
+            return
+        key = items[idx]["key"]
+        if key == self.zone.account:
+            return
+        self.accounts.assign(self.zone.zid, key)
+        rec = self.accounts.get(key) or {}
+        self.zone.account = key
+        self.runner.quota = self.qbook.account(key, rec.get("daily_pages") or DEFAULT_DAILY_PAGES)
+        self.quota = self.runner.quota
+        self._refresh_account_hint()
+        self._log("[账号] %s 改用 %s（新任务生效；已排队任务保留原账号）" %
+                  (self.zone.label, key))
+
+    def _open_accounts(self):
+        try:
+            if self._acct_win is not None and self._acct_win.winfo_exists():
+                self._acct_win.lift()
+                self._acct_win.focus_force()
+                return
+        except tk.TclError:
+            pass
+        try:
+            self._acct_win = AccountsWindow(self)
+        except tk.TclError:
+            self._acct_win = None
 
     def _on_zone(self, _ev=None):
         label = self.zone_var.get()
@@ -573,9 +686,11 @@ class App(tk.Tk):
             pass
         self._audit_win = None
         self.runner = self.runners[z.zid]
+        self.quota = self.runner.quota
         self._prefs = load_prefs(z.prefs)
         self.par_var.set(str(self.runner.parallel))
         self._entity_cache = {}
+        self._sync_accounts()
         self.refresh()
         self._log("[工作区] 切换到 %s（%s）" % (z.label, z.out))
 
@@ -593,9 +708,16 @@ class App(tk.Tk):
                 lines.append("· %s：排队 %d，中断 %d，运行 %d" % (
                     z.label, c.get("queued", 0), c.get("interrupted", 0),
                     c.get("running", 0)))
-        q = self.quota.summary()
-        lines.append("· Paddle 页数：已用 %d / %d，剩余 %d" % (
-            q["used"], q["limit"], q["remaining"]))
+        seen = set()
+        for z in self.zones.values():
+            key = z.account
+            if key in seen:
+                continue
+            seen.add(key)
+            q = self.qbook.account(key).summary()
+            zones = self.accounts.zones_of(key)
+            lines.append("· Paddle 账号 %s（%s）：已用 %d / %d，剩余 %d" % (
+                key, "+".join(zones) or "-", q["used"], q["limit"], q["remaining"]))
         if not total and not any(self.runners[z].running for z in self.runners):
             body = "没有需要恢复的任务。\n\n点击「继续」后解锁批量执行。"
         else:
@@ -795,6 +917,14 @@ class App(tk.Tk):
         """按 PDF 页数预留 Paddle 日额度；缺 Paddle 的文档才算。"""
         if "paddle" not in ids:
             return True
+        rec = self.accounts.get(self.zone.account) or {}
+        if not (rec.get("token") or "").strip():
+            messagebox.showwarning(
+                "未配置 Paddle token",
+                "当前区使用账号 %s，但没有 Paddle token。\n\n"
+                "请点「账号与额度…」补齐 token；本次不预留页数、不提交任务。" %
+                self.zone.account, parent=self)
+            return False
         todo = []
         need = 0
         for doc in docs:
@@ -813,9 +943,9 @@ class App(tk.Tk):
         if need > self.quota.remaining():
             messagebox.showwarning(
                 "Paddle 配额不足",
-                "本次预计需要 Paddle %d 页，今日剩余 %d 页。\n\n"
-                "请缩小选中范围，或在偏好设置中调整 paddle_daily_pages。" % (
-                    need, self.quota.remaining()), parent=self)
+                "本次预计需要 Paddle %d 页，账号 %s 今日剩余 %d 页。\n\n"
+                "请缩小选中范围，或在「账号与额度…」中调整该账号日额度。" % (
+                    need, self.zone.account, self.quota.remaining()), parent=self)
             return False
         for doc, pages in todo:
             key = "%s/%s" % (self.zone.zid, doc)
@@ -1139,8 +1269,9 @@ class App(tk.Tk):
 
     def _tick_status(self):
         q = self.quota.summary()
-        txt = "%s · Paddle %d/%d 页（余 %d）" % (
-            self.runner.status(), q["used"], q["limit"], q["remaining"])
+        txt = "%s · 账号 %s · Paddle %d/%d 页（余 %d）" % (
+            self.runner.status(), self.zone.account, q["used"], q["limit"], q["remaining"])
+        self._refresh_account_hint()
         other = [r for zid, r in self.runners.items() if zid != self.zone_id and r.is_busy()]
         if other:
             txt += " · 另一区运行中 %d 篇" % sum(r._active_count() for r in other)
@@ -1160,6 +1291,179 @@ class App(tk.Tk):
         else:
             self._was_busy = busy
         self.after(1000, self._tick_status)
+
+
+class AccountsWindow(tk.Toplevel):
+    """Paddle 账号库: token 只显示掩码，日额度按账号分别记账。"""
+
+    COLS = (("key", 92, "账号"), ("label", 120, "名称"), ("mask", 130, "Token"),
+            ("limit", 82, "日额度"), ("used", 72, "今日已用"),
+            ("remain", 72, "剩余"), ("zones", 80, "使用区"))
+
+    def __init__(self, app):
+        tk.Toplevel.__init__(self, app)
+        self.app = app
+        self.store = app.accounts
+        self.book = app.qbook
+        self.items = []
+        self.editing = None
+        self.title("Paddle 账号与日额度")
+        self.geometry("820x520")
+        self.minsize(760, 480)
+        self.transient(app)
+        self._build()
+        self.refresh()
+
+    def _build(self):
+        top = ttk.Frame(self)
+        top.pack(fill="x", padx=12, pady=(12, 4))
+        ttk.Label(top, text="账号库", font=("Microsoft YaHei UI", 11, "bold")).pack(side="left")
+        ttk.Label(top, text="Token 存于 .workbench/accounts.json（不入库），界面只显示首尾。",
+                  foreground="#666").pack(side="left", padx=10)
+
+        wrap = ttk.Frame(self)
+        wrap.pack(fill="both", expand=True, padx=12)
+        self.tree = ttk.Treeview(wrap, columns=[c[0] for c in self.COLS],
+                                 show="headings", height=9, selectmode="browse")
+        for c, w, t in self.COLS:
+            self.tree.heading(c, text=t)
+            self.tree.column(c, width=w, anchor="center" if c not in ("label", "mask") else "w")
+        self.tree.pack(side="left", fill="both", expand=True)
+        sb = ttk.Scrollbar(wrap, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        self.tree.bind("<<TreeviewSelect>>", lambda e: self._on_select())
+
+        form = ttk.LabelFrame(self, text="编辑 / 新增")
+        form.pack(fill="x", padx=12, pady=8)
+        r1 = ttk.Frame(form)
+        r1.pack(fill="x", padx=8, pady=(6, 3))
+        ttk.Label(r1, text="账号 key").pack(side="left")
+        self.key_var = tk.StringVar()
+        self.key_entry = ttk.Entry(r1, textvariable=self.key_var, width=13)
+        self.key_entry.pack(side="left", padx=(4, 10))
+        ttk.Label(r1, text="名称").pack(side="left")
+        self.label_var = tk.StringVar()
+        ttk.Entry(r1, textvariable=self.label_var, width=16).pack(side="left", padx=(4, 10))
+        ttk.Label(r1, text="日额度").pack(side="left", padx=(4, 0))
+        self.daily_var = tk.StringVar(value=str(DEFAULT_DAILY_PAGES))
+        ttk.Entry(r1, textvariable=self.daily_var, width=10).pack(side="left", padx=4)
+
+        r2 = ttk.Frame(form)
+        r2.pack(fill="x", padx=8, pady=3)
+        ttk.Label(r2, text="Paddle token").pack(side="left")
+        self.token_var = tk.StringVar()
+        self.token_entry = ttk.Entry(r2, textvariable=self.token_var, width=46, show="*")
+        self.token_entry.pack(side="left", padx=(4, 6))
+        ttk.Button(r2, text="读取本机配置", command=self._read_local).pack(side="left")
+        ttk.Label(r2, text="编辑时留空 = 保留原 token", foreground="#666").pack(side="left", padx=8)
+
+        bar = ttk.Frame(form)
+        bar.pack(fill="x", padx=8, pady=(4, 8))
+        ttk.Button(bar, text="新增", command=self._new).pack(side="left")
+        ttk.Button(bar, text="保存", command=self._save).pack(side="left", padx=6)
+        ttk.Button(bar, text="删除", command=self._delete).pack(side="left")
+        ttk.Button(bar, text="刷新", command=self.refresh).pack(side="left", padx=(18, 0))
+        ttk.Button(bar, text="关闭", command=self.destroy).pack(side="right")
+        self.note = ttk.Label(self, text="日额度单位为 PDF 页。一个账号可同时分配给 A/B 两区；共用时日额度也共用。",
+                              foreground="#555")
+        self.note.pack(fill="x", padx=14, pady=(0, 8))
+
+    def refresh(self):
+        self.items = self.store.list_accounts()
+        self.tree.delete(*self.tree.get_children())
+        for a in self.items:
+            q = self.book.account(a["key"], a["daily_pages"]).summary()
+            self.tree.insert("", "end", iid=a["key"], values=(
+                a["key"], a["label"], a["token_mask"], q["limit"],
+                q["used"], q["remaining"], ",".join(self.store.zones_of(a["key"])) or "-"))
+        if self.editing and self.editing in self.tree.get_children():
+            self.tree.selection_set(self.editing)
+
+    def _on_select(self):
+        sel = self.tree.selection()
+        if not sel:
+            return
+        key = sel[0]
+        a = self.store.get(key) or {}
+        self.editing = key
+        self.key_var.set(key)
+        self.key_entry.configure(state="disabled")
+        self.label_var.set(a.get("label") or key)
+        self.daily_var.set(str(a.get("daily_pages") or DEFAULT_DAILY_PAGES))
+        self.token_var.set("")
+
+    def _new(self):
+        self.editing = None
+        self.key_entry.configure(state="normal")
+        self.key_var.set("")
+        self.label_var.set("")
+        self.daily_var.set(str(DEFAULT_DAILY_PAGES))
+        self.token_var.set("")
+        self.key_entry.focus_set()
+
+    def _read_local(self):
+        tok = _local_paddle_token()
+        if tok:
+            self.token_var.set(tok)
+        else:
+            messagebox.showinfo("本机配置", "没有找到 Paddle token。", parent=self)
+
+    def _save(self):
+        key = (self.key_var.get() or "").strip()
+        label = (self.label_var.get() or "").strip() or key
+        tok = (self.token_var.get() or "").strip()
+        try:
+            daily = int(self.daily_var.get())
+        except ValueError:
+            messagebox.showwarning("参数错误", "日额度必须是整数页数。", parent=self)
+            return
+        if daily < 1 or daily > 200000:
+            messagebox.showwarning("参数错误", "日额度应在 1–200000 页之间。", parent=self)
+            return
+        if not re.match(r"^[A-Za-z0-9_-]{1,32}$", key):
+            messagebox.showwarning("参数错误", "账号 key 只能用字母/数字/下划线/短横线。",
+                                   parent=self)
+            return
+        if self.editing is None:
+            if not tok:
+                messagebox.showwarning("缺少 token", "新账号必须填写 Paddle token。", parent=self)
+                return
+            self.store.upsert(key, label, tok, daily)
+            self.book.account(key, daily).set_limit(daily)
+            self.app._log("[账号] 新增 %s（日额度 %d 页）" % (key, daily))
+        else:
+            if key != self.editing:
+                messagebox.showwarning("不可改 key", "账号 key 建好后不可改；请新增账号。",
+                                       parent=self)
+                return
+            self.store.upsert(key, label, None, daily)
+            self.book.set_limit(key, daily)
+            self.app._log("[账号] 更新 %s（日额度 %d 页）" % (key, daily))
+        self.editing = key
+        self.key_entry.configure(state="disabled")
+        self.token_var.set("")
+        self.refresh()
+        self.app._sync_accounts()
+
+    def _delete(self):
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("删除账号", "先选中一个账号。", parent=self)
+            return
+        key = sel[0]
+        if not messagebox.askyesno("删除账号", "删除账号 %s？已排队任务不受影响。" % key,
+                                   parent=self):
+            return
+        ok, msg = self.store.remove(key)
+        if not ok:
+            messagebox.showwarning("不能删除", msg, parent=self)
+            return
+        self.app._log("[账号] 删除 %s" % key)
+        self.editing = None
+        self._new()
+        self.refresh()
+        self.app._sync_accounts()
 
 
 class AuditWindow(tk.Toplevel):
