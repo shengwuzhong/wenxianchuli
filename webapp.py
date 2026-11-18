@@ -1249,7 +1249,10 @@ if __name__ == "__main__":
     print("  解释器: %s" % sys.executable)
     print("  本窗口保持开着服务才运行; 关闭窗口 = 停止服务")
     print("=" * 60)
-    threading.Thread(target=watch_uploads, daemon=True).start()
+    if os.environ.get("KCI_DISABLE_WATCH") != "1":
+        threading.Thread(target=watch_uploads, daemon=True).start()
+    else:
+        print("  uploads 目录监视已关闭(KCI_DISABLE_WATCH=1)，拖拽上传仍可用")
     if os.environ.get("KCI_DISABLE_AUTO_RESCUE") != "1":
         threading.Timer(5.0, rescue_scan).start()  # 启动即扫一遍: 上次会话渠道失败的文档自动补
     else:
