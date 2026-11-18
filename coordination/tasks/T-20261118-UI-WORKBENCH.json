@@ -3,7 +3,7 @@
  "title": "工作台 UI P0-P2：任务控制台、渠道矩阵、质量复核、报告/评测入口",
  "priority": "P0",
  "owner": "workbuddy",
- "status": "done",
+ "status": "abandoned",
  "depends_on": [],
  "allowed_files": [
   "webapp.py",
@@ -34,5 +34,5 @@
  ],
  "handoff_to": "lead",
  "created_at": "2026-11-18T05:22:21+00:00",
- "updated_at": "2026-11-18T05:43:44+00:00"
+ "updated_at": "2026-11-18T05:50:19+00:00"
 }
