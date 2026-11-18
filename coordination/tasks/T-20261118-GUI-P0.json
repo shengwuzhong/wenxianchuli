@@ -3,7 +3,7 @@
  "title": "GUI 工作台 P0：双区/持久队列/页配额/启动闸门",
  "priority": "P1",
  "owner": "deepseek",
- "status": "in_progress",
+ "status": "review",
  "depends_on": [],
  "allowed_files": [
   "gui.py",
@@ -34,7 +34,7 @@
   "GUI smoke",
   "rollback doc"
  ],
- "handoff_to": "",
+ "handoff_to": "deepseek",
  "created_at": "2026-11-18T06:46:29+00:00",
- "updated_at": "2026-11-18T06:46:29+00:00"
+ "updated_at": "2026-11-18T06:46:38+00:00"
 }
