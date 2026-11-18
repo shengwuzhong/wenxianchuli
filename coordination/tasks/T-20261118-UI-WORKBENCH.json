@@ -1,0 +1,38 @@
+{
+ "id": "T-20261118-UI-WORKBENCH",
+ "title": "工作台 UI P0-P2：任务控制台、渠道矩阵、质量复核、报告/评测入口",
+ "priority": "P0",
+ "owner": "workbuddy",
+ "status": "in_progress",
+ "depends_on": [],
+ "allowed_files": [
+  "webapp.py",
+  "app.js",
+  "dashboard.css",
+  "test_workbench_ui.py"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/workbuddy/UI-WORKBENCH",
+ "base_commit": "d712eba",
+ "acceptance": [
+  "旧接口保持兼容",
+  "三渠道矩阵可见",
+  "缺失渠道可单独补跑",
+  "质量复核/导出/评测入口可用",
+  "新旧测试通过"
+ ],
+ "handoff_to": "",
+ "created_at": "2026-11-18T05:22:21+00:00",
+ "updated_at": "2026-11-18T05:22:21+00:00"
+}
