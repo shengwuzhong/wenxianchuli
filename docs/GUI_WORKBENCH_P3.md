@@ -121,7 +121,7 @@ git reset --hard 974af94
 或只回退 P3 提交：
 
 ```powershell
-git revert --no-edit <P3 commit>
+git revert --no-edit d4e3662
 ```
 
 回退前先关闭 GUI，避免旧进程继续写 `.workbench/ingest.json`。
