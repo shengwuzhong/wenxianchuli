@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""桌面工作台(tkinter, 零依赖): 任务状态 + 运行历史 + 一键重跑。
+"""桌面工作台(tkinter, 零依赖): 任务状态 + 运行历史 + 自动导入/开始解析。
 
 动机(2026-11-12): webapp 每次调试要新开浏览器窗口, 且 JOBS 是内存态, 服务一重启全部归 0。
 本 GUI 的两条硬约束:
@@ -21,6 +21,7 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 import archive
 import field_audit as fa
+import ingest
 import qc
 import stages
 import workbench_state as wb
@@ -171,6 +172,47 @@ def scan_docs(up_root=None, out_root=None, arch_root=None):
                        "ch": {c: _ch_done(d, c, out_root) for c in CH},
                        "done_at": os.path.getmtime(idx), "miss": []}
     return docs
+
+
+_STATE_RANK = {
+    "未跑": 0, "等待自动处理": 0, "已暂停": 0, "待确认": 0,
+    "排队中": 1, "运行中": 1, "等待额度": 2, "等待账号": 2,
+    "同名冲突": 3, "无法打开": 3, "重复文件": 3,
+    "部分异常": 4, "未完成": 4, "已完成": 5, "无PDF": 6,
+}
+
+
+def display_state(d, ingest_status=""):
+    """文件真值 + 自动导入状态 -> 给用户看的一行状态。
+
+    自动导入状态只在文件还没有产物时覆盖“未跑”；一旦有 index.html，
+    文件真值优先，避免历史遗留的 queued/baseline 把完成文档标成排队中。
+    """
+    raw = d.get("state") or ""
+    if raw == "完成":
+        return "已完成"
+    if raw == "无PDF":
+        return "无PDF"
+    if raw == "缺渠道":
+        return "部分异常"
+    if raw == "未完成":
+        return "未完成"
+    st = ingest_status or ""
+    return {
+        "bad": "无法打开",
+        "conflict": "同名冲突",
+        "duplicate": "重复文件",
+        "waiting_quota": "等待额度",
+        "waiting_account": "等待账号",
+        "waiting_pause": "已暂停",
+        "waiting_confirm": "待确认",
+        "queued": "排队中",
+        "pending": "等待自动处理",
+    }.get(st, "未跑")
+
+
+def state_rank(label):
+    return _STATE_RANK.get(label, 4)
 
 
 def load_history(fp=None):
@@ -478,8 +520,20 @@ class App(tk.Tk):
         self._audit_win = None
         self._acct_win = None
         self._paused = True
+        self._startup_pending = True
+        self._closing = False
+        # 每区独立 ingest 账本: 只认本区 uploads, 不让 A 的文件触发 B 的任务。
+        self._ingest_stores = {}
+        self._ingest_scanners = {}
+        for z in self.zones.values():
+            store = ingest.IngestStore(os.path.join(z.root, ".workbench", "ingest.json"))
+            self._ingest_stores[z.zid] = store
+            self._ingest_scanners[z.zid] = ingest.IngestScanner(store, z.up)
+        self._ingest_q = queue.Queue()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build()
+        self._ingest_thread = threading.Thread(target=self._ingest_loop, daemon=True)
+        self._ingest_thread.start()
         self.after(100, self._drain)
         self.after(500, self.refresh)
         self.after(700, self._startup_prompt)
@@ -530,6 +584,8 @@ class App(tk.Tk):
         ttk.Button(acct, text="账号与额度…", command=self._open_accounts).pack(side="left")
         self.acct_hint = ttk.Label(acct, text="", foreground="#555")
         self.acct_hint.pack(side="left", padx=12)
+        self.auto_lbl = ttk.Label(acct, text="● 自动监视 uploads", foreground="#2c7a4b")
+        self.auto_lbl.pack(side="right")
 
         # 状态栏单独占窗口底部一行: 并发跑 5 篇时它要报"哪几篇在跑", 挤在顶栏右侧会跟
         # 6 个按钮抢宽度(实测被压到 0 宽, 整条状态直接消失)。
@@ -578,21 +634,23 @@ class App(tk.Tk):
         # 「快速重跑(跳NER)」仍是独立键: 它存在的目的就是不重复调 LLM。
         grp = ttk.Frame(act)
         grp.pack(side="left", padx=(4, 8))
-        self.btn_rerun = ttk.Button(grp, text="一键重跑  ▾", command=self._on_rerun_click)
+        self.btn_rerun = ttk.Button(grp, text="开始解析  ▾", command=self._on_rerun_click)
         self.btn_rerun.pack(side="left")
         self.btn_rerun.bind("<ButtonPress-1>", self._note_click_x)
         self.btn_quick = ttk.Button(grp, text="快速重跑(跳NER)", command=self._rerun_fast)
-        self.btn_quick.pack(side="left", padx=(4, 0))
+        # 高级重跑入口收进「更多」；控件保留以便状态同步，但不再占第一层。
         self.stage_menu = tk.Menu(self, tearoff=0, postcommand=self._build_stage_menu)
         self.btn_gaps = ttk.Button(act, text="重跑缺口", command=self._rerun_gaps)
         self.btn_retry = ttk.Button(act, text="重试缺失渠道", command=self._retry_missing)
+        self.more_menu = tk.Menu(self, tearoff=0, postcommand=self._build_more_menu)
+        self.btn_more = ttk.Menubutton(act, text="更多 ▾", menu=self.more_menu)
+        self.btn_more.pack(side="left", padx=4)
         self.btn_view = ttk.Button(act, text="对照查看器", command=self._open_viewer)
         self.btn_audit = ttk.Button(act, text="字段审计…", command=self._open_audit)
         self.btn_index = ttk.Button(act, text="结果总览", command=self._open_index)
         # 归档与"查看已归档"是两个独立键: 前者对选中集生效, 后者是全局清单(顶栏), 不合并
         self.btn_archive = ttk.Button(act, text="归档选中", command=self._archive_selected)
-        for b in (self.btn_gaps, self.btn_retry, self.btn_view, self.btn_audit,
-                  self.btn_index, self.btn_archive):
+        for b in (self.btn_view, self.btn_audit, self.btn_index, self.btn_archive):
             b.pack(side="left", padx=4)
         self.sel_lbl = ttk.Label(act, text="未选中")
         self.sel_lbl.pack(side="left", padx=12)
@@ -660,6 +718,9 @@ class App(tk.Tk):
         self._refresh_account_hint()
         self._log("[账号] %s 改用 %s（新任务生效；已排队任务保留原账号）" %
                   (self.zone.label, key))
+        rows = self._ingest_stores[self.zone_id].entries_by_status("waiting_account")
+        if rows and not self._paused:
+            self._handle_ingest(self.zone_id, [dict(r, status="pending") for r in rows])
 
     def _open_accounts(self):
         try:
@@ -694,10 +755,14 @@ class App(tk.Tk):
         self._entity_cache = {}
         self._sync_accounts()
         self.refresh()
+        rows = self._ingest_stores[z.zid].entries_by_status("waiting_account")
+        if rows and not self._paused:
+            self._handle_ingest(z.zid, [dict(r, status="pending") for r in rows])
         self._log("[工作区] 切换到 %s（%s）" % (z.label, z.out))
 
     def _startup_prompt(self):
         if os.environ.get("KCI_NO_STARTUP_PROMPT") == "1":
+            self._startup_pending = False
             self._continue_all()
             return
         lines = []
@@ -724,11 +789,14 @@ class App(tk.Tk):
             body = "没有需要恢复的任务。\n\n点击「继续」后解锁批量执行。"
         else:
             body = "检测到上次未完成任务：\n\n%s\n\n点击「继续」恢复；选择「暂不继续」则只浏览，不启动新任务。" % "\n".join(lines)
-        if self._ask_continue(body):
+        go = self._ask_continue(body)
+        self._startup_pending = False
+        if go:
             self._continue_all()
         else:
             self._paused = True
             self.btn_resume.configure(text="继续")
+            self.auto_lbl.configure(text="● 自动监视已暂停", foreground="#8a6d3b")
             self._sync_buttons()
             self.status_lbl.configure(text="已暂停：任务已持久化，可稍后点「继续」恢复")
 
@@ -765,8 +833,14 @@ class App(tk.Tk):
             r.resume()
         self._paused = False
         self.btn_resume.configure(text="暂停")
+        self.auto_lbl.configure(text="● 自动监视 uploads", foreground="#2c7a4b")
         self.refresh()
         self._log("[继续] 已恢复两区持久任务")
+        # 暂停期间新到/待确认的文件，在继续后补一次处理（不自动重试等待额度/账号）。
+        for zid, store in self._ingest_stores.items():
+            rows = store.entries_by_status("waiting_pause", "waiting_confirm")
+            if rows:
+                self._handle_ingest(zid, [dict(r, status="pending") for r in rows])
 
     def _toggle_run(self):
         if any(r.paused for r in self.runners.values()):
@@ -776,8 +850,144 @@ class App(tk.Tk):
                 r.pause()
             self._paused = True
             self.btn_resume.configure(text="继续")
+            self.auto_lbl.configure(text="● 自动监视已暂停", foreground="#8a6d3b")
             self._sync_buttons()
             self._log("[暂停] 不再放行新任务；正在跑的子进程会跑完")
+
+    # ---------- 自动导入(uploads 文件夹) ----------
+    def _ingest_loop(self):
+        """后台只做文件发现/SHA/页数，不碰 Tk；事件投回主线程。"""
+        while not self._closing:
+            for zid, scanner in list(self._ingest_scanners.items()):
+                if self._closing:
+                    break
+                try:
+                    events = scanner.scan()
+                except Exception as e:
+                    self._ingest_q.put(("error", zid, str(e)))
+                    continue
+                if events:
+                    self._ingest_q.put(("events", zid, events))
+            time.sleep(2)
+
+    def _drain_ingest(self):
+        for _ in range(30):
+            try:
+                kind, zid, payload = self._ingest_q.get_nowait()
+            except queue.Empty:
+                break
+            if kind == "error":
+                self._log("[自动导入·错误] 区 %s: %s" % (zid, payload))
+                continue
+            try:
+                self._handle_ingest(zid, payload)
+            except Exception as e:
+                self._log("[自动导入·处理失败] 区 %s: %s" % (zid, e))
+
+    def _handle_ingest(self, zid, events):
+        zone = self.zones.get(zid)
+        store = self._ingest_stores.get(zid)
+        runner = self.runners.get(zid)
+        if not zone or not store or not runner:
+            return
+        pending = []
+        for e in events or []:
+            st = e.get("status")
+            name = e.get("name") or ""
+            if st == "baseline":
+                if e.get("count"):
+                    self._log("[自动导入] 区 %s 首次建立基线 %d 篇；既有文件不自动跑。"
+                              % (zone.label, e["count"]))
+                continue
+            if st == "bad":
+                self._log("[自动导入·跳过] %s: %s" % (name, e.get("error") or "PDF 无法打开"))
+                continue
+            if st == "duplicate":
+                self._log("[自动导入·跳过] %s 与 %s 内容相同" %
+                          (name, e.get("duplicate_of") or "已有文件"))
+                continue
+            if st == "conflict":
+                self._log("[自动导入·冲突] %s 同名文件内容已变化；未自动覆盖" % name)
+                continue
+            if st == "pending" and name and e.get("pdf"):
+                pending.append(e)
+        if not pending:
+            return
+        if self._paused or self._startup_pending:
+            for e in pending:
+                store.set_entry(e["name"], status="waiting_pause")
+            self._log("[自动导入] 区 %s 发现 %d 篇新文件；当前暂停，继续后处理"
+                      % (zone.label, len(pending)))
+            self.refresh()
+            return
+        self._submit_ingest(zid, pending)
+
+    def _submit_ingest(self, zid, events):
+        zone = self.zones[zid]
+        runner = self.runners[zid]
+        store = self._ingest_stores[zid]
+        todo = []
+        for e in events:
+            doc = e.get("doc") or ""
+            name = e.get("name") or ""
+            if not doc or not os.path.isfile(e.get("pdf") or ""):
+                store.set_entry(name, status="bad", error="文件已移走")
+                continue
+            if runner.store.active_for(doc):
+                store.set_entry(name, status="queued")
+                self._log("[自动导入·跳过] %s 已在队列/运行" % doc)
+                continue
+            todo.append(e)
+        if not todo:
+            return
+        rec = self.accounts.get(zone.account) or {}
+        if not (rec.get("token") or "").strip():
+            for e in todo:
+                store.set_entry(e["name"], status="waiting_account")
+            self._log("[自动导入·等待账号] 区 %s 账号 %s 没有 Paddle token"
+                      % (zone.label, zone.account))
+            return
+        need = sum(int(e.get("pages") or 0) for e in todo)
+        if need > runner.quota.remaining():
+            for e in todo:
+                store.set_entry(e["name"], status="waiting_quota")
+            self._log("[自动导入·等待额度] 区 %s 需要 %d 页，账号 %s 今日余 %d 页"
+                      % (zone.label, need, zone.account, runner.quota.remaining()))
+            return
+        if len(todo) >= 50 or need > 5000:
+            if not messagebox.askokcancel(
+                    "自动处理确认",
+                    "区 %s 新到 %d 篇 PDF，预计 Paddle %d 页。\n\n"
+                    "超过单次自动处理阈值（50 篇或 5000 页），是否现在开始？\n"
+                    "选择「取消」会标记为「待确认」，不会自动跑。" % (
+                        zone.label, len(todo), need), parent=self):
+                for e in todo:
+                    store.set_entry(e["name"], status="waiting_confirm")
+                self._log("[自动导入] 区 %s 有 %d 篇待确认" % (zone.label, len(todo)))
+                return
+        reserved = []
+        for e in todo:
+            key = "%s/%s" % (zid, e["doc"])
+            if not runner.quota.reserve(key, int(e.get("pages") or 0)):
+                store.set_entry(e["name"], status="waiting_quota")
+                continue
+            reserved.append((e, key))
+        if not reserved:
+            self._log("[自动导入·等待额度] 区 %s 没有可预留的页数" % zone.label)
+            return
+        n = 0
+        for e, key in reserved:
+            ok = runner.submit(e["doc"], e["pdf"], list(stages.ORDER), "自动处理",
+                               account=zone.account)
+            if ok:
+                store.set_entry(e["name"], status="queued")
+                n += 1
+            else:
+                runner.quota.release(key)
+                store.set_entry(e["name"], status="waiting_confirm", error="提交失败")
+        if n:
+            self._log("[自动导入] 区 %s 已提交 %d 篇（全文流水线）" % (zone.label, n))
+            self.refresh()
 
     # ---------- 阶段菜单 ----------
     _ARROW_W = 20          # 键右侧箭头热区宽度(px): 落在这一段内=开菜单, 其余=执行
@@ -791,7 +1001,7 @@ class App(tk.Tk):
         if x is not None and x >= self.btn_rerun.winfo_width() - self._ARROW_W:
             self._post_stage_menu()
         else:
-            self._run_selected()
+            self._smart_action()
 
     def _post_stage_menu(self):
         """菜单贴在这个键的右端下方(箭头正下方)。"""
@@ -801,6 +1011,18 @@ class App(tk.Tk):
             self.stage_menu.tk_popup(x, y)
         finally:
             self.stage_menu.grab_release()
+
+    def _build_more_menu(self):
+        m = self.more_menu
+        m.delete(0, "end")
+        m.add_command(label="快速重跑（跳过 NER）", command=self._rerun_fast)
+        m.add_command(label="只补缺失渠道", command=self._retry_missing)
+        m.add_command(label="只补渠道/实体缺口", command=self._rerun_gaps)
+        m.add_separator()
+        m.add_command(label="按菜单勾选阶段执行", command=self._run_selected)
+        m.add_command(label="字段 / 实体审计…", command=self._open_audit)
+        m.add_separator()
+        m.add_command(label="全选文档（Ctrl+A）", command=self._select_all)
 
     def _build_stage_menu(self):
         """每次弹出前重建: 依赖状态随当前文档产物变化, 不能只建一次。
@@ -862,7 +1084,15 @@ class App(tk.Tk):
         self._webapp_on = webapp_alive()
         sels = [d for d in self._selected() if d in self.docs]   # 多选保留
         self.tree.delete(*self.tree.get_children())
-        for doc, d in sorted(self.docs.items()):
+        ings = self._ingest_stores[self.zone_id].statuses()
+        rows = []
+        for doc, d in self.docs.items():
+            state = display_state(d, ings.get(doc, ""))
+            if d["state"] == "未跑":
+                if doc in self.runner.running:
+                    state = "运行中"
+                elif doc in self.runner.queued:
+                    state = "排队中"
             h = self.hist.get(doc, [])
             runs = "%d 次%s" % (len(h), "(末次失败)" if (h and not h[-1]["ok"]) else "")
             # 变量名不用 qc: 会把模块 qc 遮蔽掉, 后面再想调 qc.clear_cache 就炸在这里
@@ -870,8 +1100,13 @@ class App(tk.Tk):
                 if d["state"] != "未跑" else {"label": "-", "level": "", "issues": []}
             est = wb.entity_summary(doc, self.zone)[0] if d["state"] != "未跑" else "—"
             tags = ("qc_bad",) if qr["level"] == "bad" else ()
+            sort_at = d.get("done_at") or (
+                os.path.getmtime(d["pdf"]) if d.get("pdf") else 0)
+            rows.append((state_rank(state), -sort_at, doc, d, state, qr, est, tags, runs))
+        # 未跑/待处理最前；同组新文件优先。排序只在显示层做，不改扫描真值。
+        for _, _, doc, d, state, qr, est, tags, runs in sorted(rows):
             self.tree.insert("", "end", iid=doc, text=doc, tags=tags, values=(
-                d["state"],
+                state,
                 qr["label"],
                 est,
                 "✔" if d["ch"]["mineru"] else "—",
@@ -883,7 +1118,8 @@ class App(tk.Tk):
             self.tree.selection_set(sels)
         unrun = sum(1 for d in self.docs.values() if d.get("state") == "未跑")
         if unrun and unrun != self._last_unrun:
-            self._log("[扫描] 当前区有 %d 篇 PDF 未跑；选中后点「一键重跑」（Ctrl+A 全选）。" % unrun)
+            self._log("[扫描] 当前区有 %d 篇 PDF 未跑；新拖入文件会自动处理，"
+                      "历史文件请选中后点「开始解析」（Ctrl+A 全选）。" % unrun)
         self._last_unrun = unrun
         self._sync_buttons()
 
@@ -903,6 +1139,7 @@ class App(tk.Tk):
         retryable = bool(self._paused is False) and any(
             self.docs.get(d, {}).get("pdf") and self.docs[d]["miss"] for d in docs)
         self.btn_rerun.configure(state="normal" if runnable else "disabled")
+        self.btn_more.configure(state="normal" if has else "disabled")
         self.btn_quick.configure(state="normal" if runnable else "disabled")
         self.btn_gaps.configure(state="normal" if runnable else "disabled")
         self.btn_retry.configure(state="normal" if retryable else "disabled")
@@ -985,7 +1222,7 @@ class App(tk.Tk):
             if not busy:
                 messagebox.showinfo(
                     "未选择文档",
-                    "请先在表格中选中要解析的 PDF（Ctrl+A 全选），再点「一键重跑」。",
+                    "请先在表格中选中要解析的 PDF（Ctrl+A 全选），再点「开始解析」。",
                     parent=self)
                 self._log("[批量] 未选择文档；未提交任务")
             return
@@ -1050,8 +1287,29 @@ class App(tk.Tk):
                 n += 1
         self._log("[缺口] 已提交 %d 篇" % n)
 
-    def _run_selected(self):
-        self._run_stages(self._checked_stages())
+    def _smart_action(self):
+        """一个主按钮: 未跑=全链开始；有缺口=补缺；已完成=打开结果。
+
+        高级能力没有删除，只是从第一层收进「更多」或阶段箭头，避免六个近义按钮
+        让用户先猜该点哪个。
+        """
+        docs = [d for d in self._selected() if self.docs.get(d, {}).get("pdf")]
+        if not docs:
+            messagebox.showinfo(
+                "未选择文档",
+                "请先在表格中选中 PDF（Ctrl+A 全选），再点「开始解析」。",
+                parent=self)
+            self._log("[开始解析] 未选择文档；未提交任务")
+            return
+        states = [self.docs[d]["state"] for d in docs]
+        if all(s in ("未跑", "未完成") for s in states):
+            self._run_stages(list(stages.ORDER), "开始解析")
+        elif all(self.docs[d]["miss"] for d in docs):
+            self._retry_missing()
+        elif all(s == "完成" for s in states):
+            self._open_index()
+        else:
+            self._run_stages(self._checked_stages())
 
 
     def _rerun_fast(self):
@@ -1261,6 +1519,7 @@ class App(tk.Tk):
         self.after(300, self.destroy)   # 让日志先刷出去再退
 
     def _on_close(self):
+        self._closing = True
         busy = [r for r in self.runners.values() if r.is_busy()]
         if busy:
             n = sum(r._active_count() for r in busy)
@@ -1268,6 +1527,7 @@ class App(tk.Tk):
                                        "两区共有 %d 篇正在跑，会在后台继续完成（子进程独立）。\n"
                                        "排队任务已写入持久账本，重新打开后可点「继续」恢复。\n\n"
                                        "确定要关闭吗?" % n):
+                self._closing = False
                 return
         self.destroy()
 
@@ -1299,13 +1559,26 @@ class App(tk.Tk):
                 self.logtxt.configure(state="disabled")
         except queue.Empty:
             pass
+        self._drain_ingest()
         self.after(100, self._drain)
 
     def _tick_status(self):
         q = self.quota.summary()
-        txt = "%s · 账号 %s · Paddle %d/%d 页（余 %d）" % (
-            self.runner.status(), self.zone.account, q["used"], q["limit"], q["remaining"])
+        txt = "%s · 账号 %s · Paddle %d/%d 页（余 %d）· %s" % (
+            self.runner.status(), self.zone.account, q["used"], q["limit"], q["remaining"],
+            "自动监视停" if self._paused else "自动监视中")
         self._refresh_account_hint()
+        waiting = 0
+        for store in self._ingest_stores.values():
+            waiting += len(store.entries_by_status(
+                "pending", "queued", "waiting_quota", "waiting_account",
+                "waiting_pause", "waiting_confirm"))
+        if self._paused:
+            self.auto_lbl.configure(text="● 自动监视已暂停", foreground="#8a6d3b")
+        else:
+            self.auto_lbl.configure(
+                text="● 自动监视 uploads" + (" · 待处理 %d" % waiting if waiting else ""),
+                foreground="#2c7a4b")
         other = [r for zid, r in self.runners.items() if zid != self.zone_id and r.is_busy()]
         if other:
             txt += " · 另一区运行中 %d 篇" % sum(r._active_count() for r in other)
@@ -1342,7 +1615,7 @@ class AccountsWindow(tk.Toplevel):
         self.items = []
         self.editing = None
         self.title("Paddle 账号与日额度")
-        self.geometry("820x520")
+        self.geometry("820x560")
         self.minsize(760, 480)
         self.transient(app)
         self._build()
@@ -1399,8 +1672,9 @@ class AccountsWindow(tk.Toplevel):
         ttk.Button(bar, text="删除", command=self._delete).pack(side="left")
         ttk.Button(bar, text="刷新", command=self.refresh).pack(side="left", padx=(18, 0))
         ttk.Button(bar, text="关闭", command=self.destroy).pack(side="right")
-        self.note = ttk.Label(self, text="日额度单位为 PDF 页。一个账号可同时分配给 A/B 两区；共用时日额度也共用。",
-                              foreground="#555")
+        self.note = ttk.Label(self, text="日额度单位为 PDF 页。一个账号可同时分配给 A/B 两区；共用时日额度也共用。"
+                              "本地只记本工作台的预占，AI Studio 按登录账号和模型标签统计，历史调用不回填。",
+                              foreground="#555", wraplength=780, justify="left")
         self.note.pack(fill="x", padx=14, pady=(0, 8))
 
     def refresh(self):
