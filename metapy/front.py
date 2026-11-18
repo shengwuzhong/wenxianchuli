@@ -248,6 +248,17 @@ def _parse_author_line(line, u, foot_affil):
                     "role": role, "roman": roman})
     return out
 
+def apply_title_fallback(meta):
+    """Fill an empty title from title_en without overwriting an existing title."""
+    if not (meta.get("title") or {}).get("value") and (meta.get("title_en") or {}).get("value"):
+        meta["title"] = dict(meta["title_en"])
+        meta["title"]["confidence"] = dict(meta["title"].get("confidence") or {})
+        meta["title"]["confidence"]["source"] = "title_en_fallback"
+        meta["title_fallback_from_en"] = True
+        return True
+    return False
+
+
 def front_doc(doc, out_root):
     """单篇②: 首页 front-matter 的 标题(韩/英双字段分离) + 作者(上标集合+机构脚注配对) + 机构。
     作者区=标题下至 摘要/차례/Keywords 头之间; 机构脚注=首页 Footnote 型块内的 '标记) 机构' 行。"""
@@ -606,6 +617,8 @@ def front_doc(doc, out_root):
         "authors": authors,
         "affiliations": affils,
     })
+    # 日文/中文题名定位失败但英文题名可靠时，用 title_en 兜底；只填空值。
+    apply_title_fallback(meta)
     io.open(meta_fp, "w", encoding="utf-8").write(json.dumps(meta, ensure_ascii=False, indent=1))
     audit = load_audit(doc_dir)
     audit.update({"doc": doc,

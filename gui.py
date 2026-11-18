@@ -175,7 +175,7 @@ def scan_docs(up_root=None, out_root=None, arch_root=None):
 
 
 _STATE_RANK = {
-    "未跑": 0, "等待自动处理": 0, "已暂停": 0, "待确认": 0,
+    "未跑": 0, "未跑·历史": 0, "等待自动处理": 0, "已暂停": 0, "待确认": 0,
     "排队中": 1, "运行中": 1, "等待额度": 2, "等待账号": 2,
     "同名冲突": 3, "无法打开": 3, "重复文件": 3,
     "部分异常": 4, "未完成": 4, "已完成": 5, "无PDF": 6,
@@ -208,6 +208,7 @@ def display_state(d, ingest_status=""):
         "waiting_confirm": "待确认",
         "queued": "排队中",
         "pending": "等待自动处理",
+        "baseline": "未跑·历史",
     }.get(st, "未跑")
 
 
