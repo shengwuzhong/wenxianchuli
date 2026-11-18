@@ -186,13 +186,23 @@ def _st_ner(ctx):
     import ner_lite
     import pipeline
     cfg = (pipeline.load_cfg().get("llm") or {})
+    # 实体抽取是可选层：没配 LLM key、或模型/网络失败时，不能把整篇 OCR 结果判死。
+    # 否则每次自动处理都会卡在 NER，viewer/index 永远不生成，还会被反复重跑。
     if not (os.environ.get("KCI_ZJLAB_KEY") or os.environ.get("KCI_LLM_KEY")):
-        raise RuntimeError("缺 KCI_LLM_KEY / KCI_ZJLAB_KEY")
-    model = ner_lite.make_model(cfg)
-    product, audit = ner_lite.run_doc(ctx["doc"], model, echo=ctx["log"])
-    ner_lite.write_outputs(ctx["doc"], product, audit, root=ctx.get("ner_root"))
+        ctx["warn"] = "未配置 KCI_LLM_KEY / KCI_ZJLAB_KEY，实体未查"
+        ctx["ner_status"] = "extraction_failed"
+        return "跳过: 未配置 LLM key（实体未查）"
+    try:
+        model = ner_lite.make_model(cfg)
+        product, audit = ner_lite.run_doc(ctx["doc"], model, echo=ctx["log"])
+        ner_lite.write_outputs(ctx["doc"], product, audit, root=ctx.get("ner_root"))
+    except Exception as e:
+        ctx["warn"] = "实体抽取失败，已跳过: %s" % e
+        ctx["ner_status"] = "extraction_failed"
+        return "跳过: 实体抽取失败（%s）" % str(e)[:120]
     c = audit["counts"]
     ctx["ner_counts"] = c
+    ctx["ner_status"] = "present"
     return "提名 %d 准入 %d 记录 %d (丢弃 anchor_miss %d)" % (
         c["nominations"], c["admitted"], c["records"], c["dropped_anchor_miss"])
 
