@@ -1,0 +1,688 @@
+{
+ "gold": "eval/ja_gold.json",
+ "pred": "out",
+ "totals": {
+  "title": {
+   "ok": 11,
+   "n": 11
+  },
+  "authors": {
+   "ok": 11,
+   "n": 11
+  },
+  "journal": {
+   "ok": 11,
+   "n": 11
+  },
+  "year": {
+   "ok": 11,
+   "n": 11
+  },
+  "volume": {
+   "ok": 11,
+   "n": 11
+  },
+  "issue": {
+   "ok": 5,
+   "n": 5
+  },
+  "pages": {
+   "ok": 11,
+   "n": 11
+  }
+ },
+ "docs": [
+  {
+   "doc": "2025_1",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "超多重スタック地中レーダ探査と 群列ボーリングコア解析に基づく奈良盆地 東縁断層帯・帯解断層の極浅部変形構造",
+     "pred": "超多重スタック地中レーダ探査と 群列ボーリングコア解析に基づく奈良盆地 東縁断層帯・帯解断層の極浅部変形構造"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "川嶋涉造",
+      "木村治夫",
+      "谷口 薫",
+      "中西利典",
+      "堤 浩之"
+     ],
+     "pred": [
+      "川嶋涉造",
+      "木村治夫",
+      "谷口 薫",
+      "中西利典",
+      "堤 浩之"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "活断層研究",
+     "pred": "活断層研究"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2025,
+     "pred": 2025
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": "63",
+     "pred": 63
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "1-17",
+     "pred": "1-17"
+    }
+   }
+  },
+  {
+   "doc": "40_10569",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "脳卒中の病型ごとの急性期から回復期までの実態調査 —熊本脳卒中地域連携パスの9年間のデータを用いて—",
+     "pred": "脳卒中の病型ごとの急性期から回復期までの実態調査 —熊本脳卒中地域連携パスの9年間のデータを用いて—"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "本田 省二",
+      "徳永 誠",
+      "渡邊 進",
+      "田北 智裕",
+      "大塚 忠弘",
+      "米原 敏郎",
+      "西徹",
+      "寺崎 修司",
+      "三浦 正毅",
+      "平田 好文",
+      "山鹿真紀夫",
+      "橋本洋一郎"
+     ],
+     "pred": [
+      "本田 省二",
+      "徳永 誠",
+      "渡邊 進",
+      "田北 智裕",
+      "大塚 忠弘",
+      "米原 敏郎",
+      "西徹",
+      "寺崎 修司",
+      "三浦 正毅",
+      "平田 好文",
+      "山鹿真紀夫",
+      "橋本洋一郎"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "脳卒中",
+     "pred": "脳卒中"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2018,
+     "pred": 2018
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": 40,
+     "pred": 40
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "343-349",
+     "pred": "343-349"
+    }
+   }
+  },
+  {
+   "doc": "40_10588",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "経過中に脳梗塞とたこつぼ型心筋症を併発した3症例",
+     "pred": "経過中に脳梗塞とたこつぼ型心筋症を併発した3症例"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "谷 裕基",
+      "中嶋 秀人",
+      "垣内 謙佑",
+      "元木三記子",
+      "吉本 幸世",
+      "太田 真",
+      "奥村 嘉也",
+      "北岡 治子",
+      "木村 文治",
+      "荒若 繁樹"
+     ],
+     "pred": [
+      "谷 裕基",
+      "中嶋 秀人",
+      "垣内 謙佑",
+      "元木三記子",
+      "吉本 幸世",
+      "太田 真",
+      "奥村 嘉也",
+      "北岡 治子",
+      "木村 文治",
+      "荒若 繁樹"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "脳卒中",
+     "pred": "脳卒中"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2018,
+     "pred": 2018
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": 40,
+     "pred": 40
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "382-387",
+     "pred": "382-387"
+    }
+   }
+  },
+  {
+   "doc": "42_103",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "デジタル遠隔病理診断の現在と将来 — 地域病院での取り組みから見えるもの",
+     "pred": "デジタル遠隔病理診断の現在と将来 — 地域病院での取り組みから見えるもの"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "深山 正久"
+     ],
+     "pred": [
+      "深山 正久"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "診断病理",
+     "pred": "診断病理"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2025,
+     "pred": 2025
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": 42,
+     "pred": 42
+    },
+    "issue": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2,
+     "pred": 2
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "103-115",
+     "pred": "103-115"
+    }
+   }
+  },
+  {
+   "doc": "42_185",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "唾液腺細胞の可塑性解析 ーマウスモデルを用いた実験的考察ー",
+     "pred": "唾液腺細胞の可塑性解析 ーマウスモデルを用いた実験的考察ー"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "美島 健二"
+     ],
+     "pred": [
+      "美島 健二"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "診断病理",
+     "pred": "診断病理"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2025,
+     "pred": 2025
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": 42,
+     "pred": 42
+    },
+    "issue": {
+     "applicable": true,
+     "ok": true,
+     "gold": 3,
+     "pred": 3
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "185-191",
+     "pred": "185-191"
+    }
+   }
+  },
+  {
+   "doc": "42_93",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "膜性腎症の発症メカニズム —原因抗原と IgG4 関連自己免疫疾患としての考察—",
+     "pred": "膜性腎症の発症メカニズム —原因抗原と IgG4 関連自己免疫疾患としての考察—"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "本田 一穂",
+      "康 徳東",
+      "川西 邦夫"
+     ],
+     "pred": [
+      "本田 一穂",
+      "康 徳東",
+      "川西 邦夫"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "診断病理",
+     "pred": "診断病理"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2025,
+     "pred": 2025
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": 42,
+     "pred": 42
+    },
+    "issue": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2,
+     "pred": 2
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "93-102",
+     "pred": "93-102"
+    }
+   }
+  },
+  {
+   "doc": "43_10814",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "くも膜下出血急性期患者における stress index の検討",
+     "pred": "くも膜下出血急性期患者における stress index の検討"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "伊藤 清佳",
+      "深尾 繁治",
+      "野々山 裕",
+      "藤田 智昭",
+      "辻 篤司",
+      "野崎 和彦",
+      "木戸岡 実"
+     ],
+     "pred": [
+      "伊藤 清佳",
+      "深尾 繁治",
+      "野々山 裕",
+      "藤田 智昭",
+      "辻 篤司",
+      "野崎 和彦",
+      "木戸岡 実"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "脳卒中",
+     "pred": "脳卒中"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2021,
+     "pred": 2021
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": 43,
+     "pred": 43
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "201-205",
+     "pred": "201-205"
+    }
+   }
+  },
+  {
+   "doc": "52_230302",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "中性子回折実験で探る高温高圧下での Si を含んだ hcp 鉄の水素化挙動",
+     "pred": "中性子回折実験で探る高温高圧下での Si を含んだ hcp 鉄の水素化挙動"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "森 悠一郎",
+      "鍵 裕之"
+     ],
+     "pred": [
+      "森 悠一郎",
+      "鍵 裕之"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "岩石鉱物科学",
+     "pred": "岩石鉱物科学"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2023,
+     "pred": 2023
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": 52,
+     "pred": 52
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "1-7",
+     "pred": "1-7"
+    }
+   }
+  },
+  {
+   "doc": "52_230725",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "表面形状観察のための高分解能走査電子顕微鏡法",
+     "pred": "表面形状観察のための高分解能走査電子顕微鏡法"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "小暮 敏博"
+     ],
+     "pred": [
+      "小暮 敏博"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "岩石鉱物科学",
+     "pred": "岩石鉱物科学"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2023,
+     "pred": 2023
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": 52,
+     "pred": 52
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "1-7",
+     "pred": "1-7"
+    }
+   }
+  },
+  {
+   "doc": "5_55",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "アプタマー技術による大規模疾患プロテオミクス",
+     "pred": "アプタマー技術による大規模疾患プロテオミクス"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "古市真木雄",
+      "和賀巌",
+      "小田吉哉"
+     ],
+     "pred": [
+      "古市真木雄",
+      "和賀巌",
+      "小田吉哉"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "Proteome Letters",
+     "pred": "Proteome Letters"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2020,
+     "pred": 2020
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": "5",
+     "pred": 5
+    },
+    "issue": {
+     "applicable": true,
+     "ok": true,
+     "gold": "2",
+     "pred": 2
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "55-63",
+     "pred": "55-63"
+    }
+   }
+  },
+  {
+   "doc": "9_1",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "LC-MS/MS によるがん主要メタボローム絶対定量系の構築と 代謝解析への応用",
+     "pred": "LC-MS/MS によるがん主要メタボローム絶対定量系の構築と 代謝解析への応用"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "金光祥臣",
+      "小林大樹",
+      "中谷航太",
+      "和泉自泰",
+      "馬場健史",
+      "松本雅記"
+     ],
+     "pred": [
+      "金光祥臣",
+      "小林大樹",
+      "中谷航太",
+      "和泉自泰",
+      "馬場健史",
+      "松本雅記"
+     ]
+    },
+    "journal": {
+     "applicable": true,
+     "ok": true,
+     "gold": "Proteome Letters",
+     "pred": "Proteome Letters"
+    },
+    "year": {
+     "applicable": true,
+     "ok": true,
+     "gold": 2024,
+     "pred": 2024
+    },
+    "volume": {
+     "applicable": true,
+     "ok": true,
+     "gold": "9",
+     "pred": 9
+    },
+    "issue": {
+     "applicable": true,
+     "ok": true,
+     "gold": "1",
+     "pred": 1
+    },
+    "pages": {
+     "applicable": true,
+     "ok": true,
+     "gold": "1-11",
+     "pred": "1-11"
+    }
+   }
+  }
+ ]
+}

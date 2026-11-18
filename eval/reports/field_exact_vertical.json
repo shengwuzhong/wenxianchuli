@@ -1,0 +1,552 @@
+{
+ "gold": "eval/vertical_gold_10.json",
+ "pred": "out",
+ "totals": {
+  "title": {
+   "ok": 10,
+   "n": 10
+  },
+  "authors": {
+   "ok": 9,
+   "n": 9
+  },
+  "journal": {
+   "ok": 0,
+   "n": 0
+  },
+  "year": {
+   "ok": 0,
+   "n": 0
+  },
+  "volume": {
+   "ok": 0,
+   "n": 0
+  },
+  "issue": {
+   "ok": 0,
+   "n": 0
+  },
+  "pages": {
+   "ok": 0,
+   "n": 0
+  }
+ },
+ "docs": [
+  {
+   "doc": "01_文藝言語研究_1984_犬井善壽",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "『月詣和歌集』所載西行歌本文小考",
+     "pred": "『月詣和歌集』所載西行歌本文小考"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "犬井善壽"
+     ],
+     "pred": [
+      "犬井善壽"
+     ]
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "月詣和歌集"
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "226-263"
+    }
+   }
+  },
+  {
+   "doc": "02_文藝言語研究_2011_清登典子",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "「恋の詞」と蕉風俳諧",
+     "pred": "「恋の詞」と蕉風俳諧"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "清登典子"
+     ],
+     "pred": [
+      "清登典子"
+     ]
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "74-89"
+    }
+   }
+  },
+  {
+   "doc": "03_中国文化_1980_小谷一郎",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "創造社と少年中国学会・新人会——田漢の文学及び文学観を中心に——",
+     "pred": "創造社と少年中国学会・新人会 ——田漢の文学及び文学観を中心に——"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "小谷一郎"
+     ],
+     "pred": [
+      "小谷一郎"
+     ]
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    }
+   }
+  },
+  {
+   "doc": "04_漢文學會々報_1935_大島正健",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "元の韻の構造に就いて",
+     "pred": "元の韻の構造に就いて"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "大島 正健"
+     ],
+     "pred": [
+      "大島 正健"
+     ]
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "1-4"
+    }
+   }
+  },
+  {
+   "doc": "05_漢文學會々報_1935_小澤文四郎",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "卦氣説に就いて",
+     "pred": "卦氣説に就いて"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "小澤文四郎"
+     ],
+     "pred": [
+      "小澤文四郎"
+     ]
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "30-54"
+    }
+   }
+  },
+  {
+   "doc": "06_漢文學會々報_1934_上島一夫",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "楚辭遠遊篇作成年代考",
+     "pred": "楚辭遠遊篇作成年代考"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "上島一夫"
+     ],
+     "pred": [
+      "上島一夫"
+     ]
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    }
+   }
+  },
+  {
+   "doc": "07_東大国文学論集_2017_長島弘明",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "観音教寺所蔵俳諧資料目録",
+     "pred": "観音教寺所蔵俳諧資料目録"
+    },
+    "authors": {
+     "applicable": false,
+     "ok": null,
+     "gold": [],
+     "pred": []
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "273-293"
+    }
+   }
+  },
+  {
+   "doc": "08_平家部会論集_2007_小野のぞみ",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "『宇治拾遺物語』第五十一話「一条摂政歌の事」の和歌について",
+     "pred": "『宇治拾遺物語』第五十一話\n「一条摂政歌の事」の和歌について"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "小野 のぞみ"
+     ],
+     "pred": [
+      "小野 のぞみ"
+     ]
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "宇治拾遺物語"
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "65-74"
+    }
+   }
+  },
+  {
+   "doc": "09_平家部会論集_1992_千草聡",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "守覚法親王略年譜——和歌活動の面を中心に——",
+     "pred": "守覚法親王略年譜——和歌活動の面を中心に——"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "千草 聡"
+     ],
+     "pred": [
+      "千草 聡"
+     ]
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "仁和寺御伝"
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "37-56"
+    }
+   }
+  },
+  {
+   "doc": "10_平家部会論集_2002_千草聡",
+   "exists": true,
+   "fields": {
+    "title": {
+     "applicable": true,
+     "ok": true,
+     "gold": "元性法印の和歌活動について",
+     "pred": "元性法印の和歌活動について"
+    },
+    "authors": {
+     "applicable": true,
+     "ok": true,
+     "gold": [
+      "千草 聡"
+     ],
+     "pred": [
+      "千草 聡"
+     ]
+    },
+    "journal": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "year": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "volume": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "issue": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": null
+    },
+    "pages": {
+     "applicable": false,
+     "ok": null,
+     "gold": null,
+     "pred": "2-10"
+    }
+   }
+  }
+ ]
+}
