@@ -34,9 +34,39 @@ def _slot_dir(name):
     return d
 
 
-def _alive(fp, ttl):
-    """槽文件是否还有效。超 ttl 视为死进程遗留。"""
+def _pid_alive(pid):
+    """PID 是否仍存在。Windows 不能用 os.kill(pid, 0)，会误发终止信号。"""
     try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        try:
+            import ctypes
+            # PROCESS_QUERY_LIMITED_INFORMATION，只查状态，不要求读内存
+            h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)
+            if not h:
+                return False
+            ctypes.windll.kernel32.CloseHandle(h)
+            return True
+        except Exception:
+            return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _alive(fp, ttl):
+    """槽文件是否还有效：持有进程已死则立即失效，否则再看 TTL。"""
+    try:
+        with io.open(fp, encoding="utf-8", errors="replace") as fh:
+            pid = (fh.read(120).split() or [""])[0]
+        if pid and not _pid_alive(pid):
+            return False
         return (time.time() - os.path.getmtime(fp)) < ttl
     except OSError:
         return False

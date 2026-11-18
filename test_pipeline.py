@@ -7,6 +7,7 @@ import time
 import unittest
 from unittest import mock
 
+import crossproc
 import merge_out
 import pipeline
 import unify
@@ -605,6 +606,28 @@ class QualityRegressionTest(unittest.TestCase):
         self.assertEqual(r["source"], "Cancer Res")
         self.assertEqual(r["volume"], "45")
         self.assertEqual(r["pages"], "365—378")
+
+
+class CrossprocSlotTest(unittest.TestCase):
+    def test_dead_pid_slot_is_reclaimed(self):
+        with tempfile.TemporaryDirectory() as td:
+            old = crossproc.LOCK_ROOT
+            crossproc.LOCK_ROOT = td
+            try:
+                d = crossproc._slot_dir("ocr_api")
+                fp = os.path.join(d, "slot_0")
+                with open(fp, "w", encoding="utf-8") as f:
+                    f.write("999999 dead 1\n")
+                slot = crossproc.Slots("ocr_api", n=1, ttl=3600, wait=0.5)
+                self.assertTrue(slot._try())
+                slot.__exit__(None, None, None)
+                self.assertFalse(os.path.exists(fp))
+
+                with open(fp, "w", encoding="utf-8") as f:
+                    f.write("%d live 1\n" % os.getpid())
+                self.assertFalse(crossproc.Slots("ocr_api", n=1, ttl=3600, wait=0.2)._try())
+            finally:
+                crossproc.LOCK_ROOT = old
 
 
 if __name__ == "__main__":

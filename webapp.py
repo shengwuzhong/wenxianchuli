@@ -176,8 +176,16 @@ def _reconcile_channels(j):
 
 def _public_job(job_id, j):
     now = time.time()
-    start = j.get("started_at") or j.get("created_at") or now
+    created = j.get("created_at") or now
+    started = j.get("started_at")
     end = j.get("finished_at") or now
+    # 未开始时 created_at 只能算排队时间, 不能冒充运行时长。
+    if started:
+        elapsed = max(0, int(end - started))
+        queue_wait = max(0, int(started - created))
+    else:
+        elapsed = 0
+        queue_wait = max(0, int(end - created))
     return {"id": job_id, "state": j.get("state", ""), "doc": j.get("doc", ""),
             "stage": j.get("stage", ""), "logline": j.get("logline", ""),
             "err": j.get("err", ""), "warnings": j.get("warnings", [])[-10:],
@@ -185,7 +193,8 @@ def _public_job(job_id, j):
             "stages": j.get("stages", {}), "quality": j.get("quality") or {},
             "created_at": j.get("created_at"), "started_at": j.get("started_at"),
             "updated_at": j.get("updated_at"), "finished_at": j.get("finished_at"),
-            "elapsed": max(0, int(end - start)), "rescue": j.get("rescue", "")}
+            "elapsed": elapsed, "queue_wait": queue_wait,
+            "rescue": j.get("rescue", "")}
 
 
 def run_pipeline(job, pdf_path):
