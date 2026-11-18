@@ -462,6 +462,30 @@ def detect_document_type(doc_dir, meta):
     return "article"
 
 
+_DOC_FILENAME = re.compile(r"^(?:\d+)_(.+)_((?:19|20)\d{2})_(.+)$")
+_JOURNAL_HINT = re.compile(
+    r"研究|論集|学会|學會|学会誌|会誌|誌|報|ジャーナル|紀要|"
+    r"Journal|Review|Bulletin|Proceedings|Studies|Letters|Quarterly|Annals", re.I)
+
+
+def filename_meta(doc_dir):
+    """Weak bibliographic hints from an import name.
+
+    Only the pattern `<seq>_<journal>_<year>_<author>` is accepted.  This is a
+    fallback for old Japanese papers whose page header carries the cited work
+    (e.g. 月詣和歌集) rather than the journal name; it never overwrites a
+    journal that already looks like a journal.
+    """
+    name = os.path.basename(os.path.normpath(doc_dir))
+    m = _DOC_FILENAME.match(name)
+    if not m:
+        return None
+    journal, year = m.group(1).strip(), m.group(2)
+    if not journal or not _JOURNAL_HINT.search(journal):
+        return None
+    return {"journal": journal, "year": year}
+
+
 def _bad_journal(v):
     s = str(v or "").strip()
     if not s or len(s) < 2:
@@ -493,6 +517,10 @@ def repair_metadata(meta, doc_dir):
     info = {"changed": False}
 
     doc_type = detect_document_type(doc_dir, out)
+    # A real article can sit after a contents page in the same PDF.  If both a
+    # title and authors were extracted, do not downgrade it to a TOC.
+    if doc_type == "toc" and _value(out.get("title")) and out.get("authors"):
+        doc_type = "article"
     if out.get("document_type") != doc_type:
         out["document_type"] = doc_type
         info["changed"] = True
@@ -622,6 +650,33 @@ def repair_metadata(meta, doc_dir):
         out["journal"] = {"value": None, "confidence": {"level": "low", "source": "quality"}}
         flags.add("journal_suspect")
         info["changed"] = True
+
+    # Weak fallback from the import name.  Page headers of old Japanese papers
+    # often show the cited work title in the journal slot; only override a
+    # value that does not itself look like a journal, and mark the source.
+    fn = filename_meta(doc_dir)
+    if fn:
+        hint = fn["journal"]
+        cur = _value(out.get("journal"))
+        if hint and hint != cur and (not cur or not _JOURNAL_HINT.search(cur)):
+            out["journal"] = {
+                "value": hint,
+                "confidence": {"level": "low", "source": "filename_fallback"},
+                "fallback": True,
+            }
+            flags.discard("journal_missing")
+            flags.discard("journal_suspect")
+            flags.add("journal_from_filename")
+            info["changed"] = True
+        if not _value(out.get("year")):
+            out["year"] = {
+                "value": int(fn["year"]),
+                "confidence": {"level": "low", "source": "filename_fallback"},
+                "fallback": True,
+            }
+            flags.discard("year_missing")
+            flags.add("year_from_filename")
+            info["changed"] = True
     p = _value(out.get("pages"))
     if p and _bad_pages(p):
         flags.add("pages_suspect")
