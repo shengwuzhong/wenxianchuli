@@ -25,6 +25,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -34,6 +35,10 @@ if HERE not in sys.path:
 OUT = os.path.join(HERE, "out")
 UP = os.path.join(HERE, "uploads")
 CH = ("mineru", "dots", "paddle")
+# Windows spawn + 多线程：多个 Runner 线程同时 p.start() 时，子进程可能在
+# 主模块 bootstrap 完成前被拉起，偶发 RuntimeError("...bootstrapping phase")。
+# 只串行化“创建子进程”这一步；子进程内部仍并行跑。
+_SPAWN_LOCK = threading.Lock()
 CH_ZH = {"mineru": "MinerU", "dots": "dots.ocr", "paddle": "PaddleOCR"}
 
 
@@ -531,7 +536,8 @@ def run_batch(jobs, workers=5, log=print, out_root=None, ner_root=None):
 
     def _start(job):
         p = ctx.Process(target=_child_entry, args=(job, q, out_root, ner_root), daemon=False)
-        p.start()
+        with _SPAWN_LOCK:
+            p.start()
         running[job["doc"]] = p
 
     try:
