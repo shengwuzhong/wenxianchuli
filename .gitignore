@@ -3,6 +3,9 @@ out/
 out_preview/
 uploads/
 inbox/
+zones/
+.workbench/
+versions/
 examples/demo/
 *.log
 

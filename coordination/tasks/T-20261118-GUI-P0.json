@@ -1,0 +1,40 @@
+{
+ "id": "T-20261118-GUI-P0",
+ "title": "GUI 工作台 P0：双区/持久队列/页配额/启动闸门",
+ "priority": "P1",
+ "owner": "deepseek",
+ "status": "in_progress",
+ "depends_on": [],
+ "allowed_files": [
+  "gui.py",
+  "workbench_state.py",
+  "test_workbench_state.py",
+  "stages.py",
+  "ner_lite.py",
+  ".gitignore",
+  "docs/GUI_WORKBENCH_P0.md"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/deepseek/T-20261118-GUI-P0",
+ "base_commit": "main",
+ "acceptance": [
+  "state tests 9/9",
+  "pipeline 36/36",
+  "GUI smoke",
+  "rollback doc"
+ ],
+ "handoff_to": "",
+ "created_at": "2026-11-18T06:46:29+00:00",
+ "updated_at": "2026-11-18T06:46:29+00:00"
+}

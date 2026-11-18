@@ -185,7 +185,7 @@ def _st_ner(ctx):
         raise RuntimeError("缺 KCI_LLM_KEY / KCI_ZJLAB_KEY")
     model = ner_lite.make_model(cfg)
     product, audit = ner_lite.run_doc(ctx["doc"], model, echo=ctx["log"])
-    ner_lite.write_outputs(ctx["doc"], product, audit)
+    ner_lite.write_outputs(ctx["doc"], product, audit, root=ctx.get("ner_root"))
     c = audit["counts"]
     ctx["ner_counts"] = c
     return "提名 %d 准入 %d 记录 %d (丢弃 anchor_miss %d)" % (
@@ -336,23 +336,24 @@ def doc_dir_of(doc, out_root=None):
     return os.path.join(out_root or OUT, doc)
 
 
-def availability(doc, out_root=None):
+def availability(doc, out_root=None, up_root=None):
     """{id: (可跑, 缺什么)}——GUI 置灰与 CLI 拒跑共用同一判据。"""
     dd = doc_dir_of(doc, out_root)
     have = {k: bool(f(dd)) for k, f in ARTIFACTS.items()}
     res = {}
     for sid, _g, _l, _h, req, need_pdf in STAGES:
-        pdf = _find_pdf(doc) if need_pdf else None
+        pdf = _find_pdf(doc, up_root) if need_pdf else None
         miss = _stage_missing(sid, dd, have, pdf)
         res[sid] = (not miss, miss, pdf)
     return res
 
 
-def _find_pdf(doc):
-    if os.path.isdir(UP):
-        for f in sorted(os.listdir(UP)):
+def _find_pdf(doc, up_root=None):
+    up = up_root or UP
+    if os.path.isdir(up):
+        for f in sorted(os.listdir(up)):
             if f.lower().endswith(".pdf") and re.sub(r"\.pdf$", "", f, flags=re.I) == doc:
-                return os.path.join(UP, f)
+                return os.path.join(up, f)
     return None
 
 
@@ -372,7 +373,7 @@ def plan(ids, doc, out_root=None):
     return ok, errs
 
 
-def run(doc, ids, pdf=None, out_root=None, log=print):
+def run(doc, ids, pdf=None, out_root=None, log=print, ner_root=None):
     """按序执行所选阶段。返回 {"doc","results","ok"}。
 
     results[stage] = {"ok":bool, "skipped":bool, "msg":str, "elapsed":int}
@@ -395,6 +396,7 @@ def run(doc, ids, pdf=None, out_root=None, log=print):
         return {"doc": doc, "results": results, "ok": False, "error": "无可执行阶段: 未选择"}
     pdf = pdf or _find_pdf(doc)
     ctx = {"doc": doc, "doc_dir": dd, "out_root": out_root, "pdf": pdf,
+           "ner_root": ner_root,
            "log": log, "sizes": _sizes(dd) if ARTIFACTS["pages"](dd) else []}
     for pos, sid in enumerate(todo):
         have = {k: bool(f(dd)) for k, f in ARTIFACTS.items()}
@@ -441,7 +443,7 @@ def run(doc, ids, pdf=None, out_root=None, log=print):
 #   并发的代价不在本机, 在 LLM/渠道 API 这些共享且失败静默的外部资源上。
 
 
-def _child_entry(job, q, out_root):
+def _child_entry(job, q, out_root, ner_root=None):
     """子进程体: 跑一篇。所有日志(含第三方 print)逐行经 q 回主进程。
 
     必须模块顶层 —— Windows 用 spawn, 子进程要重新 import 本模块再反序列化入口。
@@ -479,16 +481,29 @@ def _child_entry(job, q, out_root):
     except Exception:
         pass
     res = {"doc": doc, "results": {}, "ok": False, "error": ""}
+    lock_fp = os.path.join(out_root or OUT, doc, ".run.lock")
+    try:
+        os.makedirs(os.path.dirname(lock_fp), exist_ok=True)
+        with open(lock_fp, "w", encoding="utf-8") as fh:
+            fh.write(str(os.getpid()))
+    except Exception:
+        lock_fp = None
     try:
         res = run(doc, job["ids"], pdf=job.get("pdf"), out_root=out_root,
-                  log=lambda s: _sys.stdout.write(str(s) + "\n"))
+                  log=lambda s: _sys.stdout.write(str(s) + "\n"), ner_root=ner_root)
     except BaseException as e:            # 子进程里任何异常都要变成结果, 不许静默消失
         res = {"doc": doc, "results": {}, "ok": False,
                "error": "%s: %s" % (type(e).__name__, str(e)[:200])}
+    finally:
+        if lock_fp:
+            try:
+                os.remove(lock_fp)
+            except OSError:
+                pass
     _emit("done", res)
 
 
-def run_batch(jobs, workers=5, log=print, out_root=None):
+def run_batch(jobs, workers=5, log=print, out_root=None, ner_root=None):
     """并发跑多篇(一篇一进程), 返回 {doc: result}。
 
     jobs  = [{"doc":..., "ids":[...], "pdf":... or None}, ...]
@@ -511,7 +526,7 @@ def run_batch(jobs, workers=5, log=print, out_root=None):
     nlog = lambda d, s: log("[%s] %s" % (d, s) if workers > 1 else s)
 
     def _start(job):
-        p = ctx.Process(target=_child_entry, args=(job, q, out_root), daemon=False)
+        p = ctx.Process(target=_child_entry, args=(job, q, out_root, ner_root), daemon=False)
         p.start()
         running[job["doc"]] = p
 
@@ -548,9 +563,10 @@ def run_batch(jobs, workers=5, log=print, out_root=None):
                                              "error": "无结果返回"}) for j in jobs}
 
 
-def run_one_child(job, log=print, out_root=None):
+def run_one_child(job, log=print, out_root=None, ner_root=None):
     """单篇也走子进程(与批量同一实现): GUI 用它做并发的工作单元。"""
-    return run_batch([job], workers=1, log=log, out_root=out_root)[job["doc"]]
+    return run_batch([job], workers=1, log=log, out_root=out_root,
+                     ner_root=ner_root)[job["doc"]]
 
 
 def find_pdf(doc):

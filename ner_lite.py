@@ -417,8 +417,9 @@ def lint_audit(audit, recs):
 
 # ---------- 输出 ----------
 
-def write_outputs(doc, product, audit):
-    d = os.path.join(DST, doc)
+def write_outputs(doc, product, audit, root=None):
+    """root 可覆盖产物根(工作台按区隔离); 不传则保持历史全局 DST。"""
+    d = os.path.join(root or DST, doc)
     if not os.path.isdir(d):
         os.makedirs(d)
     io.open(os.path.join(d, "ner_lite.json"), "w", encoding="utf-8").write(
