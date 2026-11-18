@@ -394,6 +394,28 @@ def repair_authors(authors, extra=()):
     return kept
 
 
+def _looks_like_toc_page(first):
+    """A page of article titles with trailing page numbers (issue contents)."""
+    if not re.search(r"(?:Vol\.?|vol\.?)\s*\d", first):
+        return False
+    lines = [ln.strip() for ln in first.splitlines() if ln.strip()]
+    numbered = [ln for ln in lines
+                if len(ln) >= 12 and re.search(r"\s+\d{1,3}$", ln)]
+    return len(numbered) >= 3
+
+
+def _looks_like_award_page(first):
+    """Award/abstract collection page: several award entries, no single title."""
+    heads = first.count("研究奨励") + first.count("研究奖励")
+    return heads >= 2 and ("年生" in first or "正員" in first)
+
+
+def _looks_like_announcement_page(first):
+    """Society notice / committee-list page, not an article."""
+    return ("研究部会" in first and
+            ("複写される方へ" in first or "Notice about" in first))
+
+
 def detect_document_type(doc_dir, meta):
     pages = page_texts(doc_dir)
     txt = "\n".join(pages)
@@ -421,6 +443,14 @@ def detect_document_type(doc_dir, meta):
         return "announcement"
     if _MAGAZINE.search(head) or _MAGAZINE.search(first[:600]):
         return "magazine"
+
+    # Contents / award-abstract / notice pages have no single article title.
+    if _looks_like_toc_page(first):
+        return "toc"
+    if _looks_like_award_page(first):
+        return "multi_abstract"
+    if _looks_like_announcement_page(first):
+        return "announcement"
 
     # Cover/only-image page: little text on page 0 and no title at all.
     if len(first.strip()) < 200 and not head.strip():
@@ -491,7 +521,7 @@ def repair_metadata(meta, doc_dir):
         elif cur_clean and cur_clean != cur:
             chosen, source = cur_clean, source or "regex"
             embedded_author, embedded_affil = cur_author, cur_affil
-        else:
+        elif doc_type == "article":
             flags.add("title_suspect")
     else:
         # 当前题名明显是 H1 的前缀（常见：题名被截断），优先用完整 H1。
@@ -517,7 +547,10 @@ def repair_metadata(meta, doc_dir):
         flags.add("title_repaired")
         info["changed"] = True
     if not str(_value(out.get("title")) or "").strip():
-        flags.add("title_missing")
+        if doc_type in ("cover", "toc", "announcement", "multi_abstract", "program"):
+            flags.add("title_not_applicable")
+        else:
+            flags.add("title_missing")
 
     old_authors = out.get("authors") or []
     extra = []

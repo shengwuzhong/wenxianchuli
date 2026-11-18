@@ -70,6 +70,17 @@ class FieldAuditTest(unittest.TestCase):
         self.assertEqual("not_checked", by["datasets"]["status"])
         self.assertEqual(16, len({r["id"] for r in rows}))
 
+    def test_non_article_title_not_applicable(self):
+        m = self._meta()
+        m["title"] = {"value": None}
+        m["document_type"] = "cover"
+        m["quality"] = {"flags": ["title_not_applicable"]}
+        self._write("metadata.json", m)
+        by = {r["id"]: r for r in fa.field_statuses(self.doc, self.z)}
+        self.assertEqual("not_applicable", by["title"]["status"])
+        self.assertEqual("文档类型 cover，无单篇题名，不是漏抽", by["title"]["reason"])
+        self.assertFalse(by["title"]["needs_audit"])
+
     def test_missing_metadata(self):
         rows = fa.field_statuses(self.doc, self.z)
         self.assertEqual(16, len(rows))

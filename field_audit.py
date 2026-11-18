@@ -144,12 +144,21 @@ def _meta_fields(m, audit, doc, zone, mfp):
     """元数据 12 字段(不含正文/实体)。"""
     out = []
     ev = mfp
+    doc_type = _text(m.get("document_type"))
+    flags = [x for x in ((m.get("quality") or {}).get("flags") or []) if x]
+    non_article = doc_type in ("cover", "toc", "announcement", "multi_abstract", "program") \
+        or "title_not_applicable" in flags
     title = _text(_val(m.get("title"))) or _text(_val(m.get("title_en")))
-    out.append(_present("title", "标题", "core", title,
-                        "metadata.title" if _text(_val(m.get("title"))) else "metadata.title_en",
-                        ev, _confidence(m, "title"), _basis(audit, "title"))
-               if title else
-               _missing("title", "标题", "core", ev, _basis(audit, "title")))
+    if non_article:
+        out.append(_record("title", "标题", "core", "not_applicable",
+                           reason="文档类型 %s，无单篇题名，不是漏抽" % (doc_type or "非论文"),
+                           evidence=ev, basis=_basis(audit, "title")))
+    else:
+        out.append(_present("title", "标题", "core", title,
+                            "metadata.title" if _text(_val(m.get("title"))) else "metadata.title_en",
+                            ev, _confidence(m, "title"), _basis(audit, "title"))
+                   if title else
+                   _missing("title", "标题", "core", ev, _basis(audit, "title")))
 
     authors = [a.get("name") for a in (m.get("authors") or [])
                if isinstance(a, dict) and _text(a.get("name"))]

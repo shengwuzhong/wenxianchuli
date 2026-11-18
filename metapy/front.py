@@ -255,6 +255,12 @@ def apply_title_fallback(meta):
         meta["title"]["confidence"] = dict(meta["title"].get("confidence") or {})
         meta["title"]["confidence"]["source"] = "title_en_fallback"
         meta["title_fallback_from_en"] = True
+        # normalize 可能已因旧 title 为空写入 title_missing；现在已有标题，清掉该标记。
+        for holder in (meta.get("quality"), meta):
+            if isinstance(holder, dict) and isinstance(holder.get("flags"), list):
+                holder["flags"] = [f for f in holder["flags"] if f != "title_missing"]
+        if isinstance(meta.get("quality_flags"), list):
+            meta["quality_flags"] = [f for f in meta["quality_flags"] if f != "title_missing"]
         return True
     return False
 
