@@ -91,6 +91,8 @@ class AccountStoreTest(unittest.TestCase):
             a = st.get("primary")
             self.assertEqual(a["token"], "secret-token-1234")
             self.assertEqual(a["daily_pages"], 300)
+            st.upsert("primary", "改名", "rotated-token-5678", 300)
+            self.assertEqual(st.get("primary")["token"], "rotated-token-5678")
 
 
 if __name__ == "__main__":

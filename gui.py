@@ -1437,9 +1437,10 @@ class AccountsWindow(tk.Toplevel):
                 messagebox.showwarning("不可改 key", "账号 key 建好后不可改；请新增账号。",
                                        parent=self)
                 return
-            self.store.upsert(key, label, None, daily)
+            self.store.upsert(key, label, tok or None, daily)
             self.book.set_limit(key, daily)
-            self.app._log("[账号] 更新 %s（日额度 %d 页）" % (key, daily))
+            self.app._log("[账号] 更新 %s（日额度 %d 页%s）" %
+                          (key, daily, "，token 已更新" if tok else ""))
         self.editing = key
         self.key_entry.configure(state="disabled")
         self.token_var.set("")
