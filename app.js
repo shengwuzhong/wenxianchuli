@@ -171,17 +171,20 @@ function renderMain() {
 
 /* ---------------- 总览 ---------------- */
 function viewOverview() {
-    var terminal = S.jobs.filter(function (j) { return j.state === 'done' || j.state === 'degraded'; });
-    var complete = terminal.filter(function (j) { return !(j.missing_channels || []).length; });
-    var review = terminal.filter(function (j) {
-        return ((j.quality || {}).flags || []).indexOf('needs_manual_review') >= 0;
-    });
-    var rate = terminal.length ? Math.round(complete.length * 100 / terminal.length) : 0;
+    var scope = (S.library && S.library.length) ? S.library : S.jobs;
+    var complete = scope.filter(function (j) { return !(j.missing_channels || []).length; });
+    var reviewN = S.reviewCounts.needs_manual_review;
+    if (reviewN == null) {
+        reviewN = scope.filter(function (j) {
+            return ((j.quality || {}).flags || j.flags || []).indexOf('needs_manual_review') >= 0;
+        }).length;
+    }
+    var rate = scope.length ? Math.round(complete.length * 100 / scope.length) : 0;
     var kpis = [
-        ['任务总数', S.jobs.length, ''], ['运行/排队', activeJobs().length, 'run'],
-        ['三渠道完整', complete.length + '/' + terminal.length, rate >= 80 ? 'ok' : 'warn'],
+        ['文献总数', scope.length, ''], ['运行/排队', activeJobs().length, 'run'],
+        ['三渠道完整', complete.length + '/' + scope.length, rate >= 80 ? 'ok' : 'warn'],
         ['部分异常', S.jobs.filter(function (j) { return j.state === 'degraded'; }).length, 'warn'],
-        ['待复核', review.length, review.length ? 'warn' : ''],
+        ['待复核', reviewN, reviewN ? 'warn' : ''],
         ['失败', S.jobs.filter(function (j) { return j.state === 'error'; }).length, 'err']
     ];
     var cards = kpis.map(function (x) {
@@ -885,5 +888,11 @@ if (initialRoute) setRoute(initialRoute, true);
 if (qdoc && initialRoute === 'review') loadReview().then(function () { loadReviewDoc(qdoc); });
 if (qdoc && initialRoute === 'library') openDocDetail(qdoc);
 tick();
+function afterSummary() {
+    updateChrome();
+    if (S.route === 'overview') renderMain();
+}
+loadLibrary().then(afterSummary);
+if (initialRoute !== 'review') loadReview().then(afterSummary);
 api('/api/index').then(function (idx) { S.indexStatus = idx; updateChrome(); }).catch(function () { });
 setInterval(tick, 2000);
