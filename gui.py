@@ -474,6 +474,7 @@ class App(tk.Tk):
         self._webapp_on = False
         self._entity_cache = {}
         self._page_cache = {}
+        self._last_unrun = None
         self._audit_win = None
         self._acct_win = None
         self._paused = True
@@ -561,6 +562,7 @@ class App(tk.Tk):
         self.tree.bind("<<TreeviewSelect>>", lambda e: self._sync_buttons())
         self.tree.bind("<Double-1>", lambda e: self._open_viewer())
         self.tree.bind("<Button-3>", self._context_menu)
+        self.tree.bind("<Control-a>", self._select_all)
         mid.add(wrap, weight=3)
 
         # 操作条(对选中文档)
@@ -879,10 +881,19 @@ class App(tk.Tk):
                 runs))
         if sels:
             self.tree.selection_set(sels)
+        unrun = sum(1 for d in self.docs.values() if d.get("state") == "未跑")
+        if unrun and unrun != self._last_unrun:
+            self._log("[扫描] 当前区有 %d 篇 PDF 未跑；选中后点「一键重跑」（Ctrl+A 全选）。" % unrun)
+        self._last_unrun = unrun
         self._sync_buttons()
 
     def _selected(self):
         return list(self.tree.selection())
+
+    def _select_all(self, event=None):
+        self.tree.selection_set(self.tree.get_children())
+        self._sync_buttons()
+        return "break"
 
     def _sync_buttons(self):
         docs = self._selected()
@@ -971,6 +982,12 @@ class App(tk.Tk):
             self._log("[批量] 跳过 %d 篇(已在队列/运行): %s" % (
                 len(busy), ", ".join(busy[:5])))
         if not docs:
+            if not busy:
+                messagebox.showinfo(
+                    "未选择文档",
+                    "请先在表格中选中要解析的 PDF（Ctrl+A 全选），再点「一键重跑」。",
+                    parent=self)
+                self._log("[批量] 未选择文档；未提交任务")
             return
         if not self._reserve_quota(docs, ids):
             return
@@ -990,6 +1007,10 @@ class App(tk.Tk):
             return
         docs = [d for d in self._selected() if self.docs.get(d, {}).get("pdf")]
         if not docs:
+            messagebox.showinfo(
+                "未选择文档",
+                "请先选中要补缺口的 PDF（Ctrl+A 全选），再点「重跑缺口」。",
+                parent=self)
             return
         todo = []
         for doc in docs:
@@ -1053,7 +1074,14 @@ class App(tk.Tk):
         if busy:
             self._log("[重试] 跳过 %d 篇(已在队列/运行): %s" % (
                 len(busy), ", ".join(busy[:5])))
-        if not docs or not self._reserve_quota(docs, ["paddle"]):
+        if not docs:
+            if not busy:
+                messagebox.showinfo(
+                    "未选择文档",
+                    "请先选中缺少渠道的 PDF（Ctrl+A 全选），再点「重试缺失渠道」。",
+                    parent=self)
+            return
+        if not self._reserve_quota(docs, ["paddle"]):
             return
         n = 0
         for doc in docs:
