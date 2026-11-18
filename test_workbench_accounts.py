@@ -56,6 +56,7 @@ class TaskAccountTest(unittest.TestCase):
             st = ws.TaskStore(fp)
             row, _ = st.enqueue("d1", "d1.pdf", ["paddle"], account="paddle_b")
             self.assertEqual(row["account"], "paddle_b")
+            self.assertEqual(st.accounts_in_use(), {"paddle_b": 1})
             st.close()
             st2 = ws.TaskStore(fp)   # migration/reopen path
             rows = st2.pending()

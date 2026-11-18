@@ -246,6 +246,15 @@ class TaskStore:
                 "ORDER BY id LIMIT ?", (int(limit),)).fetchall()
         return [self._row(r) for r in rows]
 
+    def accounts_in_use(self):
+        """账号 key -> 仍在使用它的 queued/running/interrupted 任务数。"""
+        with self.lock:
+            rows = self.db.execute(
+                "SELECT account, COUNT(*) AS n FROM tasks "
+                "WHERE status IN ('queued','running','interrupted') AND account != '' "
+                "GROUP BY account").fetchall()
+        return {r["account"]: r["n"] for r in rows}
+
     def counts(self):
         with self.lock:
             rows = self.db.execute(

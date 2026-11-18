@@ -1452,8 +1452,16 @@ class AccountsWindow(tk.Toplevel):
             messagebox.showinfo("删除账号", "先选中一个账号。", parent=self)
             return
         key = sel[0]
-        if not messagebox.askyesno("删除账号", "删除账号 %s？已排队任务不受影响。" % key,
-                                   parent=self):
+        busy = []
+        for zid, runner in self.app.runners.items():
+            if key in runner.store.accounts_in_use():
+                busy.append(zid)
+        if busy:
+            messagebox.showwarning(
+                "不能删除", "账号 %s 仍有排队/运行任务（工作区 %s）；先处理这些任务。" %
+                (key, "/".join(sorted(busy))), parent=self)
+            return
+        if not messagebox.askyesno("删除账号", "删除账号 %s？" % key, parent=self):
             return
         ok, msg = self.store.remove(key)
         if not ok:
