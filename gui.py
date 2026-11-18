@@ -1191,19 +1191,25 @@ class App(tk.Tk):
         """
         import subprocess
         import sys
-        import webbrowser
         if webapp_alive():
-            webbrowser.open("http://127.0.0.1:8765")
-            self._log("[web] 已在运行，已打开浏览器 · 注意别与 GUI 同时解析同一篇")
+            messagebox.showwarning(
+                "旧浏览器工作台正在运行",
+                "检测到 8765 端口的旧浏览器工作台。\n"
+                "它会和 GUI 同时监视 uploads，并可能自动补跑循环。\n"
+                "请先在任务管理器结束 webapp.py，再使用 GUI 的“对照查看器/结果总览”。",
+                parent=self)
+            self._log("[web] 检测到旧 webapp 在运行，已拒绝并行打开；请先结束 webapp.py")
             return
-        if self.runner.is_busy() and not messagebox.askokcancel(
-                "GUI 正在跑任务",
-                "浏览器工作台同样会监视 uploads；两处同时解析同一篇会写坏产物。\n仍要启动吗？",
-                parent=self):
+        if not messagebox.askyesno(
+                "浏览器工作台（旧入口）",
+                "浏览器工作台是旧入口，会自动监视 uploads 并补跑缺失渠道；\n"
+                "与 GUI 同时运行会争抢同一篇文档，历史上已出现补跑死循环。\n\n"
+                "建议只用桌面版。仍要单独启动旧浏览器工作台吗？",
+                icon="warning", default=messagebox.NO, parent=self):
             return
         subprocess.Popen([sys.executable, os.path.join(ROOT, "webapp.py")],
                          creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
-        self._log("[web] 已启动浏览器工作台(新窗口)，稍候自动打开 http://127.0.0.1:8765")
+        self._log("[web] 已启动旧浏览器工作台(新窗口)，稍候打开 http://127.0.0.1:8765")
 
     def _restart(self):
         """一键重启: 拉新进程替自己, 以加载 gui.py 等外壳改动(热更新只覆盖流水线模块)。

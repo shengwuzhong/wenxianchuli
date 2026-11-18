@@ -19,6 +19,14 @@ os.makedirs(UP, exist_ok=True)
 JOBS = {}          # job_id -> {state, log[], doc, err}
 JOB_LOCK = threading.Lock()
 RUN_LOCK = threading.Lock()  # 批处理串行锁: 同时丢多个 PDF 按顺序逐个解析
+# 自动补跑熔断: rescue_scan 每 2s 扫一次, 若某渠道持续失败且产物已生成,
+# 旧逻辑会每 2s 新建一个任务, 形成"失败-重跑-失败"死循环(26_Supplement_26_229 实证)。
+RESCUE_GUARD = {}          # doc -> {"tries": n, "next_at": ts}
+RESCUE_LOCK = threading.Lock()
+RESCUE_MAX_TRIES = 3
+RESCUE_COOLDOWN = 600      # 同一文档两次自动补跑至少间隔 10 分钟
+RESCUE_SCAN_EVERY = 30     # 自动补跑扫描节流(秒)
+_LAST_RESCUE_SCAN = 0.0
 MIME = {".html": "text/html; charset=utf-8", ".jpg": "image/jpeg", ".png": "image/png",
         ".json": "application/json", ".md": "text/plain; charset=utf-8", ".css": "text/css", ".js": "text/javascript"}
 
@@ -587,10 +595,40 @@ def _rescue_run(job, pdf, doc):
     except Exception as e:
         print("[rescue] merged 刷新失败 %s: %s" % (doc, e))
 
+def _rescue_allowed(doc, now):
+    """返回 (allowed, 原因)。同一文档连续失败时指数退避, 达到上限后停止自动补跑。"""
+    with RESCUE_LOCK:
+        g = RESCUE_GUARD.get(doc)
+        if not g:
+            return True, ""
+        if g["tries"] >= RESCUE_MAX_TRIES:
+            if g.get("warned"):
+                return False, ""
+            g["warned"] = True
+            return False, "自动补跑已达 %d 次上限, 请人工检查渠道后手动重试" % RESCUE_MAX_TRIES
+        if now < g["next_at"]:
+            return False, ""
+        return True, ""
+
+
+def _rescue_mark(doc, now):
+    with RESCUE_LOCK:
+        g = RESCUE_GUARD.setdefault(doc, {"tries": 0, "next_at": 0})
+        g["tries"] += 1
+        g["next_at"] = now + RESCUE_COOLDOWN
+        return g["tries"]
+
+
 def rescue_scan():
     r"""失败渠道兜底补跑: out\<doc> 已有 index.html 但某渠道既无 raw\<ch> 也无 raw\<ch>_api
     (渠道从未成功获取), 且 uploads 里 PDF 还在 -> 自动重跑该文档。
-    重跑走缓存: 成功渠道秒回, 只重取缺失渠道; 产物快照同步刷新。一次只补一个, 防并发重跑。"""
+    重跑走缓存: 成功渠道秒回, 只重取缺失渠道; 产物快照同步刷新。一次只补一个, 防并发重跑。
+    熔断: 同一文档 10 分钟内不重复补跑, 累计 3 次后停止并提示人工处理。"""
+    global _LAST_RESCUE_SCAN
+    now = time.time()
+    if now - _LAST_RESCUE_SCAN < RESCUE_SCAN_EVERY:
+        return
+    _LAST_RESCUE_SCAN = now
     try:
         docs = os.listdir(OUT)
     except OSError:
@@ -605,16 +643,25 @@ def rescue_scan():
                 if not os.path.exists(os.path.join(dd, "raw", ch))
                 and not os.path.exists(os.path.join(dd, "raw", ch + "_api"))]
         if not miss:
+            with RESCUE_LOCK:
+                RESCUE_GUARD.pop(d, None)  # 已补齐, 清掉熔断计数
             continue
         pdf = os.path.join(UP, d + ".pdf")
         if not os.path.exists(pdf):
             continue
         if RUN_LOCK.locked():
             return  # 有任务在跑, 下一轮再补
+        allowed, why = _rescue_allowed(d, now)
+        if not allowed:
+            if why:
+                print("[rescue] 跳过 %s: %s" % (d, why))
+            continue
         jid = "rescue-%x" % int(time.time() * 1000)
         if not _create_job_if_absent(jid, d, rescue=",".join(miss)):
             continue
-        print("[rescue] %s 缺渠道(%s), 自动重跑补齐" % (d, "/".join(miss)))
+        tries = _rescue_mark(d, now)
+        print("[rescue] %s 缺渠道(%s), 自动重跑补齐(第 %d/%d 次)" %
+              (d, "/".join(miss), tries, RESCUE_MAX_TRIES))
         threading.Thread(target=_rescue_run, args=(jid, pdf, d), daemon=True).start()
         return
 
