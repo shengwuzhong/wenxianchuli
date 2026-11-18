@@ -1164,7 +1164,8 @@ def watch_uploads():
     print("[watch] 监视目录:", UP, "— 把 PDF 复制进来即可自动解析")
     while True:
         time.sleep(2)
-        rescue_scan()  # 兜底: 渠道曾失败的文档自动补跑(每次只补一个, 有任务在跑则跳过)
+        if os.environ.get("KCI_DISABLE_AUTO_RESCUE") != "1":
+            rescue_scan()  # 兜底: 渠道曾失败的文档自动补跑(每次只补一个, 有任务在跑则跳过)
         for f in os.listdir(UP):
             if not f.lower().endswith(".pdf"): continue
             fp = os.path.join(UP, f)
@@ -1249,7 +1250,10 @@ if __name__ == "__main__":
     print("  本窗口保持开着服务才运行; 关闭窗口 = 停止服务")
     print("=" * 60)
     threading.Thread(target=watch_uploads, daemon=True).start()
-    threading.Timer(5.0, rescue_scan).start()  # 启动即扫一遍: 上次会话渠道失败的文档自动补
+    if os.environ.get("KCI_DISABLE_AUTO_RESCUE") != "1":
+        threading.Timer(5.0, rescue_scan).start()  # 启动即扫一遍: 上次会话渠道失败的文档自动补
+    else:
+        print("  自动补跑已关闭(KCI_DISABLE_AUTO_RESCUE=1)，可在任务队列手动补缺")
     try:
         webbrowser.open(url)
     except Exception:
