@@ -4,9 +4,9 @@
 把 PDF 拖入页面即自动: 上传 → 跑 pipeline → 页内出结果。
 渠道产物约定: 解析完后丢进 inbox\，命名 <文档名>__mineru / <文档名>__dots / <文档名>__paddle.md
 """
-import os, re, io, json, csv, threading, time, webbrowser, sys, shutil
+import os, re, io, json, threading, time, webbrowser, sys, shutil
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import unquote, urlparse, parse_qs
+from urllib.parse import unquote
 
 import archive
 from docid import doc_of
@@ -37,16 +37,6 @@ PIPELINE_STAGES = (
     ("publish", "结果发布"),
 )
 CHANNEL_KEYS = ("mineru", "dots", "paddle", "metadata", "ner_lite")
-CHANNEL_LABELS = {"mineru": "MinerU", "dots": "dots.ocr", "paddle": "PaddleOCR"}
-STALL_RUN_SECONDS = 90       # 运行中超过 90 秒无心跳, 视为疑似停滞
-STALL_QUEUE_SECONDS = 600    # 排队超过 10 分钟, 提示排队过久
-RESCUE_STATE = {}            # doc -> [次数, 上次尝试 monotonic]
-RESCUE_COOLDOWN = 600
-RESCUE_MAX = 3
-REVIEW_FIELDS = ("title", "authors", "journal", "year", "volume", "issue", "pages", "document_type")
-LIB_CACHE = {"at": 0.0, "items": []}
-LIB_CACHE_LOCK = threading.Lock()
-OVERRIDE_LOCK = threading.Lock()
 
 
 def _load_cfg():
@@ -184,58 +174,6 @@ def _reconcile_channels(j):
             j["channels"][ch] = "skipped"
 
 
-def _safe_doc(doc):
-    """只接受 out/ 下一层的文档名, 挡住路径穿越和空名。"""
-    doc = unquote(doc or "").strip()
-    if not doc or doc in (".", ".."):
-        return ""
-    if not re.match(r"^[\w\-.一-鿿]+$", doc):
-        return ""
-    return doc
-
-
-def _channel_presence(doc):
-    """按 raw/<ch> 或 raw/<ch>_api 目录判断渠道产物是否真的落地。"""
-    base = os.path.join(OUT, doc, "raw") if doc else ""
-    out = {}
-    for ch in ("mineru", "dots", "paddle"):
-        out[ch] = bool(base) and (
-            os.path.isdir(os.path.join(base, ch)) or
-            os.path.isdir(os.path.join(base, ch + "_api"))
-        )
-    return out
-
-
-def _missing_channels(doc):
-    present = _channel_presence(doc)
-    return [ch for ch in ("mineru", "dots", "paddle") if not present.get(ch)]
-
-
-def _job_alerts(j, now=None):
-    """把“卡住/缺渠道/渠道报错”翻译成界面可执行的告警。"""
-    now = now or time.time()
-    state = j.get("state") or ""
-    alerts = []
-    updated = j.get("updated_at") or now
-    created = j.get("created_at") or now
-    age = max(0, int(now - updated))
-    if state == "运行中" and age > STALL_RUN_SECONDS:
-        alerts.append({"kind": "stalled", "level": "warn",
-                       "text": "疑似停滞：%d 秒无心跳，可查看日志或取消后重试" % age})
-    if state == "排队中" and now - created > STALL_QUEUE_SECONDS:
-        alerts.append({"kind": "queue_slow", "level": "warn",
-                       "text": "排队已超过 %d 分钟" % int((now - created) / 60)})
-    missing = _missing_channels(j.get("doc") or "")
-    if state in ("done", "degraded") and missing:
-        alerts.append({"kind": "missing_channel", "level": "warn",
-                       "text": "缺渠道：" + " / ".join(CHANNEL_LABELS[c] for c in missing)})
-    for ch, err in (j.get("channel_err") or {}).items():
-        if err and ch in CHANNEL_LABELS:
-            alerts.append({"kind": "channel_error", "level": "err",
-                           "text": "%s：%s" % (CHANNEL_LABELS[ch], err)})
-    return alerts
-
-
 def _public_job(job_id, j):
     now = time.time()
     created = j.get("created_at") or now
@@ -248,11 +186,7 @@ def _public_job(job_id, j):
     else:
         elapsed = 0
         queue_wait = max(0, int(end - created))
-    doc = j.get("doc", "")
-    presence = _channel_presence(doc)
-    missing = [ch for ch in ("mineru", "dots", "paddle") if not presence.get(ch)]
-    alerts = _job_alerts(j, now)
-    return {"id": job_id, "state": j.get("state", ""), "doc": doc,
+    return {"id": job_id, "state": j.get("state", ""), "doc": j.get("doc", ""),
             "stage": j.get("stage", ""), "logline": j.get("logline", ""),
             "err": j.get("err", ""), "warnings": j.get("warnings", [])[-10:],
             "channels": j.get("channels", {}), "channel_err": j.get("channel_err", {}),
@@ -260,373 +194,7 @@ def _public_job(job_id, j):
             "created_at": j.get("created_at"), "started_at": j.get("started_at"),
             "updated_at": j.get("updated_at"), "finished_at": j.get("finished_at"),
             "elapsed": elapsed, "queue_wait": queue_wait,
-            "heartbeat_age": max(0, int(now - (j.get("updated_at") or now))),
-            "stalled": bool(any(a["kind"] == "stalled" for a in alerts)),
-            "channel_presence": presence, "missing_channels": missing,
-            "alerts": alerts, "rescue": j.get("rescue", "")}
-
-
-def _channel_health():
-    """UI 用渠道健康摘要; 绝不回传 token 明文。"""
-    cfg = _effective_cfg()
-    jobs = []
-    with JOB_LOCK:
-        jobs = [_public_job(k, v) for k, v in JOBS.items()]
-    out = {}
-    for ch in ("mineru", "dots", "paddle"):
-        sec = cfg.get(ch + "_api") or {}
-        configured = bool(str(sec.get("token") or "").strip()) if ch in ("mineru", "paddle") \
-            else bool(str(sec.get("base") or "").strip())
-        state = "未配置" if not configured else "可用"
-        active = [j for j in jobs if (j.get("channels") or {}).get(ch) in ("running", "waiting")]
-        errors = [j for j in jobs if (j.get("channels") or {}).get(ch) == "error"]
-        if active:
-            state = "排队/运行"
-        elif errors:
-            state = "有错误"
-        out[ch] = {"label": CHANNEL_LABELS[ch], "configured": configured, "state": state,
-                   "active": len(active), "errors": len(errors),
-                   "last_error": (errors[-1].get("channel_err") or {}).get(ch, "") if errors else ""}
-    return out
-
-
-def _meta_text(v):
-    if isinstance(v, dict):
-        v = v.get("normalized") or v.get("value") or ""
-    if v is None:
-        return ""
-    return str(v).strip()
-
-
-def _author_names(v):
-    out = []
-    for item in (v or []):
-        if isinstance(item, dict):
-            name = item.get("normalized") or item.get("name") or ""
-        else:
-            name = item
-        name = str(name or "").strip()
-        if name and name not in out:
-            out.append(name)
-    return out
-
-
-def _meta_confidence(v):
-    if isinstance(v, dict) and isinstance(v.get("confidence"), dict):
-        c = v["confidence"]
-        return {"level": c.get("level", ""), "source": c.get("source", "")}
-    return {}
-
-
-def _meta_fields(m):
-    m = m or {}
-    fields = {
-        "title": _meta_text(m.get("title")),
-        "authors": _author_names(m.get("authors")),
-        "journal": _meta_text(m.get("journal")),
-        "year": _meta_text(m.get("year")),
-        "volume": _meta_text(m.get("volume")),
-        "issue": _meta_text(m.get("issue")),
-        "pages": _meta_text(m.get("pages")),
-        "document_type": _meta_text(m.get("document_type")),
-    }
-    raw = {k: (v.get("value") if isinstance(v, dict) else v) for k, v in m.items()
-           if k in ("title", "journal", "year", "volume", "issue", "pages", "document_type")}
-    raw["authors"] = [x.get("name") if isinstance(x, dict) else x for x in (m.get("authors") or [])]
-    conf = {k: _meta_confidence(m.get(k)) for k in ("title", "journal", "year", "volume", "issue", "pages")}
-    return fields, raw, conf
-
-
-def _quality_of(m):
-    q = (m or {}).get("quality")
-    if not isinstance(q, dict):
-        q = {}
-    flags = q.get("flags") or (m or {}).get("quality_flags") or []
-    return {"flags": [str(x) for x in flags if x],
-            "document_type": q.get("document_type") or _meta_text((m or {}).get("document_type")),
-            "is_single_article": q.get("is_single_article", (m or {}).get("is_single_article")),
-            "checked": bool(q.get("checked"))}
-
-
-def _load_meta(doc):
-    fp = os.path.join(OUT, doc, "metadata.json")
-    if not doc or not os.path.isfile(fp):
-        return {}
-    try:
-        with io.open(fp, encoding="utf-8-sig") as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
-        return {}
-
-
-def _load_override(doc):
-    fp = os.path.join(OUT, doc, "metadata_override.json")
-    if not doc or not os.path.isfile(fp):
-        return {}
-    try:
-        with io.open(fp, encoding="utf-8-sig") as f:
-            data = json.load(f)
-        fields = data.get("fields") if isinstance(data, dict) else None
-        return fields if isinstance(fields, dict) else {}
-    except (OSError, ValueError):
-        return {}
-
-
-def _doc_record(doc):
-    m = _load_meta(doc)
-    fields, _raw, _conf = _meta_fields(m)
-    override = _load_override(doc)
-    for k in REVIEW_FIELDS:
-        if k in override:
-            fields[k] = override[k]
-    q = _quality_of(m)
-    flags = list(q["flags"])
-    if not m:
-        flags.append("metadata_missing")
-    if not os.path.isfile(os.path.join(OUT, doc, "index.html")):
-        flags.append("index_missing")
-    presence = _channel_presence(doc)
-    missing = [ch for ch in ("mineru", "dots", "paddle") if not presence.get(ch)]
-    try:
-        updated = os.path.getmtime(os.path.join(OUT, doc, "metadata.json"))
-    except OSError:
-        try:
-            updated = os.path.getmtime(os.path.join(OUT, doc))
-        except OSError:
-            updated = 0
-    authors = fields.get("authors") or []
-    if isinstance(authors, str):
-        authors = _split_authors(authors)
-    fields["authors"] = authors
-    return {
-        "doc": doc, "title": fields.get("title") or "", "authors": authors,
-        "author_text": "、".join(authors), "journal": fields.get("journal") or "",
-        "year": fields.get("year") or "", "volume": fields.get("volume") or "",
-        "issue": fields.get("issue") or "", "pages": fields.get("pages") or "",
-        "document_type": fields.get("document_type") or q.get("document_type") or "",
-        "flags": flags, "quality": q, "reviewed": bool(override),
-        "override_fields": [k for k in REVIEW_FIELDS if k in override],
-        "channels": presence, "missing_channels": missing,
-        "has_index": os.path.isfile(os.path.join(OUT, doc, "index.html")),
-        "has_viewer": os.path.isfile(os.path.join(OUT, doc, "viewer_compare.html")),
-        "updated": updated,
-    }
-
-
-def _scan_library(force=False):
-    now = time.time()
-    with LIB_CACHE_LOCK:
-        if not force and now - LIB_CACHE["at"] < 4:
-            return list(LIB_CACHE["items"])
-    items = []
-    try:
-        names = sorted(os.listdir(OUT))
-    except OSError:
-        names = []
-    for d in names:
-        if d.startswith("_") or not os.path.isdir(os.path.join(OUT, d)):
-            continue
-        if not os.path.isfile(os.path.join(OUT, d, "metadata.json")) and \
-                not os.path.isfile(os.path.join(OUT, d, "index.html")):
-            continue
-        items.append(_doc_record(d))
-        if len(items) >= 500:
-            break
-    with LIB_CACHE_LOCK:
-        LIB_CACHE["at"] = now
-        LIB_CACHE["items"] = list(items)
-    return items
-
-
-def _review_rows():
-    items = _scan_library()
-    counts = {}
-    for d in items:
-        for f in d.get("flags") or []:
-            counts[f] = counts.get(f, 0) + 1
-    return items, counts
-
-
-def _read_audit(doc, limit=20):
-    fp = os.path.join(OUT, doc, "_review_audit.jsonl")
-    if not os.path.isfile(fp):
-        return []
-    rows = []
-    try:
-        with io.open(fp, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rows.append(json.loads(line))
-                except ValueError:
-                    continue
-    except OSError:
-        return []
-    return rows[-limit:]
-
-
-def _doc_payload(doc):
-    if not doc or not os.path.isdir(os.path.join(OUT, doc)):
-        return None
-    m = _load_meta(doc)
-    fields, raw, conf = _meta_fields(m)
-    override = _load_override(doc)
-    for k in REVIEW_FIELDS:
-        if k in override:
-            fields[k] = override[k]
-    q = _quality_of(m)
-    evidence = {}
-    for key in ("title", "journal", "year", "volume", "issue", "pages"):
-        node = m.get(key)
-        if isinstance(node, dict):
-            evidence[key] = {"value": node.get("value"), "page": node.get("page"),
-                             "uid": node.get("uid"), "box": node.get("box"),
-                             "confidence": _meta_confidence(node)}
-    author_ev = []
-    for a in (m.get("authors") or []):
-        if isinstance(a, dict):
-            author_ev.append({"name": a.get("name"), "page": a.get("page"),
-                              "uid": a.get("uid"), "confidence": _meta_confidence(a)})
-    evidence["authors"] = author_ev
-    rec = _doc_record(doc)
-    return {"doc": doc, "fields": fields, "raw": raw, "confidence": conf,
-            "override": override, "evidence": evidence, "flags": rec["flags"],
-            "quality": q, "channels": rec["channels"], "missing_channels": rec["missing_channels"],
-            "has_index": rec["has_index"], "has_viewer": rec["has_viewer"],
-            "audit": _read_audit(doc), "record": rec}
-
-
-def _split_authors(v):
-    if isinstance(v, list):
-        items = v
-    else:
-        items = re.split(r"[\n、,，;；]+", str(v or ""))
-    out = []
-    for x in items:
-        x = str(x).strip()
-        if x and x not in out:
-            out.append(x)
-    return out
-
-
-def _save_override(doc, fields, note=""):
-    if not isinstance(fields, dict):
-        raise ValueError("fields 必须是对象")
-    allowed = set(REVIEW_FIELDS)
-    clean = {}
-    for k, v in fields.items():
-        if k not in allowed:
-            continue
-        if k == "authors":
-            clean[k] = _split_authors(v)
-        else:
-            clean[k] = str(v if v is not None else "").strip()[:4000]
-    if not clean:
-        raise ValueError("没有可保存的字段")
-    with OVERRIDE_LOCK:
-        old = _load_override(doc)
-        merged = dict(old)
-        merged.update(clean)
-        before = {}
-        for k in clean:
-            before[k] = _load_meta(doc).get(k)
-            if isinstance(before[k], dict):
-                before[k] = before[k].get("value")
-        now = time.strftime("%Y-%m-%d %H:%M:%S")
-        payload = {"doc": doc, "updated": now, "fields": merged,
-                   "note": str(note or "")[:1000], "source": "ui_review"}
-        fp = os.path.join(OUT, doc, "metadata_override.json")
-        tmp = fp + ".tmp"
-        with io.open(tmp, "w", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=False, indent=1))
-        os.replace(tmp, fp)
-        audit = {"updated": now, "fields": {k: merged[k] for k in clean},
-                 "before": before, "note": payload["note"]}
-        with io.open(os.path.join(OUT, doc, "_review_audit.jsonl"), "a", encoding="utf-8") as f:
-            f.write(json.dumps(audit, ensure_ascii=False) + "\n")
-        with LIB_CACHE_LOCK:
-            LIB_CACHE["at"] = 0
-    return _doc_payload(doc)
-
-
-def _export_payload(fmt="csv"):
-    rows = _scan_library(force=True)
-    if fmt == "json":
-        return json.dumps(rows, ensure_ascii=False, indent=1), "application/json; charset=utf-8", "workbench_library.json"
-    if fmt == "bib":
-        chunks = []
-        for r in rows:
-            key = re.sub(r"[^A-Za-z0-9_:\-.]", "_", r["doc"])[:80] or "doc"
-            authors = " and ".join(r.get("authors") or []) or "unknown"
-            flags = ",".join(r.get("flags") or [])
-            chunks.append("@article{%s,\n  title = {%s},\n  author = {%s},\n  journal = {%s},\n  year = {%s},\n  volume = {%s},\n  number = {%s},\n  pages = {%s},\n  note = {%s}\n}" % (
-                key, r.get("title") or "", authors, r.get("journal") or "", r.get("year") or "",
-                r.get("volume") or "", r.get("issue") or "", r.get("pages") or "", flags))
-        return "\n\n".join(chunks) + "\n", "application/x-bibtex; charset=utf-8", "workbench_library.bib"
-    out = io.StringIO()
-    w = csv.writer(out, lineterminator="\n")
-    w.writerow(["doc", "title", "authors", "journal", "year", "volume", "issue", "pages",
-                "document_type", "flags", "channels", "missing_channels", "has_index"])
-    for r in rows:
-        w.writerow([r["doc"], r["title"], "、".join(r.get("authors") or []), r["journal"],
-                    r["year"], r["volume"], r["issue"], r["pages"], r["document_type"],
-                    ";".join(r.get("flags") or []), ";".join([k for k, v in (r.get("channels") or {}).items() if v]),
-                    ";".join(r.get("missing_channels") or []), "1" if r.get("has_index") else "0"])
-    return "\ufeff" + out.getvalue(), "text/csv; charset=utf-8", "workbench_library.csv"
-
-
-def _eval_reports():
-    root = os.path.join(ROOT, "eval", "reports")
-    out = []
-    try:
-        names = sorted(os.listdir(root), key=lambda x: os.path.getmtime(os.path.join(root, x)), reverse=True)
-    except OSError:
-        return out
-    for fn in names:
-        if not fn.endswith(".json"):
-            continue
-        fp = os.path.join(root, fn)
-        try:
-            with io.open(fp, encoding="utf-8-sig") as f:
-                data = json.load(f)
-        except (OSError, ValueError):
-            continue
-        if not isinstance(data, dict):
-            continue
-        out.append({"name": fn[:-5], "file": fn, "summary": data.get("summary") or {},
-                    "rows": len(data.get("rows") or []),
-                    "updated": os.path.getmtime(fp)})
-        if len(out) >= 20:
-            break
-    return out
-
-
-def _index_status():
-    docs = []
-    try:
-        docs = [d for d in os.listdir(OUT) if os.path.isdir(os.path.join(OUT, d)) and not d.startswith("_")]
-    except OSError:
-        pass
-    with_index = [d for d in docs if os.path.isfile(os.path.join(OUT, d, "index.html"))]
-    with_meta = [d for d in docs if os.path.isfile(os.path.join(OUT, d, "metadata.json"))]
-    try:
-        last = max(os.path.getmtime(os.path.join(OUT, d, "index.html")) for d in with_index)
-    except (ValueError, OSError):
-        last = 0
-    archive_items = 0
-    archive_fp = os.path.join(ROOT, "archive", "index.json")
-    if os.path.isfile(archive_fp):
-        try:
-            idx = archive.load_index()
-            archive_items = len(idx.get("items") or {})
-        except Exception:
-            archive_items = -1
-    return {"out_docs": len(docs), "with_index": len(with_index), "with_metadata": len(with_meta),
-            "last_index_mtime": last, "archive_items": archive_items,
-            "archive_index": archive_fp, "archive_exists": os.path.isfile(archive_fp)}
+            "rescue": j.get("rescue", "")}
 
 
 def run_pipeline(job, pdf_path):
@@ -779,65 +347,78 @@ def run_pipeline(job, pdf_path):
 
 
 PAGE = u"""<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>日文学术 PDF 工作台</title>
-<link rel="stylesheet" href="/dashboard.css"></head><body>
-<header class="topbar">
- <div class="brand"><div class="logo">JP</div><div><b>日文学术 PDF 工作台</b><small>解析 · 复核 · 导出 · 回归</small></div></div>
- <div class="global-search"><input id="globalq" type="search" placeholder="搜索文献题名、作者或文档名  (Ctrl+K)"></div>
- <div class="top-actions">
-  <button id="newbatch" class="primary">＋ 新建批次</button>
-  <button id="topqueue" class="ghost">队列 <span id="queuebadge" class="badge">0</span></button>
-  <span id="channelstatus" class="channel-inline">M · D · P</span>
-  <button id="settingsbtn" class="ghost">设置</button>
- </div>
-</header>
-<div class="shell">
- <aside class="sidebar">
-  <nav id="nav">
-   <button data-route="overview" class="nav-item">总览</button>
-   <button data-route="queue" class="nav-item">任务队列 <span id="navqueue" class="nav-badge">0</span></button>
-   <button data-route="library" class="nav-item">文献库</button>
-   <button data-route="review" class="nav-item">质量复核 <span id="navreview" class="nav-badge">0</span></button>
-   <button data-route="channels" class="nav-item">渠道与配额</button>
-   <button data-route="reports" class="nav-item">批次报告</button>
-   <button data-route="eval" class="nav-item">评测</button>
-   <button data-route="settings" class="nav-item">设置 / 诊断</button>
-  </nav>
-  <div class="sidebar-foot"><span id="svcDot" class="dot"></span><span id="svcText">连接后台…</span><div id="footClock" class="muted"></div></div>
- </aside>
- <main id="main" class="main"></main>
- <aside id="inspector" class="inspector"><div class="empty-panel">选择任务或文献后，这里显示上下文、日志和操作。</div></aside>
+<title>三渠道解析对比工作台</title>
+<style>
+body{font-family:"Microsoft YaHei";margin:0;background:#f4f5f7;color:#222}
+header{background:#1f2937;color:#fff;padding:14px 22px}
+header b{font-size:17px}header span{color:#9ca3af;font-size:12px;margin-left:12px}
+.wrap{max-width:1180px;margin:24px auto;padding:0 16px}
+#drop{border:2px dashed #93c5fd;border-radius:12px;background:#fff;padding:30px 20px;text-align:center;color:#6b7280;transition:.15s;cursor:pointer}
+#drop.over{border-color:#2563eb;background:#eff6ff;transform:scale(1.01)}
+#drop b{color:#2563eb;font-size:18px}
+.boardtitle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:26px 0 10px}
+.boardtitle h2{font-size:18px;margin:0}
+#boardstatus{font-size:12px;color:#6b7280}#boardstatus.online{color:#059669}#boardstatus.offline{color:#dc2626}
+#summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
+.metric{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.metric span{font-size:12px;color:#6b7280}.metric b{font-size:22px}.metric .run{color:#2563eb}.metric .ok{color:#059669}.metric .warn{color:#d97706}.metric .err{color:#dc2626}
+#log{background:#111827;color:#a7f3d0;font:12px/1.7 Consolas,monospace;border-radius:10px;padding:12px 16px;margin-top:18px;min-height:60px;max-height:420px;overflow:auto;white-space:pre-wrap;display:none}
+#jobs{margin-top:12px}
+#jobs .jrow{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:13px 15px;margin:10px 0;cursor:pointer;font-size:13px}
+#jobs .jrow:hover{border-color:#2563eb}#jobs .jrow.cur{border-color:#2563eb;box-shadow:0 0 0 2px #dbeafe}
+.jhead{display:flex;align-items:center;gap:10px}.jhead b{font-size:15px}.stage{color:#4b5563}.elapsed{margin-left:auto;color:#6b7280;font-size:12px}
+.st{font-size:11px;border-radius:6px;padding:3px 9px;color:#fff;white-space:nowrap}.st.run{background:#2563eb}.st.que{background:#9ca3af}.st.ok{background:#059669}.st.warn{background:#d97706}.st.err{background:#dc2626}
+.channels{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0 8px}.channel{font-size:11px;border-radius:5px;padding:3px 8px;background:#f3f4f6;color:#6b7280}.channel.run{background:#dbeafe;color:#1d4ed8}.channel.ok{background:#d1fae5;color:#047857}.channel.warn{background:#fef3c7;color:#b45309}.channel.err{background:#fee2e2;color:#b91c1c}
+.jlog{font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.jfoot{display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#9ca3af}
+#jobs a{margin-left:12px;color:#2563eb;text-decoration:none}.warnings{margin-top:10px;border-left:3px solid #d97706;background:#fffbeb;padding:8px 10px;color:#92400e;font-size:12px;line-height:1.6}.warnings div{white-space:pre-wrap}
+.empty{background:#fff;border:1px dashed #d1d5db;border-radius:10px;padding:28px;text-align:center;color:#9ca3af;font-size:13px}
+.tip{font-size:12px;color:#9ca3af;margin-top:10px}
+#cfgbtn{float:right;background:#374151;color:#e5e7eb;border:1px solid #4b5563;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px}
+#cfgbtn:hover{background:#4b5563}
+#cfgpanel{display:none;position:fixed;right:0;top:0;height:100%;width:430px;background:#fff;box-shadow:-6px 0 24px rgba(0,0,0,.18);z-index:99;overflow:auto;padding:18px 22px}
+#cfgpanel h3{font-size:15px;margin:0 0 4px}
+#cfgpanel .sec{border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin:12px 0}
+#cfgpanel .sec b{font-size:13px;color:#1f2937}
+#cfgpanel label{display:block;font-size:12px;color:#6b7280;margin:8px 0 2px}
+#cfgpanel input[type=text],#cfgpanel input[type=number]{width:100%;box-sizing:border-box;border:1px solid #d1d5db;border-radius:6px;padding:6px 8px;font-size:13px}
+#cfgpanel .row{display:flex;gap:14px}
+#cfgpanel .row>div{flex:1}
+#cfgpanel .acts{position:sticky;bottom:0;background:#fff;padding:10px 0;display:flex;gap:10px}
+#cfgpanel .acts button{flex:1;border:0;border-radius:8px;padding:9px 0;cursor:pointer;font-size:14px}
+#savecfg{background:#2563eb;color:#fff}#closecfg{background:#e5e7eb}
+#cfgmsg{font-size:12px;color:#059669;min-height:16px}
+@media(max-width:760px){#summary{grid-template-columns:repeat(2,1fr)}.jhead{flex-wrap:wrap}.elapsed{margin-left:0}.links{display:block;margin-top:6px}header span{display:none}}
+</style><link rel="stylesheet" href="/dashboard.css"></head><body>
+<header class="topbar"><div class="brand"><div class="logo">KCI</div><div><b>三渠道解析对比工作台</b><small>PDF 解析、归一化与元数据流水线</small></div></div><button id="cfgbtn">渠道 API 配置</button></header>
+<div class="wrap">
+<div id="drop"><div class="pdf-icon">PDF</div><div class="upload-copy"><b>拖入 PDF 开始解析</b><span>也可以点击选择文件，或复制到 uploads 文件夹</span></div><span class="upload-action">选择 PDF →</span><input id="f" type="file" accept="application/pdf" style="display:none"></div>
+<div class="boardtitle"><div><h2>任务总览</h2><p>集中查看任务进度、管道环节和渠道运行状态</p></div><span id="boardstatus">正在连接后台...</span></div>
+<div id="summary"></div>
+<div class="workspace">
+ <aside class="panel"><div class="panel-head"><h3>任务列表</h3><span id="jobcount">0 个任务</span></div><div id="jobs"><div class="empty">正在读取任务...</div></div></aside>
+ <section class="panel" id="detail"><div class="detail-empty">选择任务后查看管道状态</div></section>
 </div>
-<footer class="statusbar">
- <span id="statusQueue">队列 0</span><span id="statusChannels">渠道 —</span><span id="statusIndex">索引 —</span>
- <span class="grow"></span><span id="statusTime">—</span><span class="muted">8765</span>
-</footer>
-<input id="f" type="file" accept="application/pdf" multiple hidden>
+<p class="tip">每 1.5 秒自动刷新 · 仅展示由本工作台启动的任务 · 解析结果保存在 out / 文档名</p>
+</div>
 <div id="toast" class="toast" role="status"></div>
 <div id="cfgpanel">
  <h3>渠道 API 配置</h3>
- <p class="tip">写入 channels.local.json，下个文档自动生效；Token 不回显到页面日志。</p>
+ <p class="tip" style="margin:0">写入 channels.local.json，下个文档自动生效（pipeline 每次调用都会重读）。</p>
  <div id="cfgform"></div>
  <div id="cfgmsg"></div>
- <div class="acts"><button id="closecfg" class="ghost">取消</button><button id="savecfg" class="primary">保存</button></div>
+ <div class="acts"><button id="closecfg">取消</button><button id="savecfg">保存</button></div>
 </div>
 <script src="/app.js"></script></body></html>"""
 
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
-    def _send(self, code, body, ctype="text/html; charset=utf-8", headers=None):
+    def _send(self, code, body, ctype="text/html; charset=utf-8"):
         b = body if isinstance(body, bytes) else body.encode("utf-8")
         self.send_response(code); self.send_header("Content-Type", ctype)
-        for k, v in (headers or {}).items():
-            self.send_header(k, v)
         self.send_header("Content-Length", str(len(b))); self.end_headers()
         self.wfile.write(b)
-
-    def _q(self):
-        return parse_qs(urlparse(self.path).query)
     def do_GET(self):
-        if urlparse(self.path).path in ("/", "/index.html"):
+        if self.path in ("/", "/index.html"):
             return self._send(200, PAGE)
         if self.path.startswith("/app.js"):
             fp = os.path.join(ROOT, "app.js")
@@ -862,64 +443,6 @@ class H(BaseHTTPRequestHandler):
                 data = _public_job(job, j) if j else {"state": "gone", "log": [], "doc": "", "err": ""}
                 data["log"] = list(j.get("log", [])[-100:]) if j else []
             return self._send(200, json.dumps(data, ensure_ascii=False), "application/json")
-        if self.path.startswith("/api/library"):
-            q = (self._q().get("q") or [""])[0].strip().lower()
-            flag = (self._q().get("flag") or [""])[0].strip()
-            items = _scan_library()
-            if q:
-                items = [d for d in items if q in (d.get("doc") or "").lower() or
-                         q in (d.get("title") or "").lower() or q in (d.get("author_text") or "").lower()]
-            if flag:
-                items = [d for d in items if flag in (d.get("flags") or [])]
-            return self._send(200, json.dumps({"items": items, "total": len(items),
-                                               "cached": time.time() - LIB_CACHE.get("at", 0) < 4},
-                                              ensure_ascii=False), "application/json")
-        if self.path.startswith("/api/review"):
-            items, counts = _review_rows()
-            flag = (self._q().get("flag") or [""])[0].strip()
-            if flag:
-                items = [d for d in items if flag in (d.get("flags") or [])]
-            items = sorted(items, key=lambda d: (len(d.get("flags") or []), d.get("doc") or ""), reverse=True)
-            return self._send(200, json.dumps({"items": items, "counts": counts,
-                                               "total": len(items)}, ensure_ascii=False),
-                              "application/json")
-        if self.path.startswith("/api/doc"):
-            doc = _safe_doc((self._q().get("doc") or [""])[0])
-            payload = _doc_payload(doc)
-            if not payload:
-                return self._send(404, json.dumps({"ok": 0, "err": "文献不存在或名称非法"},
-                                                  ensure_ascii=False), "application/json")
-            return self._send(200, json.dumps(payload, ensure_ascii=False), "application/json")
-        if self.path.startswith("/api/export"):
-            fmt = (self._q().get("fmt") or ["csv"])[0].lower()
-            if fmt not in ("csv", "bib", "json"):
-                return self._send(400, json.dumps({"ok": 0, "err": "fmt 只支持 csv/bib/json"},
-                                                  ensure_ascii=False), "application/json")
-            body, ctype, filename = _export_payload(fmt)
-            return self._send(200, body, ctype,
-                              {"Content-Disposition": "attachment; filename=\"%s\"" % filename})
-        if self.path.startswith("/api/eval"):
-            reports = _eval_reports()
-            return self._send(200, json.dumps({"reports": reports}, ensure_ascii=False),
-                              "application/json")
-        if self.path.startswith("/api/index"):
-            return self._send(200, json.dumps(_index_status(), ensure_ascii=False),
-                              "application/json")
-        if self.path.startswith("/api/channels"):
-            return self._send(200, json.dumps({"channels": _channel_health()},
-                                              ensure_ascii=False), "application/json")
-        if self.path.startswith("/api/diag"):
-            doc = _safe_doc((self._q().get("doc") or [""])[0])
-            with JOB_LOCK:
-                rows = [(k, j) for k, j in JOBS.items() if j.get("doc") == doc]
-            job = _public_job(*rows[-1]) if rows else None
-            if job:
-                with JOB_LOCK:
-                    job["log"] = list(rows[-1][1].get("log", [])[-120:])
-            return self._send(200, json.dumps({"doc": doc, "job": job,
-                                               "channels": _channel_health(),
-                                               "missing_channels": _missing_channels(doc)},
-                                              ensure_ascii=False), "application/json")
         if self.path.startswith("/api/config"):
             return self._send(200, json.dumps(_effective_cfg(), ensure_ascii=False), "application/json")
         if self.path.startswith("/trial/"):   # NER 审计页等 trial 产物(static, 同 /out/ 越界守卫)
@@ -972,7 +495,7 @@ class H(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._send(400, json.dumps({"ok": 0, "err": str(e)}, ensure_ascii=False),
                                   "application/json")
-        if self.path.startswith("/api/retry?"):
+        if self.path.startswith("/api/retry"):
             q = re.search(r"doc=([^&]+)", self.path)
             chm = re.search(r"ch=(mineru|dots|paddle)", self.path)
             if not q or not chm:
@@ -1000,44 +523,6 @@ class H(BaseHTTPRequestHandler):
             threading.Thread(target=run_pipeline, args=(jid, pdf), daemon=True).start()
             return self._send(200, json.dumps({"ok": 1, "job": jid}, ensure_ascii=False),
                               "application/json")
-        if self.path.startswith("/api/retry-missing"):
-            doc = _safe_doc((self._q().get("doc") or [""])[0])
-            pdf = os.path.join(UP, doc + ".pdf") if doc else ""
-            if not doc or not os.path.isfile(pdf):
-                return self._send(404, json.dumps(
-                    {"ok": 0, "err": "uploads 里找不到该文档的 PDF"}, ensure_ascii=False),
-                    "application/json")
-            miss = _missing_channels(doc)
-            if not miss:
-                return self._send(400, json.dumps(
-                    {"ok": 0, "err": "三渠道产物齐全，无需补跑"}, ensure_ascii=False),
-                    "application/json")
-            if _active_job_id(doc):
-                return self._send(409, json.dumps(
-                    {"ok": 0, "err": "该文档已有任务在运行，请等待结束"}, ensure_ascii=False),
-                    "application/json")
-            RESCUE_STATE.pop(doc, None)
-            jid = "retry-missing-%x" % int(time.time() * 1000)
-            _create_job_if_absent(jid, doc, rescue="retry:" + ",".join(miss))
-            print("[retry-missing] %s 缺 %s, 补跑(已有渠道走缓存)" % (doc, "/".join(miss)))
-            threading.Thread(target=_rescue_run, args=(jid, pdf, doc), daemon=True).start()
-            return self._send(200, json.dumps({"ok": 1, "job": jid, "missing": miss},
-                                              ensure_ascii=False), "application/json")
-        if self.path.startswith("/api/override"):
-            n = int(self.headers.get("Content-Length", 0))
-            if n <= 0 or n > 256 * 1024:
-                return self._send(413, "bad request")
-            try:
-                body = json.loads(self.rfile.read(n).decode("utf-8"))
-                doc = _safe_doc(body.get("doc") or "")
-                if not doc or not os.path.isdir(os.path.join(OUT, doc)):
-                    raise ValueError("文献不存在或名称非法")
-                payload = _save_override(doc, body.get("fields") or {}, body.get("note") or "")
-                return self._send(200, json.dumps({"ok": 1, "data": payload}, ensure_ascii=False),
-                                  "application/json")
-            except Exception as e:
-                return self._send(400, json.dumps({"ok": 0, "err": str(e)}, ensure_ascii=False),
-                                  "application/json")
         if self.path.startswith("/api/config"):
             n = int(self.headers.get("Content-Length", 0))
             if n <= 0 or n > 64 * 1024:
@@ -1120,25 +605,16 @@ def rescue_scan():
                 if not os.path.exists(os.path.join(dd, "raw", ch))
                 and not os.path.exists(os.path.join(dd, "raw", ch + "_api"))]
         if not miss:
-            RESCUE_STATE.pop(d, None)
             continue
         pdf = os.path.join(UP, d + ".pdf")
         if not os.path.exists(pdf):
-            continue
-        # 自动补跑必须限次+冷却。此前缺渠道文档每 2 秒被重新拉起一次,
-        # 在界面里表现为一串永远 degraded 的 rescue-* 任务, 还会持续抢 RUN_LOCK。
-        tries, last = RESCUE_STATE.get(d, (0, 0.0))
-        now = time.monotonic()
-        if tries >= RESCUE_MAX or (last and now - last < RESCUE_COOLDOWN):
             continue
         if RUN_LOCK.locked():
             return  # 有任务在跑, 下一轮再补
         jid = "rescue-%x" % int(time.time() * 1000)
         if not _create_job_if_absent(jid, d, rescue=",".join(miss)):
             continue
-        RESCUE_STATE[d] = (tries + 1, now)
-        print("[rescue] %s 缺渠道(%s), 自动重跑补齐(%d/%d)" %
-              (d, "/".join(miss), tries + 1, RESCUE_MAX))
+        print("[rescue] %s 缺渠道(%s), 自动重跑补齐" % (d, "/".join(miss)))
         threading.Thread(target=_rescue_run, args=(jid, pdf, d), daemon=True).start()
         return
 
@@ -1164,8 +640,7 @@ def watch_uploads():
     print("[watch] 监视目录:", UP, "— 把 PDF 复制进来即可自动解析")
     while True:
         time.sleep(2)
-        if os.environ.get("KCI_DISABLE_AUTO_RESCUE") != "1":
-            rescue_scan()  # 兜底: 渠道曾失败的文档自动补跑(每次只补一个, 有任务在跑则跳过)
+        rescue_scan()  # 兜底: 渠道曾失败的文档自动补跑(每次只补一个, 有任务在跑则跳过)
         for f in os.listdir(UP):
             if not f.lower().endswith(".pdf"): continue
             fp = os.path.join(UP, f)
@@ -1249,14 +724,8 @@ if __name__ == "__main__":
     print("  解释器: %s" % sys.executable)
     print("  本窗口保持开着服务才运行; 关闭窗口 = 停止服务")
     print("=" * 60)
-    if os.environ.get("KCI_DISABLE_WATCH") != "1":
-        threading.Thread(target=watch_uploads, daemon=True).start()
-    else:
-        print("  uploads 目录监视已关闭(KCI_DISABLE_WATCH=1)，拖拽上传仍可用")
-    if os.environ.get("KCI_DISABLE_AUTO_RESCUE") != "1":
-        threading.Timer(5.0, rescue_scan).start()  # 启动即扫一遍: 上次会话渠道失败的文档自动补
-    else:
-        print("  自动补跑已关闭(KCI_DISABLE_AUTO_RESCUE=1)，可在任务队列手动补缺")
+    threading.Thread(target=watch_uploads, daemon=True).start()
+    threading.Timer(5.0, rescue_scan).start()  # 启动即扫一遍: 上次会话渠道失败的文档自动补
     try:
         webbrowser.open(url)
     except Exception:
