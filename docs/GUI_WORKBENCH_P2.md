@@ -71,10 +71,10 @@ py -3.11 D:\处理工具\2\_backups\gui-workbench-20261118\gui_p2_smoke.py
 
 ## 回退
 
-- 只回退 P2：`git revert --no-edit c028a26 5f4f590`；P0/P1 保留，账号下拉消失，旧单账号账本仍可读。
-- 回退到 P1：`git reset --hard gui-workbench-p1-20261118`。
-- P2 最终标签：`gui-workbench-p2-20261118`（`c028a26`）。
+- 只回退 P2、保留 P0/P1：`git reset --hard gui-workbench-p1-20261118`；账号下拉消失，旧单账号账本仍可读。
+- 只撤销 P2 的单个修复：`git revert --no-edit 2715271`（或对应的 P2 修复提交）。
 - 回退到 P0：`git reset --hard gui-workbench-p0-20261118`。
+- P2 最终标签：`gui-workbench-p2-20261118`（`2715271`）。
 - 账号文件是本地运行数据，回退代码不会删除 `.workbench/accounts.json`；
   如需彻底清除，手动删除该文件（会丢失 token 和手工额度设置）。
 
