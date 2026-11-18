@@ -1,0 +1,38 @@
+{
+ "id": "T-20261118-GUI-P1",
+ "title": "GUI P1 字段/实体审计",
+ "priority": "P1",
+ "owner": "deepseek",
+ "status": "in_progress",
+ "depends_on": [],
+ "allowed_files": [
+  "gui.py",
+  "field_audit.py",
+  "test_field_audit.py",
+  "docs/GUI_WORKBENCH_P1.md"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/deepseek/T-20261118-GUI-P1",
+ "base_commit": "main",
+ "acceptance": [
+  "16字段状态",
+  "空值不判缺失",
+  "实体负证据",
+  "GUI审计窗口",
+  "测试通过"
+ ],
+ "handoff_to": "",
+ "created_at": "2026-11-18T06:53:18+00:00",
+ "updated_at": "2026-11-18T06:53:18+00:00"
+}

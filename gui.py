@@ -20,6 +20,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 import archive
+import field_audit as fa
 import qc
 import stages
 import workbench_state as wb
@@ -433,6 +434,7 @@ class App(tk.Tk):
         self._webapp_on = False
         self._entity_cache = {}
         self._page_cache = {}
+        self._audit_win = None
         self._paused = True
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build()
@@ -529,10 +531,12 @@ class App(tk.Tk):
         self.btn_gaps = ttk.Button(act, text="重跑缺口", command=self._rerun_gaps)
         self.btn_retry = ttk.Button(act, text="重试缺失渠道", command=self._retry_missing)
         self.btn_view = ttk.Button(act, text="对照查看器", command=self._open_viewer)
+        self.btn_audit = ttk.Button(act, text="字段审计…", command=self._open_audit)
         self.btn_index = ttk.Button(act, text="结果总览", command=self._open_index)
         # 归档与"查看已归档"是两个独立键: 前者对选中集生效, 后者是全局清单(顶栏), 不合并
         self.btn_archive = ttk.Button(act, text="归档选中", command=self._archive_selected)
-        for b in (self.btn_gaps, self.btn_retry, self.btn_view, self.btn_index, self.btn_archive):
+        for b in (self.btn_gaps, self.btn_retry, self.btn_view, self.btn_audit,
+                  self.btn_index, self.btn_archive):
             b.pack(side="left", padx=4)
         self.sel_lbl = ttk.Label(act, text="未选中")
         self.sel_lbl.pack(side="left", padx=12)
@@ -562,6 +566,12 @@ class App(tk.Tk):
             return
         self.zone = z
         self.zone_id = z.zid
+        try:
+            if self._audit_win is not None and self._audit_win.winfo_exists():
+                self._audit_win.destroy()
+        except tk.TclError:
+            pass
+        self._audit_win = None
         self.runner = self.runners[z.zid]
         self._prefs = load_prefs(z.prefs)
         self.par_var.set(str(self.runner.parallel))
@@ -764,6 +774,7 @@ class App(tk.Tk):
         self.btn_gaps.configure(state="normal" if runnable else "disabled")
         self.btn_retry.configure(state="normal" if retryable else "disabled")
         self.btn_view.configure(state="normal" if has else "disabled")
+        self.btn_audit.configure(state="normal" if has else "disabled")
         self.btn_index.configure(state="normal" if has else "disabled")
         self.btn_archive.configure(state="normal" if has else "disabled")
         n = len(self._checked_stages()) if hasattr(self, "stage_vars") else 0
@@ -932,6 +943,8 @@ class App(tk.Tk):
         if not iid:
             return
         m = tk.Menu(self, tearoff=0)
+        m.add_command(label="字段 / 实体审计…", command=self._open_audit)
+        m.add_separator()
         m.add_command(label="打开对照查看器", command=self._open_viewer)
         m.add_command(label="打开结果总览", command=lambda: self._open(os.path.join(self.zone.out, iid, "index.html"))
                       if os.path.exists(os.path.join(self.zone.out, iid, "index.html")) else None)
@@ -951,6 +964,23 @@ class App(tk.Tk):
             m.tk_popup(ev.x_root, ev.y_root)
         finally:
             m.grab_release()
+
+    def _audit_alive(self):
+        try:
+            return self._audit_win is not None and self._audit_win.winfo_exists()
+        except tk.TclError:
+            return False
+
+    def _open_audit(self):
+        doc = self.tree.focus() or (self._selected()[0] if self._selected() else None)
+        if not doc:
+            return
+        if self._audit_alive() and self._audit_win.zone is self.zone:
+            self._audit_win.set_doc(doc)
+            self._audit_win.lift()
+            self._audit_win.focus_force()
+            return
+        self._audit_win = AuditWindow(self, self.zone, doc)
 
     def _open_viewer(self):
         doc = self.tree.focus() or (self._selected()[0] if self._selected() else None)
@@ -1130,6 +1160,220 @@ class App(tk.Tk):
         else:
             self._was_busy = busy
         self.after(1000, self._tick_status)
+
+
+class AuditWindow(tk.Toplevel):
+    """字段 / 实体审计: 16 个字段的状态、值与证据。
+
+    这里刻意不做“自动补全”或“猜一个值”：空值只写「未查」，除非有审计证据。
+    这样用户看到的红/黄/绿与最终能否交付是同一套口径。
+    """
+
+    FCOLS = (("field", 130, "字段"), ("status", 82, "状态"),
+             ("group", 62, "组"), ("value", 520, "值 / 摘要"))
+    ECOLS = (("kind", 100, "实体"), ("status", 82, "状态"),
+             ("count", 58, "数量"), ("reason", 560, "依据"))
+
+    COLORS = {
+        "present": "#1a7f37",
+        "absent_confirmed": "#1a7f37",
+        "not_checked": "#b26a00",
+        "uncertain": "#7a4fb0",
+        "extraction_failed": "#b03030",
+        "not_applicable": "#666666",
+    }
+
+    def __init__(self, app, zone, doc):
+        tk.Toplevel.__init__(self, app)
+        self.app = app
+        self.zone = zone
+        self.doc = doc
+        self.rows = []
+        self.title("字段 / 实体审计 · %s" % doc)
+        self.geometry("1080x650")
+        self.minsize(880, 520)
+        self.transient(app)
+        self._build()
+        self.set_doc(doc)
+
+    def _build(self):
+        head = ttk.Frame(self)
+        head.pack(fill="x", padx=12, pady=(10, 4))
+        self.head = ttk.Label(head, text="", font=("Microsoft YaHei UI", 11, "bold"))
+        self.head.pack(side="left")
+        self.counts = ttk.Label(head, text="")
+        self.counts.pack(side="right")
+
+        nb = ttk.Notebook(self)
+        nb.pack(fill="both", expand=True, padx=12, pady=4)
+
+        # 字段页
+        ftab = ttk.Frame(nb)
+        nb.add(ftab, text="字段（13）")
+        fp = ttk.Panedwindow(ftab, orient="horizontal")
+        fp.pack(fill="both", expand=True)
+        fl = ttk.Frame(fp)
+        self.ftree = ttk.Treeview(fl, columns=tuple(c[0] for c in self.FCOLS),
+                                  show="headings", selectmode="browse", height=15)
+        for cid, w, txt in self.FCOLS:
+            self.ftree.heading(cid, text=txt)
+            self.ftree.column(cid, width=w, anchor="w" if cid in ("field", "value") else "center")
+        for st, color in self.COLORS.items():
+            self.ftree.tag_configure(st, foreground=color)
+        self.ftree.pack(side="left", fill="both", expand=True)
+        fsb = ttk.Scrollbar(fl, orient="vertical", command=self.ftree.yview)
+        self.ftree.configure(yscrollcommand=fsb.set)
+        fsb.pack(side="right", fill="y")
+        self.ftree.bind("<<TreeviewSelect>>", lambda e: self._show_field())
+        fp.add(fl, weight=3)
+        self.fdetail = scrolledtext.ScrolledText(fp, width=46, height=15, wrap="word",
+                                                 font=("Microsoft YaHei UI", 9),
+                                                 state="disabled")
+        fp.add(self.fdetail, weight=2)
+
+        # 实体页
+        etab = ttk.Frame(nb)
+        nb.add(etab, text="实体（3 类）")
+        ep = ttk.Panedwindow(etab, orient="horizontal")
+        ep.pack(fill="both", expand=True)
+        el = ttk.Frame(ep)
+        self.etree = ttk.Treeview(el, columns=tuple(c[0] for c in self.ECOLS),
+                                  show="headings", selectmode="browse", height=8)
+        for cid, w, txt in self.ECOLS:
+            self.etree.heading(cid, text=txt)
+            self.etree.column(cid, width=w, anchor="w" if cid in ("kind", "reason") else "center")
+        for st, color in self.COLORS.items():
+            self.etree.tag_configure(st, foreground=color)
+        self.etree.pack(side="left", fill="both", expand=True)
+        esb = ttk.Scrollbar(el, orient="vertical", command=self.etree.yview)
+        self.etree.configure(yscrollcommand=esb.set)
+        esb.pack(side="right", fill="y")
+        self.etree.bind("<<TreeviewSelect>>", lambda e: self._show_entity())
+        ep.add(el, weight=3)
+        self.edetail = scrolledtext.ScrolledText(ep, width=46, height=8, wrap="word",
+                                                 font=("Microsoft YaHei UI", 9),
+                                                 state="disabled")
+        ep.add(self.edetail, weight=2)
+
+        bar = ttk.Frame(self)
+        bar.pack(fill="x", padx=12, pady=(2, 4))
+        ttk.Button(bar, text="打开 metadata.json", command=lambda: self._open(
+            fa.metadata_path(self.doc, self.zone))).pack(side="left")
+        ttk.Button(bar, text="打开 metadata_audit", command=lambda: self._open(
+            fa.audit_path(self.doc, self.zone))).pack(side="left", padx=6)
+        ttk.Button(bar, text="打开 NER 目录", command=lambda: self._open(
+            os.path.dirname(wb.entity_paths(self.doc, self.zone)[0]))).pack(side="left")
+        ttk.Button(bar, text="刷新", command=self.refresh).pack(side="left", padx=6)
+        ttk.Button(bar, text="关闭", command=self.destroy).pack(side="right")
+        ttk.Label(self, text="空值 ≠ 缺失；「确认无」必须有逐页/审计证据。缺值默认「未查」，"
+                             "不会自动当作不存在。",
+                  foreground="#666").pack(fill="x", padx=12, pady=(0, 8))
+
+    def set_doc(self, doc):
+        self.doc = doc
+        self.title("字段 / 实体审计 · %s · %s" % (doc, self.zone.label))
+        self.head.configure(text=doc)
+        self.refresh()
+
+    def refresh(self):
+        try:
+            self.rows = fa.field_statuses(self.doc, self.zone)
+            s = fa.summary(self.doc, self.zone)
+        except Exception as e:
+            messagebox.showerror("审计失败", str(e), parent=self)
+            return
+        self.counts.configure(
+            text="核心 %d/%d 齐 · 待核 %d · 实体 %s" % (
+                s["core_present"], s["core_total"], s["needs_audit"],
+                "/".join(fa.STATUS_LABEL.get(s["entities"].get(k), "?")
+                         for k in wb.ENTITY_KINDS)))
+        fsel = self.ftree.selection()
+        esel = self.etree.selection()
+        self.ftree.delete(*self.ftree.get_children())
+        self.etree.delete(*self.etree.get_children())
+        for r in self.rows:
+            if r["group"] == "entity":
+                self.etree.insert("", "end", iid=r["id"], tags=(r["status"],),
+                                  values=("%s（%s）" % (r["label"], r["id"]),
+                                          r["status_label"],
+                                          r["value"].count("；") + 1 if r["value"] else 0,
+                                          r["reason"]))
+            else:
+                self.ftree.insert("", "end", iid=r["id"], tags=(r["status"],),
+                                  values=(r["label"], r["status_label"], r["group_label"],
+                                          r["value"] or "—"))
+        if fsel and self.ftree.exists(fsel[0]):
+            self.ftree.selection_set(fsel[0])
+        elif self.ftree.get_children():
+            self.ftree.selection_set(self.ftree.get_children()[0])
+        if esel and self.etree.exists(esel[0]):
+            self.etree.selection_set(esel[0])
+        elif self.etree.get_children():
+            self.etree.selection_set(self.etree.get_children()[0])
+        self._show_field()
+        self._show_entity()
+
+    def _row(self, iid):
+        return next((r for r in self.rows if r["id"] == iid), None)
+
+    @staticmethod
+    def _put(widget, text):
+        widget.configure(state="normal")
+        widget.delete("1.0", "end")
+        widget.insert("1.0", text)
+        widget.configure(state="disabled")
+
+    def _show_field(self):
+        sel = self.ftree.selection()
+        r = self._row(sel[0]) if sel else None
+        if not r:
+            self._put(self.fdetail, "")
+            return
+        lines = ["状态: %s (%s)" % (r["status_label"], r["status"]),
+                 "组: %s" % r["group_label"],
+                 "值: %s" % (r["value"] or "（空）"),
+                 "依据: %s" % (r["reason"] or "—"),
+                 "置信度: %s / %s" % (r["confidence"].get("level") or "—",
+                                      r["confidence"].get("source") or "—")]
+        if r["basis"]:
+            lines.append("抽取依据: %s" % r["basis"])
+        if r["flag"]:
+            lines.append("标记: %s" % r["flag"])
+        neg = r.get("negative") or {}
+        if neg:
+            lines += ["", "负证据:", "  检查页: %s" % neg.get("pages_checked", ""),
+                      "  查询: %s" % neg.get("queries", ""),
+                      "  方法: %s" % neg.get("method", ""),
+                      "  结果: %s" % neg.get("result", ""),
+                      "  置信: %s" % neg.get("confidence", "")]
+        lines += ["", "证据文件:", r["evidence"] or "—"]
+        self._put(self.fdetail, "\n".join(lines))
+
+    def _show_entity(self):
+        sel = self.etree.selection()
+        r = self._row(sel[0]) if sel else None
+        if not r:
+            self._put(self.edetail, "")
+            return
+        lines = ["状态: %s (%s)" % (r["status_label"], r["status"]),
+                 "数量: %d" % (r["value"].count("；") + 1 if r["value"] else 0),
+                 "记录: %s" % (r["value"] or "—"),
+                 "依据: %s" % (r["reason"] or "—")]
+        neg = r.get("negative") or {}
+        if neg:
+            lines += ["", "负证据:", "  检查页: %s" % neg.get("pages_checked", ""),
+                      "  查询: %s" % neg.get("queries", ""),
+                      "  方法: %s" % neg.get("method", ""),
+                      "  结果: %s" % neg.get("result", ""),
+                      "  置信: %s" % neg.get("confidence", "")]
+        lines += ["", "证据文件:", r["evidence"] or "—"]
+        self._put(self.edetail, "\n".join(lines))
+
+    def _open(self, fp):
+        if os.path.exists(fp):
+            app_open(fp)
+        else:
+            messagebox.showinfo("文件不存在", fp, parent=self)
 
 
 class ArchiveWindow(tk.Toplevel):
