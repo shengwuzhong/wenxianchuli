@@ -1,0 +1,40 @@
+{
+ "id": "T-20261118-GUI-P2",
+ "title": "GUI P2 Paddle 账号与日额度",
+ "priority": "P1",
+ "owner": "deepseek",
+ "status": "review",
+ "depends_on": [],
+ "allowed_files": [
+  "gui.py",
+  "stages.py",
+  "workbench_state.py",
+  "test_workbench_accounts.py",
+  "docs/GUI_WORKBENCH_P2.md"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [],
+ "branch": "agent/deepseek/T-20261118-GUI-P2",
+ "base_commit": "5f4f590",
+ "acceptance": [
+  "账号独立/共享额度",
+  "按页预扣",
+  "账号按工作区分配",
+  "任务保留入队账号",
+  "子进程不串 token",
+  "测试通过"
+ ],
+ "handoff_to": "integrator",
+ "created_at": "2026-11-18T07:03:41+00:00",
+ "updated_at": "2026-11-18T07:03:41+00:00"
+}
