@@ -12,6 +12,8 @@
 | 仓库 bundle | `_backups/upstream-merge-20261119/repo.bundle` |
 | 集成分支 | `integration/upstream-20261119` |
 | 合并提交 | `27c4979` |
+| 主分支结果 | `main` @ `d7780ee`（fast-forward） |
+| 合并 tag | `merge-upstream-20261119` |
 
 ## 合并策略
 
@@ -63,7 +65,6 @@ git bundle verify _backups/upstream-merge-20261119/repo.bundle
 
 ## 未完成
 
-- 主分支尚未 fast-forward 到集成分支，等待合并结果复核。
 - 上游 30 项元数据/查看器测试跳过；本地元数据仍然权威。
 - 年份覆盖仍不足；下一步按计划做页面页眉/页脚/DOI/PDF 元数据抽取，并用 30–50 篇随机人工 gold 验证到 70% 左右。
 - 26/43_2 的 dots 渠道仍等待服务恢复；不自动重试。
