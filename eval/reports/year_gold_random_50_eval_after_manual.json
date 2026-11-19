@@ -1,0 +1,22 @@
+{
+  "gold": "eval\\year_gold_random_50.json",
+  "docs_total": 50,
+  "known": 28,
+  "correct": 28,
+  "accuracy": 1.0,
+  "by_source": {
+    "regex": {
+      "n": 17,
+      "ok": 17
+    },
+    "header": {
+      "n": 10,
+      "ok": 10
+    },
+    "text_pub": {
+      "n": 1,
+      "ok": 1
+    }
+  },
+  "errors": []
+}

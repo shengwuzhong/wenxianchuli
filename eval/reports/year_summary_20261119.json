@@ -1,21 +1,22 @@
 {
  "docs": 379,
- "year_present": 284,
- "year_missing": 95,
+ "year_present": 288,
+ "year_missing": 91,
  "article": 334,
- "article_year_present": 256,
- "article_year_missing": 78,
+ "article_year_present": 260,
+ "article_year_missing": 74,
  "sources": {
   "filename_fallback": 25,
   "header": 61,
   "regex": 167,
   "external_nijl": 6,
+  "page_publication": 4,
   "filename_prefix": 24,
   "text_pub": 1
  },
- "independent_present": 235,
- "independent_coverage_all": 0.6201,
- "independent_coverage_article": 0.7036,
+ "independent_present": 239,
+ "independent_coverage_all": 0.6306,
+ "independent_coverage_article": 0.6347,
  "missing": [
   [
    "A",
@@ -45,11 +46,6 @@
   [
    "A",
    "11_1_",
-   "article"
-  ],
-  [
-   "A",
-   "12_0_12_106_1",
    "article"
   ],
   [
@@ -85,11 +81,6 @@
   [
    "A",
    "19_0_19_93",
-   "article"
-  ],
-  [
-   "A",
-   "21_20_21_21.20240479",
    "article"
   ],
   [
@@ -229,12 +220,12 @@
   ],
   [
    "A",
-   "50_supplement2_50_KJ00006867238",
+   "50_Supplement_50_S298",
    "article"
   ],
   [
    "A",
-   "50_Supplement_50_S298",
+   "50_supplement2_50_KJ00006867238",
    "article"
   ],
   [
@@ -394,11 +385,6 @@
   ],
   [
    "B",
-   "13_3_13_3_93",
-   "article"
-  ],
-  [
-   "B",
    "19_0_19_0_247",
    "article"
   ],
@@ -410,11 +396,6 @@
   [
    "B",
    "2_Supplement_2_S12",
-   "article"
-  ],
-  [
-   "B",
-   "34.31_0_34.31_App2",
    "article"
   ],
   [
@@ -484,12 +465,12 @@
   ],
   [
    "B",
-   "tam51_0_tam51_0_46",
+   "V.01.1_0_V.01.1_79",
    "article"
   ],
   [
    "B",
-   "V.01.1_0_V.01.1_79",
+   "tam51_0_tam51_0_46",
    "article"
   ]
  ]
