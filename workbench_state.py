@@ -385,10 +385,13 @@ class QuotaBook:
         old_limit = int(data.get("limit") or data.get("default_limit") or self.default_daily)
         for key, val in list(accounts.items()):
             if not isinstance(val, dict):
-                accounts[key] = {"limit": old_limit, "entries": {}}
+                accounts[key] = {"limit": old_limit, "entries": {},
+                                 "baseline": 0, "server_used": 0}
             else:
                 val["limit"] = max(1, int(val.get("limit") or old_limit))
                 val.setdefault("entries", {})
+                val.setdefault("baseline", 0)
+                val.setdefault("server_used", 0)
         old_entries = data.get("entries")
         if not accounts:
             accounts["shared"] = {"limit": old_limit,
@@ -400,6 +403,9 @@ class QuotaBook:
         if data.get("date") != _today():
             for val in accounts.values():
                 val["entries"] = {}
+                val["baseline"] = 0
+                val["server_used"] = 0
+                val["baseline_at"] = None
             data["date"] = _today()
         self._save_data(data)
         return data
@@ -418,6 +424,9 @@ class QuotaBook:
         if self.data.get("date") != _today():
             for val in self.data["accounts"].values():
                 val["entries"] = {}
+                val["baseline"] = 0
+                val["server_used"] = 0
+                val["baseline_at"] = None
             self.data["date"] = _today()
             self._save_data(self.data)
 
@@ -426,10 +435,13 @@ class QuotaBook:
         with self.lock:
             self._roll()
             val = self.data["accounts"].setdefault(
-                key, {"limit": int(daily_pages or self.default_daily), "entries": {}})
+                key, {"limit": int(daily_pages or self.default_daily), "entries": {},
+                      "baseline": 0, "server_used": 0})
             if daily_pages:
                 val["limit"] = max(1, int(daily_pages))
             val.setdefault("entries", {})
+            val.setdefault("baseline", 0)
+            val.setdefault("server_used", 0)
             self._save_data(self.data)
             return key
 
@@ -448,11 +460,54 @@ class QuotaBook:
             self.ensure(key)
             return int(self.data["accounts"][key]["limit"])
 
-    def used(self, key):
+    def local_used(self, key):
+        """Only reservations made by this workbench (not server history)."""
         with self.lock:
             self.ensure(key)
             return sum(int(v.get("pages") or 0)
                        for v in self.data["accounts"][key]["entries"].values())
+
+    def baseline(self, key):
+        """Pages added by the last manual server reconciliation."""
+        with self.lock:
+            self.ensure(key)
+            return max(0, int(self.data["accounts"][key].get("baseline") or 0))
+
+    def server_seen(self, key):
+        """Last AI Studio page count entered by the user (0 = never reconciled)."""
+        with self.lock:
+            self.ensure(key)
+            return max(0, int(self.data["accounts"][key].get("server_used") or 0))
+
+    def used(self, key):
+        """Effective usage: local reservations + reconciliation baseline.
+
+        If the server reported more usage than the local ledger knew about at
+        reconciliation time, the difference is a baseline. New reservations add
+        to it, so admission keeps working after the correction.
+        """
+        with self.lock:
+            self.ensure(key)
+            return self.local_used(key) + self.baseline(key)
+
+    def reconcile(self, key, server_used):
+        """Set a manual AI Studio baseline from the current local state.
+
+        The server count is authoritative at this instant. We only add the
+        non-negative difference to local entries; if local is already ahead
+        (pending jobs not yet reflected server-side), keep local and do not
+        subtract anything.
+        """
+        server = max(0, int(server_used or 0))
+        with self.lock:
+            self.ensure(key)
+            local = self.local_used(key)
+            val = self.data["accounts"][key]
+            val["baseline"] = max(0, server - local)
+            val["server_used"] = server
+            val["baseline_at"] = _now()
+            self._save_data(self.data)
+            return self.summary(key)
 
     def remaining(self, key):
         return max(0, self.limit(key) - self.used(key))
@@ -482,10 +537,15 @@ class QuotaBook:
     def summary(self, key):
         with self.lock:
             self.ensure(key)
-            used = self.used(key)
+            local = self.local_used(key)
+            base = self.baseline(key)
+            used = local + base
             limit = self.limit(key)
-            return {"account": key, "date": self.data["date"], "used": used,
-                    "limit": limit, "remaining": max(0, limit - used)}
+            return {"account": key, "date": self.data["date"],
+                    "local": local, "baseline": base,
+                    "server_used": self.server_seen(key),
+                    "used": used, "limit": limit,
+                    "remaining": max(0, limit - used)}
 
     def summary_all(self):
         with self.lock:
@@ -501,6 +561,18 @@ class QuotaAccount:
 
     def used(self):
         return self.book.used(self.account)
+
+    def local_used(self):
+        return self.book.local_used(self.account)
+
+    def baseline(self):
+        return self.book.baseline(self.account)
+
+    def server_seen(self):
+        return self.book.server_seen(self.account)
+
+    def reconcile(self, server_used):
+        return self.book.reconcile(self.account, server_used)
 
     def remaining(self):
         return self.book.remaining(self.account)

@@ -37,6 +37,24 @@ class QuotaBookTest(unittest.TestCase):
             self.assertEqual(book.used("shared"), 12)
             self.assertEqual(book.limit("shared"), 1000)
 
+    def test_server_reconciliation_adds_baseline_and_keeps_new_reservations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            book = ws.QuotaBook(os.path.join(tmp, "q.json"), 100)
+            a = book.account("paddle_a", 100)
+            self.assertTrue(a.reserve("A/d1", 10))
+            self.assertEqual(a.used(), 10)
+            s = book.reconcile("paddle_a", 30)
+            self.assertEqual((s["local"], s["baseline"], s["used"]), (10, 20, 30))
+            self.assertEqual(a.remaining(), 70)
+            self.assertTrue(a.reserve("A/d2", 5))
+            self.assertEqual(a.used(), 35)
+            a.release("A/d2")
+            self.assertEqual(a.used(), 30)
+            book.data["date"] = "2000-01-01"
+            book.save()
+            self.assertEqual(a.used(), 0)
+            self.assertEqual(a.baseline(), 0)
+
     def test_daily_roll_clears_entries_but_keeps_limits(self):
         with tempfile.TemporaryDirectory() as tmp:
             fp = os.path.join(tmp, "q.json")

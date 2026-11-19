@@ -50,12 +50,13 @@ class AccountWindow(tk.Toplevel):
         top.pack(fill="x", padx=12, pady=(10, 4))
         ttk.Label(top, text="Token 存于 .workbench/accounts.json（不入库），界面只显示首尾。",
                   foreground="#555").pack(side="left")
-        cols = ("key", "label", "mask", "limit", "used", "left", "zones")
+        cols = ("key", "label", "mask", "limit", "used", "base", "left", "zones")
         self.tree = ttk.Treeview(self, columns=cols, show="headings", height=9)
-        for c, t, w, a in (("key", "账号", 120, "w"), ("label", "名称", 150, "w"),
-                           ("mask", "Token", 130, "center"), ("limit", "日额度", 80, "center"),
-                           ("used", "本地预扣", 80, "center"), ("left", "本地剩余", 80, "center"),
-                           ("zones", "使用区", 90, "center")):
+        for c, t, w, a in (("key", "账号", 100, "w"), ("label", "名称", 120, "w"),
+                           ("mask", "Token", 110, "center"), ("limit", "日额度", 70, "center"),
+                           ("used", "本地 / 有效", 110, "center"),
+                           ("base", "对账基线", 76, "center"), ("left", "本地剩余", 76, "center"),
+                           ("zones", "使用区", 80, "center")):
             self.tree.heading(c, text=t)
             self.tree.column(c, width=w, anchor=a)
         self.tree.pack(fill="both", expand=True, padx=12, pady=6)
@@ -74,7 +75,11 @@ class AccountWindow(tk.Toplevel):
         ttk.Entry(r1, textvariable=self.label_var, width=20).pack(side="left", padx=(4, 12))
         ttk.Label(r1, text="日额度").pack(side="left")
         self.limit_var = tk.StringVar(value="20000")
-        ttk.Entry(r1, textvariable=self.limit_var, width=9).pack(side="left", padx=4)
+        ttk.Entry(r1, textvariable=self.limit_var, width=8).pack(side="left", padx=4)
+        ttk.Label(r1, text="服务端已用").pack(side="left", padx=(8, 0))
+        self.server_var = tk.StringVar()
+        ttk.Entry(r1, textvariable=self.server_var, width=8).pack(side="left", padx=4)
+        ttk.Label(r1, text="填 AI Studio 今日值", foreground="#777").pack(side="left")
 
         r2 = ttk.Frame(form)
         r2.pack(fill="x", pady=4)
@@ -89,11 +94,12 @@ class AccountWindow(tk.Toplevel):
         buttons.pack(fill="x", padx=12, pady=(0, 8))
         ttk.Button(buttons, text="新增", command=self._new).pack(side="left")
         ttk.Button(buttons, text="保存", command=self._save).pack(side="left", padx=6)
-        ttk.Button(buttons, text="删除", command=self._delete).pack(side="left")
-        ttk.Button(buttons, text="刷新", command=self.refresh).pack(side="left", padx=6)
+        ttk.Button(buttons, text="按服务端对账", command=self._reconcile).pack(side="left")
+        ttk.Button(buttons, text="删除", command=self._delete).pack(side="left", padx=6)
+        ttk.Button(buttons, text="刷新", command=self.refresh).pack(side="left")
         ttk.Button(buttons, text="关闭", command=self.destroy).pack(side="right")
         ttk.Label(self, text="日额度单位为 PDF 页。一个账号可同时分配给 A/B；共用时日额度也共用。"
-                            "本地账本只记预扣；服务端用量以 AI Studio 控制台为准。",
+                            "本地只记预扣；“有效”=本地预扣+对账基线；服务端最终以 AI Studio 为准。",
                   foreground="#555").pack(fill="x", padx=12, pady=(0, 8))
 
     def refresh(self):
@@ -103,7 +109,9 @@ class AccountWindow(tk.Toplevel):
             key = a["key"]
             self.tree.insert("", "end", iid=key, values=(
                 key, a["label"], a["token_mask"],
-                self.qbook.limit(key), self.qbook.used(key), self.qbook.remaining(key),
+                self.qbook.limit(key),
+                "%d / %d" % (self.qbook.local_used(key), self.qbook.used(key)),
+                self.qbook.baseline(key), self.qbook.remaining(key),
                 ",".join(self.accounts.zones_of(key)) or "-"))
         if self.zone_id:
             key = self.accounts.assignment(self.zone_id)
@@ -124,6 +132,8 @@ class AccountWindow(tk.Toplevel):
         self.key_entry.configure(state="disabled")
         self.label_var.set(a.get("label") or key)
         self.limit_var.set(str(self.qbook.limit(key)))
+        seen = self.qbook.server_seen(key)
+        self.server_var.set(str(seen) if seen else "")
         self.token_var.set("")
 
     def _new(self):
@@ -131,6 +141,7 @@ class AccountWindow(tk.Toplevel):
         self.key_var.set("")
         self.label_var.set("")
         self.limit_var.set("20000")
+        self.server_var.set("")
         self.token_var.set("")
         self.tree.selection_remove(self.tree.selection())
 
@@ -165,6 +176,32 @@ class AccountWindow(tk.Toplevel):
         self.refresh()
         if self.on_change:
             self.on_change()
+
+    def _reconcile(self):
+        key = self._selected() or self.key_var.get().strip()
+        if not key:
+            messagebox.showwarning("对账", "先在表中选择一个账号")
+            return
+        if not self.accounts.get(key):
+            messagebox.showwarning("对账", "账号 %s 不存在" % key)
+            return
+        raw = self.server_var.get().strip()
+        if not raw:
+            messagebox.showwarning("对账", "请填写 AI Studio 今日调用解析页数")
+            return
+        try:
+            server = int(raw)
+        except ValueError:
+            messagebox.showwarning("对账", "服务端页数必须是整数")
+            return
+        s = self.qbook.reconcile(key, server)
+        self.refresh()
+        if self.on_change:
+            self.on_change()
+        messagebox.showinfo(
+            "对账完成",
+            "账号 %s\n服务端已用：%d\n本地预扣：%d\n对账基线：%d\n有效已用：%d / %d"
+            % (key, s["server_used"], s["local"], s["baseline"], s["used"], s["limit"]))
 
     def _delete(self):
         key = self._selected()
@@ -361,9 +398,12 @@ class LocalTaskWindow(tk.Toplevel):
         self._refresh_accounts()
         self.sel_lbl.configure(text="未选中" if not self.tree.selection()
                                   else "已选 %d 篇" % len(self.tree.selection()))
-        self.stat_lbl.configure(text="%s · %s · Paddle 本地预扣 %d/%d 页（本地余 %d）" % (
+        base = runner.quota.baseline()
+        self.stat_lbl.configure(text="%s · %s · Paddle 本地预扣 %d / 有效 %d / %d 页%s（余 %d）" % (
             zone.zid + " · " + zone.label, runner.status(),
-            runner.quota.used(), runner.quota.book.limit(zone.account),
+            runner.quota.local_used(), runner.quota.used(),
+            runner.quota.book.limit(zone.account),
+            ("，对账基线 %d" % base) if base else "",
             runner.quota.remaining()))
         self.note.configure(text="历史基线不会自动跑；新文件需选中后点开始解析。"
                                 "当前区 uploads: %s" % zone.up)
