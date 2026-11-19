@@ -579,6 +579,8 @@ class App(tk.Tk):
         self.runner = self._runner_for(self.workspace)
         self._was_busy = False
         self._webapp_on = False
+        self._local_hub = None
+        self._local_win = None
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build()
         self.after(100, self._drain)
@@ -619,6 +621,7 @@ class App(tk.Tk):
         # 浏览器工作台(拖拽上传 + 三渠道并排调参)也收进这里: 用户只记"打开这个工作台"一个动作,
         # 不必再分辨该双击 start.bat 还是 启动GUI.bat(2026-11-13 入口收口)。
         ttk.Button(tools, text="浏览器工作台", command=self._open_webapp).pack(side="left")
+        ttk.Button(tools, text="本地任务", command=self._open_local_tasks).pack(side="left", padx=(6, 0))
         ttk.Button(tools, text="渠道 API 配置", command=self._open_api_config).pack(side="left", padx=(8, 0))
         # 并发数: 这是"同时跑几篇", 不是"一篇跑多快"。调大只影响排队位置, 见 crossproc.py。
         ttk.Label(tools, text="并发").pack(side="left", padx=(12, 2))
@@ -1333,6 +1336,18 @@ class App(tk.Tk):
                                 "\n".join("%s: %s" % (d, w) for d, w in r["warnings"]),
                                 parent=self)
         self.refresh()
+
+    def _open_local_tasks(self):
+        """Sidecar for local A/B queue/accounts/quota; upstream table stays read-only here."""
+        if not self._local_hub:
+            import workbench_runner
+            self._local_hub = workbench_runner.RunnerHub(log=self._log)
+        if self._local_win is not None and self._local_win.winfo_exists():
+            self._local_win.lift()
+            self._local_win.focus_force()
+            return
+        import local_task_window
+        self._local_win = local_task_window.LocalTaskWindow(self, self._local_hub, self._log)
 
     def _open_archive_list(self):
         ArchiveWindow(self)
