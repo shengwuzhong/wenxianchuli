@@ -54,7 +54,7 @@ class AccountWindow(tk.Toplevel):
         self.tree = ttk.Treeview(self, columns=cols, show="headings", height=9)
         for c, t, w, a in (("key", "账号", 120, "w"), ("label", "名称", 150, "w"),
                            ("mask", "Token", 130, "center"), ("limit", "日额度", 80, "center"),
-                           ("used", "今日已用", 80, "center"), ("left", "剩余", 80, "center"),
+                           ("used", "本地预扣", 80, "center"), ("left", "本地剩余", 80, "center"),
                            ("zones", "使用区", 90, "center")):
             self.tree.heading(c, text=t)
             self.tree.column(c, width=w, anchor=a)
@@ -93,7 +93,7 @@ class AccountWindow(tk.Toplevel):
         ttk.Button(buttons, text="刷新", command=self.refresh).pack(side="left", padx=6)
         ttk.Button(buttons, text="关闭", command=self.destroy).pack(side="right")
         ttk.Label(self, text="日额度单位为 PDF 页。一个账号可同时分配给 A/B；共用时日额度也共用。"
-                            "本地账本只记预扣，不是 AI Studio 服务端用量。",
+                            "本地账本只记预扣；服务端用量以 AI Studio 控制台为准。",
                   foreground="#555").pack(fill="x", padx=12, pady=(0, 8))
 
     def refresh(self):
@@ -361,7 +361,7 @@ class LocalTaskWindow(tk.Toplevel):
         self._refresh_accounts()
         self.sel_lbl.configure(text="未选中" if not self.tree.selection()
                                   else "已选 %d 篇" % len(self.tree.selection()))
-        self.stat_lbl.configure(text="%s · %s · Paddle 今日 %d/%d 页（余 %d）" % (
+        self.stat_lbl.configure(text="%s · %s · Paddle 本地预扣 %d/%d 页（本地余 %d）" % (
             zone.zid + " · " + zone.label, runner.status(),
             runner.quota.used(), runner.quota.book.limit(zone.account),
             runner.quota.remaining()))
