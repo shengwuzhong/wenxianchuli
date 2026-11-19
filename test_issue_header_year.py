@@ -32,6 +32,19 @@ class HeaderYearTest(unittest.TestCase):
         self.assertEqual(res["year"]["value"], 2013)
         self.assertEqual(res["year"]["confidence"]["source"], "header")
 
+    def test_first_page_text_masthead_year_used(self):
+        res = issue.extract(
+            [(0, "t", "Vol. 53 No. 6 2003", "text")],
+            1, set())
+        self.assertEqual(res["year"]["value"], 2003)
+        self.assertEqual(res["year"]["confidence"]["source"], "text_pub")
+
+    def test_text_citation_with_pages_not_used_as_masthead(self):
+        res = issue.extract(
+            [(0, "t", "Vol. 53 No. 6, pp. 1-10, 2003", "text")],
+            1, set())
+        self.assertNotEqual(res["year"]["confidence"]["source"], "text_pub")
+
 
 if __name__ == "__main__":
     unittest.main()

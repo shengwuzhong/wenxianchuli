@@ -241,6 +241,27 @@ def _header_year(s, kind):
     return ys
 
 
+def _text_pub_year(s):
+    """首页正文块里的刊头出版年兜底。
+
+    OCR 偶尔把 `Vol. 53 No. 6 2003` 这类刊头识别成 Text 而不是 Page-header。
+    只接受同时含卷号和期号、且不含页码/引用词的短行；宁可漏，不误填。
+    """
+    t = (s or "").strip()
+    if not t or len(_fold(t)) > 60:
+        return []
+    if not re.search(r"Vol(?:ume)?\.?\s*\d+|第?\s*\d+\s*巻", t, re.I):
+        return []
+    if not re.search(r"No\.?\s*\d+|第?\s*\d+\s*号|\(\s*\d+\s*\)", t, re.I):
+        return []
+    if re.search(r"pp\.|pages?|参照|引用|参考文献|cited|et\s+al\.", t, re.I):
+        return []
+    if re.search(r"(?:19|20)\d{2}\s*[-–—]\s*(?:19|20)\d{2}", t):
+        return []
+    return [int(m.group(1)) for m in _YEAR.finditer(t)
+            if int(m.group(1)) in YEAR_OK]
+
+
 def extract(source, n_pages, excluded_folds):
     """核心抽取(纯函数, selftest 直接喂构造行)。
     source: [(page, uid, line)]; excluded_folds: 本篇标题/作者的折叠集合(守卫);
@@ -249,6 +270,7 @@ def extract(source, n_pages, excluded_folds):
     journal_doi = {}
     year, vol_kwan, vol_vol, vol_jip, issue, pages_pp, pages_bare = {}, {}, {}, {}, {}, {}, {}
     year_hdr = {}
+    year_txt = {}
     tongkwan, bmc_art = [], []
     for row in source:
         page, uid, s = row[0], row[1], row[2]
@@ -257,6 +279,9 @@ def extract(source, n_pages, excluded_folds):
             continue   # 正文粘入的误标长行
         for y in _header_year(s, kind):
             _add(year_hdr, y, page)
+        if page <= 1 and kind == "text":
+            for y in _text_pub_year(s):
+                _add(year_txt, y, page)
         got = _jname_from_line(s)
         if got:
             ko, en = got
@@ -385,6 +410,10 @@ def extract(source, n_pages, excluded_folds):
         # regex 先命中 2012；页眉 2013 才是出版年。
         if h_w is not None:
             y_w, y_sup, y_src = h_w, h_sup, "header"
+    elif year_txt:
+        t_w, t_sup = _vote(year_txt, 0)
+        if t_w is not None:
+            y_w, y_sup, y_src = t_w, t_sup, "text_pub"
     vol_w, vol_sup = None, []
     for grp in (vol_kwan, vol_vol, vol_jip):   # 권 > Vol > 집
         if grp:
@@ -416,6 +445,7 @@ def extract(source, n_pages, excluded_folds):
              "issue_dropped_same_as_volume": i_dropped,
              "year_candidates": {str(k): sorted(v) for k, v in year.items()},
              "year_header_candidates": {str(k): sorted(v) for k, v in year_hdr.items()},
+             "year_text_pub_candidates": {str(k): sorted(v) for k, v in year_txt.items()},
              "volume_candidates": dict(
                  [("kwan:%d" % k, sorted(v)) for k, v in vol_kwan.items()]
                  + [("vol:%d" % k, sorted(v)) for k, v in vol_vol.items()]
@@ -531,6 +561,12 @@ def issue_doc(doc, out_root):
                 for ln in t.split("\n"):
                     if ln.strip():
                         source.append((p, u["uid"], ln.strip(), kind))
+            elif p == 0 and u["type"] == "Text":
+                # OCR 常把首页刊头 `Vol.53 No.6 2003` 标成 Text；只送严格的刊头行。
+                for ln in t.split("\n"):
+                    ln = ln.strip()
+                    if ln and _text_pub_year(ln):
+                        source.append((p, u["uid"], ln, "text"))
     excluded = set()
     for k in ("title", "title_en"):
         v = (meta.get(k) or {}).get("value")

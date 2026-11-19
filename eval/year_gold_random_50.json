@@ -1,0 +1,309 @@
+{
+ "seed": 20261120,
+ "note": "Fully random 50 docs excluding year_gold_33; gold only from page header/footer or explicit publication line. null = no independent year, not wrong. Filenames never used.",
+ "docs_total": 50,
+ "known": 28,
+ "unknown": 22,
+ "docs": [
+  {
+   "zone": "A",
+   "doc": "83_0_83_3D-023",
+   "year": 2019,
+   "evidence": "header: 日心第83回大会 (2019)"
+  },
+  {
+   "zone": "B",
+   "doc": "52_0_52_1",
+   "year": 2021,
+   "evidence": "footer: 出版研究 52 2021"
+  },
+  {
+   "zone": "B",
+   "doc": "2015_0_2015__1B03",
+   "year": null,
+   "evidence": "no publication year in header/footer; filename not used"
+  },
+  {
+   "zone": "A",
+   "doc": "62_0_62_76_1",
+   "year": null,
+   "evidence": "only 1975/1984 in title and a September 25 date; no publication year"
+  },
+  {
+   "zone": "A",
+   "doc": "43_0_43_83",
+   "year": null,
+   "evidence": "no publication year in header/footer"
+  },
+  {
+   "zone": "A",
+   "doc": "25.24_0_25.24_65",
+   "year": 2001,
+   "evidence": "header: VIS2001-56 (Mar. 2001); 2001年3月2日"
+  },
+  {
+   "zone": "A",
+   "doc": "2008.13_0_2008.13_107",
+   "year": null,
+   "evidence": "only society header and NII footer; filename not used"
+  },
+  {
+   "zone": "A",
+   "doc": "70_0_70_KJ00007752777",
+   "year": null,
+   "evidence": "70th conference name only; no year on page"
+  },
+  {
+   "zone": "A",
+   "doc": "18_9_18_11",
+   "year": 2022,
+   "evidence": "footer: 2022.9 産学官連携ジャーナル"
+  },
+  {
+   "zone": "A",
+   "doc": "74.2_0_74.2_1917",
+   "year": 2019,
+   "evidence": "header: 日本物理学会 2019年秋季大会"
+  },
+  {
+   "zone": "A",
+   "doc": "2006_0_2006__G501-1_",
+   "year": 2006,
+   "evidence": "header: (2006.10.28-29) Copyright ©2006"
+  },
+  {
+   "zone": "A",
+   "doc": "2003_0_2003_314_1",
+   "year": null,
+   "evidence": "only society header and NII footer; filename not used"
+  },
+  {
+   "zone": "A",
+   "doc": "47_1_47_Cover1",
+   "year": 2011,
+   "evidence": "header: 2011 Vol. 47, No. 1"
+  },
+  {
+   "zone": "A",
+   "doc": "25_0_25_320_5",
+   "year": null,
+   "evidence": "25th annual meeting name only; no year"
+  },
+  {
+   "zone": "A",
+   "doc": "99_R109_99_47",
+   "year": null,
+   "evidence": "no year in header/footer"
+  },
+  {
+   "zone": "A",
+   "doc": "57_7_57_KJ00001457723",
+   "year": null,
+   "evidence": "no year in header/footer"
+  },
+  {
+   "zone": "A",
+   "doc": "50_supplement2_50_KJ00006867238",
+   "year": null,
+   "evidence": "no year in header/footer"
+  },
+  {
+   "zone": "A",
+   "doc": "2014_0_2014_26",
+   "year": null,
+   "evidence": "September 13 time only; no year"
+  },
+  {
+   "zone": "B",
+   "doc": "51_0_51_24",
+   "year": null,
+   "evidence": "no year in header/footer"
+  },
+  {
+   "zone": "B",
+   "doc": "32_1_32_79",
+   "year": 2016,
+   "evidence": "header: ANALYTICAL SCIENCES JANUARY 2016"
+  },
+  {
+   "zone": "A",
+   "doc": "43_2_43_2_AP3",
+   "year": null,
+   "evidence": "cover page; no publication year"
+  },
+  {
+   "zone": "A",
+   "doc": "16_4_16_KJ00005627917",
+   "year": null,
+   "evidence": "membership form; no publication year"
+  },
+  {
+   "zone": "A",
+   "doc": "124_9_124_9_591",
+   "year": 2004,
+   "evidence": "footer: 電学誌，124巻9号，2004年"
+  },
+  {
+   "zone": "A",
+   "doc": "19_6_19_6_678",
+   "year": 2001,
+   "evidence": "header: Vol.19 No.6 ... 2001"
+  },
+  {
+   "zone": "A",
+   "doc": "53_6_53_KJ00004044473",
+   "year": 2003,
+   "evidence": "header: Vol. 53 No. 6 2003"
+  },
+  {
+   "zone": "B",
+   "doc": "44_5_44_5_457",
+   "year": 2001,
+   "evidence": "footer: Audiology Japan Vol. 44, No. 5, 2001"
+  },
+  {
+   "zone": "A",
+   "doc": "66_1_66_79",
+   "year": 2020,
+   "evidence": "footer/header: Ongakugaku Vol. LXVI (2020)"
+  },
+  {
+   "zone": "A",
+   "doc": "48_5_48_177",
+   "year": 2017,
+   "evidence": "header: Jpn J Clin Pharmacol Ther 2017; 48(5)"
+  },
+  {
+   "zone": "A",
+   "doc": "59_3-4_59_79",
+   "year": 2022,
+   "evidence": "header: La mer 59 : 79-100, 2022"
+  },
+  {
+   "zone": "A",
+   "doc": "57_5_57_5_383",
+   "year": 2006,
+   "evidence": "header: Vol. 57, No.5, 2006"
+  },
+  {
+   "zone": "A",
+   "doc": "06_漢文學會々報_1935_小澤文四郎",
+   "year": null,
+   "evidence": "page number only; filename not used"
+  },
+  {
+   "zone": "B",
+   "doc": "561_0_561_71",
+   "year": null,
+   "evidence": "book review; 1996 is the reviewed book's year, not article year"
+  },
+  {
+   "zone": "A",
+   "doc": "29_7_29_7_991",
+   "year": 2009,
+   "evidence": "header: 29(7)：991～997，2009"
+  },
+  {
+   "zone": "A",
+   "doc": "54_5_54_483",
+   "year": 2011,
+   "evidence": "footer: Audiology Japan Vol. 54, No. 5 2011"
+  },
+  {
+   "zone": "A",
+   "doc": "27_1_27_KJ00003705624",
+   "year": 2005,
+   "evidence": "footer: Vol 27, No 1, Jan 2005"
+  },
+  {
+   "zone": "A",
+   "doc": "76_11_76_2674",
+   "year": 2015,
+   "evidence": "header: 日臨外会誌 76 (11), 2674-2678, 2015"
+  },
+  {
+   "zone": "B",
+   "doc": "15_4_15_TJSKE-D-16-00015",
+   "year": 2016,
+   "evidence": "header: Vol.15 No.4 pp.531-535 (2016)"
+  },
+  {
+   "zone": "A",
+   "doc": "72.2_0_72.2_2567",
+   "year": 2017,
+   "evidence": "header: 日本物理学会 2017年秋季大会"
+  },
+  {
+   "zone": "A",
+   "doc": "117_1_117_KJ00005586868",
+   "year": null,
+   "evidence": "no year in header/footer"
+  },
+  {
+   "zone": "B",
+   "doc": "6_0_6_59",
+   "year": null,
+   "evidence": "VOL.6 only; no year"
+  },
+  {
+   "zone": "B",
+   "doc": "2016.2_0_2016.2_2179",
+   "year": 2016,
+   "evidence": "header: 講演予稿集 (2016 朱鷺メッセ)"
+  },
+  {
+   "zone": "B",
+   "doc": "2017_0_2017_1P1-C07",
+   "year": 2017,
+   "evidence": "footer: Proceedings ... May 10-13, 2017"
+  },
+  {
+   "zone": "B",
+   "doc": "105_1005_105_KJ00001449263",
+   "year": null,
+   "evidence": "no year in header/footer"
+  },
+  {
+   "zone": "A",
+   "doc": "8_4_8_4_16",
+   "year": 2008,
+   "evidence": "header: Vol.8, No.4, 2008"
+  },
+  {
+   "zone": "A",
+   "doc": "61_5_61_610506",
+   "year": 2023,
+   "evidence": "footer: 化学と生物 Vol. 61, No. 5, 2023"
+  },
+  {
+   "zone": "A",
+   "doc": "35.10_0_35.10_43",
+   "year": 2011,
+   "evidence": "header: BCT2011-40 (Feb. 2011)"
+  },
+  {
+   "zone": "A",
+   "doc": "66_540_66_KJ00004226029",
+   "year": 2001,
+   "evidence": "header: 第540号, 23-29, 2001年2月"
+  },
+  {
+   "zone": "B",
+   "doc": "V.01.1_0_V.01.1_79",
+   "year": null,
+   "evidence": "no year in header/footer"
+  },
+  {
+   "zone": "A",
+   "doc": "58_0_58_0_2",
+   "year": null,
+   "evidence": "no year in header/footer"
+  },
+  {
+   "zone": "A",
+   "doc": "03_中国文化_1980_小谷一郎",
+   "year": null,
+   "evidence": "no year in header/footer; filename not used"
+  }
+ ]
+}
