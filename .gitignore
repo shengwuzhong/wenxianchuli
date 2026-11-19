@@ -18,6 +18,12 @@ __pycache__/
 _state_mineru.json
 _server.lock
 gui_runs.jsonl
+.gui_prefs.json
+# 工作台备注(doc -> 人工说明): 本机状态, 与 gui_runs.jsonl 同性质
+gui_notes.json
+# 实验区(workspaces/<name>/): 各自带 uploads/out/备注, 与正式区同性质, 不入库
+workspaces/
+# 跨进程名额(crossproc): 并发跑时占位用, 进程崩了会留残留, 不该入库
 .locks/
 
 # 编辑器/系统
@@ -35,3 +41,14 @@ coordination/locks/
 coordination/board/
 coordination/guards/
 coordination/runs/
+
+*.bak
+*.bak[0-9]
+*.bak[0-9][0-9]
+*~
+*.swp
+reviewed_docs.json
+推送GitHub.bat
+
+# 实体视图正文字数增量缓存
+out/.view_body_chars.json

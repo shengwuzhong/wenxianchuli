@@ -194,8 +194,11 @@ def _st_ner(ctx):
         return "跳过: 未配置 LLM key（实体未查）"
     try:
         model = ner_lite.make_model(cfg)
-        product, audit = ner_lite.run_doc(ctx["doc"], model, echo=ctx["log"])
-        ner_lite.write_outputs(ctx["doc"], product, audit, root=ctx.get("ner_root"))
+        product, audit = ner_lite.run_doc(ctx["doc"], model, echo=ctx["log"],
+                                          out_root=ctx["out_root"])
+        ner_root = ctx.get("ner_root") or os.path.join(
+            os.path.dirname(os.path.abspath(ctx["out_root"])), "out_llm_trial")
+        ner_lite.write_outputs(ctx["doc"], product, audit, dst=ner_root)
     except Exception as e:
         ctx["warn"] = "实体抽取失败，已跳过: %s" % e
         ctx["ner_status"] = "extraction_failed"
@@ -640,6 +643,7 @@ def _main(argv):
 
     # 并发批量: 篇与篇之间互不依赖, 各写自己的 out/<doc>/, 因此可以同时跑。
     # 单篇仍走原路径(同进程), 批量才起子进程 —— 不为一次跑一篇付进程启动开销。
+    # (GUI 的批量任务按钮不受此分支管: 那边统一经 run_one_child 起子进程, 见 gui.py 调用点。)
     if argv and argv[0] in ("--batch", "-b"):
         if len(argv) < 2:
             print("用法: python stages.py --batch doc1,doc2,... [all|阶段列表] [--workers 5]")

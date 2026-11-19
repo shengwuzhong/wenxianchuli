@@ -87,14 +87,15 @@ def _load_paddle_json(path):
     return blocks
 
 
-def load_blocks(doc):
+def load_blocks(doc, out_root=None):
     """正文块(ner.py 口径): unified 取 Text/Footnote、剔文献页/跨页头/栏外; 13564165 用 paddle JSON。"""
     if doc in PADDLE_ONLY_DOCS:
         raw = _load_paddle_json(PADDLE_ONLY_DOCS[doc])
         return [{"uid": b["uid"], "page": b["page"], "type": b["type"], "text": (b["text"] or "").strip()}
                 for b in raw if b["type"] in ("text", "footnote", "paragraph_title")]
     blocks = []
-    for p in sorted(glob.glob(os.path.join(OUT, doc, "unified", "page_*.json"))):
+    root = out_root or OUT
+    for p in sorted(glob.glob(os.path.join(root, doc, "unified", "page_*.json"))):
         j = json.load(io.open(p, encoding="utf-8"))
         if j.get("in_ref"):
             continue
@@ -271,8 +272,26 @@ def make_model(cfg=None):
 
 # ---------- 主流程 ----------
 
-def run_doc(doc, model, cfg=None, echo=print, blocks=None):
-    blocks = blocks if blocks is not None else load_blocks(doc)
+def run_doc(doc, model, cfg=None, echo=print, blocks=None, out_root=None):
+    """对外入口 = 名额闸 + 实际抽取。
+
+    并发 5 篇时同一 key 会同时开 5 路模型调用, 限流命中后单批只记一条 nomination 就继续,
+    表现为"跑完了但少抽了"(静默失败)。名额默认 2(KCI_LLM_PARALLEL 可调)。
+    """
+    import crossproc
+    try:
+        n = max(1, int(os.environ.get("KCI_LLM_PARALLEL") or 2))
+    except ValueError:
+        n = 2
+    with crossproc.Slots("llm", n=n, ttl=3600, wait=3600) as s:
+        if s.waited > 1:
+            echo(u"  ner_lite 排队 %.0fs(LLM 并发名额 %d 已满)" % (s.waited, n))
+        return _run_doc(doc, model, cfg=cfg, echo=echo, blocks=blocks,
+                          out_root=out_root)
+
+
+def _run_doc(doc, model, cfg=None, echo=print, blocks=None, out_root=None):
+    blocks = blocks if blocks is not None else load_blocks(doc, out_root)
     tbl = DocTable(blocks)
     # 分批(按原始字符预算, 块不拆)
     batches, cur, cur_n = [], [], 0
@@ -417,13 +436,18 @@ def lint_audit(audit, recs):
 
 # ---------- 输出 ----------
 
-def write_outputs(doc, product, audit, root=None):
-    """root 可覆盖产物根(工作台按区隔离); 不传则保持历史全局 DST。"""
-    d = os.path.join(root or DST, doc)
+def write_outputs(doc, product, audit, root=None, dst=None):
+    """root/dst 可覆盖产物根(工作台按区隔离); 不传则保持历史全局 DST。"""
+    d = os.path.join(root or dst or DST, doc)
     if not os.path.isdir(d):
         os.makedirs(d)
-    io.open(os.path.join(d, "ner_lite.json"), "w", encoding="utf-8").write(
-        json.dumps(product, ensure_ascii=False, indent=1))
+    fp = os.path.join(d, "ner_lite.json")
+    # 失败不覆盖: 全部批次网络错误且零产出时保留上次有效产物。
+    if audit["counts"]["errors_network"] > 0 and not product["records"] and os.path.exists(fp):
+        audit["kept_previous_product"] = True
+    else:
+        io.open(fp, "w", encoding="utf-8").write(
+            json.dumps(product, ensure_ascii=False, indent=1))
     io.open(os.path.join(d, "ner_lite_audit.json"), "w", encoding="utf-8").write(
         json.dumps(audit, ensure_ascii=False, indent=1))
     io.open(os.path.join(d, "_audit.html"), "w", encoding="utf-8").write(render_html(audit))

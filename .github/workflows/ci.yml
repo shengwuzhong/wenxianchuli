@@ -26,6 +26,7 @@ jobs:
           python - <<PY
           import pipeline, pipeline_io, viewer, unify, merge_out, regress, mineru_drive
           import metadata, ner_lite
+          import stages, qc, archive, crossproc, docid, workspaces
           import metapy
           from metapy import m3_doc, refs_doc, front_doc, abstract_doc, llm_apply, report_meta, rebuild_viewer
           print("config layers:", sorted(pipeline.load_cfg()))

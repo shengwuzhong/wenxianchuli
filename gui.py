@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""桌面工作台(tkinter, 零依赖): 任务状态 + 运行历史 + 自动导入/开始解析。
+"""桌面工作台(tkinter, 零依赖): 任务状态 + 运行历史 + 一键重跑。
 
 动机(2026-11-12): webapp 每次调试要新开浏览器窗口, 且 JOBS 是内存态, 服务一重启全部归 0。
 本 GUI 的两条硬约束:
@@ -20,39 +20,21 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 import archive
-import field_audit as fa
-import ingest
 import qc
 import stages
-import workbench_state as wb
+import workspaces
+import entview
 from docid import doc_of
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 UP = os.path.join(ROOT, "uploads")
 OUT = os.path.join(ROOT, "out")
 HIST_FP = os.path.join(ROOT, "gui_runs.jsonl")
+NOTES_FP = os.path.join(ROOT, "gui_notes.json")
 SINGLE_PORT = 8790   # 单实例互斥端口: bind 由内核原子完成, 无文件锁的 check-then-act 竞态窗
 CH = ("mineru", "dots", "paddle")
 CH_ZH = {"mineru": "MinerU", "dots": "dots.ocr", "paddle": "PaddleOCR"}
 NER_ROOT = os.path.join(ROOT, "out_llm_trial")   # ner_lite 产物, 仅用于"机构"的口径对齐
-DEFAULT_DAILY_PAGES = 20000
-
-
-def _local_paddle_token():
-    """从本机私有配置取 Paddle token，仅用于首次建账号；之后以账号库为准。"""
-    tok = (os.environ.get("PADDLE_API_TOKEN") or "").strip()
-    if tok:
-        return tok
-    for name in ("channels.local.json", "channels.json"):
-        try:
-            with io.open(os.path.join(ROOT, name), encoding="utf-8-sig") as f:
-                cfg = json.load(f)
-            tok = str((cfg.get("paddle_api") or {}).get("token") or "").strip()
-            if tok:
-                return tok
-        except Exception:
-            continue
-    return ""
 
 # 质检口径已抽到 qc.py(2026-11-13): 归档要在**搬走产物之前**把质检状态快照进索引,
 # 而归档是 CLI 也能跑的路径, 不能为此把 tkinter 拖进依赖链。
@@ -60,6 +42,60 @@ def _local_paddle_token():
 qc_of = qc.qc_of
 QC_REQUIRED, QC_ONE_OF = qc.QC_REQUIRED, qc.QC_ONE_OF
 QC_OPTIONAL = ("dataset", "funding", "software")   # 实体三类可选, 不参与报红
+
+
+def qc_display(qr):
+    return qr["label"]
+
+
+def load_notes(fp=None):
+    fp = fp or NOTES_FP
+    try:
+        with io.open(fp, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return {str(k): str(v) for k, v in data.items() if str(v).strip()} if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_notes(notes, fp=None):
+    fp = fp or NOTES_FP
+    tmp = fp + ".tmp"
+    with io.open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(notes, fh, ensure_ascii=False, indent=1, sort_keys=True)
+    os.replace(tmp, fp)
+
+
+def auto_note(qr):
+    issues = set((qr or {}).get("issues") or [])
+    notes = []
+    if issues & {"期刊", "出版年", "卷", "期"}:
+        notes.append("原文未见年卷期/DOI证据")
+    if "引文句/脚注" in issues:
+        notes.append("原文未见文内引文/脚注证据")
+    return "；".join(notes)
+
+
+def fmt_duration(seconds):
+    if seconds is None:
+        return "-"
+    seconds = int(seconds)
+    if seconds < 60:
+        return "%ds" % seconds
+    if seconds < 3600:
+        return "%dm%02ds" % (seconds // 60, seconds % 60)
+    return "%dh%02dm" % (seconds // 3600, (seconds % 3600) // 60)
+
+
+def channel_display(d):
+    return " ".join("✔" if d["ch"][c] else "—" for c in CH)
+
+
+def timing_display(rec):
+    if not rec or ("ocr_s" not in rec and "llm_s" not in rec):
+        return "-"
+    return "%s : %s" % (fmt_duration(rec.get("ocr_s", 0)),
+                        fmt_duration(rec.get("llm_s", 0)))
 
 
 def _acquire_instance_sock(attempts=15, wait=0.3):
@@ -93,59 +129,73 @@ def webapp_alive():
     now = time.time()
     if now - _WEBAPP_CACHE[0] < 30:
         return _WEBAPP_CACHE[1]
-    s = socket.socket()
-    s.settimeout(0.15)
+    # webapp 绑定 8765 起、被占顺延至 8774(webapp.py 端口段), 只探 8765 会被绕过:
+    # 服务落在 8766+ 时 GUI 不告警且再次拉起第二个 watch_uploads, 并发写坏同一篇(13563526 实证)。
+    hint = None
     try:
-        s.connect(("127.0.0.1", 8765))
-        alive = True
-    except OSError:
-        alive = False
-    finally:
-        s.close()
-    _WEBAPP_CACHE[:] = [now, alive]
-    return alive
+        hint = int(io.open(os.path.join(ROOT, "_server.port"), encoding="ascii").read().strip())
+    except (OSError, ValueError):
+        pass
+    order = ([hint] if hint else []) + [p for p in range(8765, 8775) if p != hint]
+    port = None
+    for p in order:
+        s = socket.socket()
+        s.settimeout(0.15)
+        try:
+            s.connect(("127.0.0.1", p))
+            port = p
+            break
+        except OSError:
+            pass
+        finally:
+            s.close()
+    _WEBAPP_CACHE[:] = [now, port]
+    return port
 
 
 
 
 def _dir_has_files(d):
-    if not os.path.isdir(d):
+    try:
+        with os.scandir(d) as it:   # 迭代器必须关闭, 否则 Windows 拖住目录句柄
+            return any(True for _ in it)
+    except (FileNotFoundError, NotADirectoryError):
         return False
-    with os.scandir(d) as it:   # 迭代器必须关闭, 否则 Windows 拖住目录句柄
-        return any(True for _ in it)
 
 
-def _ch_done(doc, ch, out_root=None):
-    out_root = out_root or OUT
-    return (_dir_has_files(os.path.join(out_root, doc, "raw", ch))
-            or _dir_has_files(os.path.join(out_root, doc, "raw", ch + "_api")))
+def _ch_done(doc, ch, out_dir=None):
+    out_dir = out_dir or OUT
+    return (_dir_has_files(os.path.join(out_dir, doc, "raw", ch + "_api"))
+            or _dir_has_files(os.path.join(out_dir, doc, "raw", ch)))
 
 
-def scan_docs(up_root=None, out_root=None, arch_root=None):
+def _ner_done(dd, ner_root=None):
+    return os.path.isfile(os.path.join(ner_root or NER_ROOT, "fds_extract", "ner_lite",
+                                      os.path.basename(dd), "ner_lite.json"))
+
+
+def scan_docs(up=None, out_dir=None, ner_root=None, include_archived=True, arch_root=None):
     """文件系统派生的文档状态(真值): 未跑/未完成/缺渠道/完成 + 渠道勾选 + 完成时间。
+
 
     已归档的文档不出现在工作台(2026-11-13): 归档把 PDF 与 out/ 都移走了, 但索引是权威凭据,
     所以先按索引过滤一遍——否则手工把产物挪回来、或只归档了 PDF, 就会漏成一条"无PDF"的僵尸行。
-
-    2026-11-18: 增加 up_root/out_root/arch_root, 让物理隔离的 A/B 区共用同一套扫描逻辑。
     """
-    up_root = up_root or UP
-    out_root = out_root or OUT
-    arch_root = arch_root or os.path.join(ROOT, "archive")
+    up, out_dir, ner_root = up or UP, out_dir or OUT, ner_root or NER_ROOT
     try:
-        done_docs = archive.archived_set(arch_root)
+        done_docs = archive.archived_set(arch_root) if include_archived else set()
     except ValueError:
         done_docs = set()      # 索引损坏: 宁可多显示几条, 也不能让所有文档凭空消失
     docs = {}
-    for f in sorted(os.listdir(up_root)) if os.path.isdir(up_root) else []:
+    for f in sorted(os.listdir(up)) if os.path.isdir(up) else []:
         if not f.lower().endswith(".pdf"):
             continue
         doc = doc_of(f)
         if doc in done_docs:
             continue
-        dd = os.path.join(out_root, doc)
+        dd = os.path.join(out_dir, doc)
         idx = os.path.join(dd, "index.html")
-        ch = {c: _ch_done(doc, c, out_root) for c in CH}
+        ch = {c: _ch_done(doc, c, out_dir) for c in CH}
         done_at = os.path.getmtime(idx) if os.path.exists(idx) else None
         miss = [c for c in CH if not ch[c]]
         if done_at is None:
@@ -156,70 +206,29 @@ def scan_docs(up_root=None, out_root=None, arch_root=None):
             state = "未完成"
         else:
             state = "完成"
-        docs[doc] = {"pdf": os.path.join(up_root, f), "state": state, "ch": ch,
-                     "done_at": done_at, "miss": miss}
+        docs[doc] = {"pdf": os.path.join(up, f), "state": state, "ch": ch,
+                     "done_at": done_at, "miss": miss, "ner": _ner_done(dd, ner_root)}
     # out/ 里有产物但 uploads 里 PDF 已没了的(清库残留), 也列出来只读展示
-    if os.path.isdir(out_root):
-        for d in sorted(os.listdir(out_root)):
+    if os.path.isdir(out_dir):
+        for d in sorted(os.listdir(out_dir)):
             if d in docs or d.startswith("_") or d in done_docs:
                 continue
-            if not os.path.isdir(os.path.join(out_root, d)):
+            if not os.path.isdir(os.path.join(out_dir, d)):
                 continue
-            idx = os.path.join(out_root, d, "index.html")
+            idx = os.path.join(out_dir, d, "index.html")
             if not os.path.exists(idx):
                 continue
             docs[d] = {"pdf": None, "state": "无PDF",
-                       "ch": {c: _ch_done(d, c, out_root) for c in CH},
-                       "done_at": os.path.getmtime(idx), "miss": []}
+                       "ch": {c: _ch_done(d, c, out_dir) for c in CH},
+                       "done_at": os.path.getmtime(idx), "miss": [],
+                       "ner": _ner_done(os.path.join(out_dir, d), ner_root)}
     return docs
-
-
-_STATE_RANK = {
-    "未跑": 0, "未跑·历史": 0, "等待自动处理": 0, "已暂停": 0, "待确认": 0,
-    "排队中": 1, "运行中": 1, "等待额度": 2, "等待账号": 2,
-    "同名冲突": 3, "无法打开": 3, "重复文件": 3,
-    "部分异常": 4, "未完成": 4, "已完成": 5, "无PDF": 6,
-}
-
-
-def display_state(d, ingest_status=""):
-    """文件真值 + 自动导入状态 -> 给用户看的一行状态。
-
-    自动导入状态只在文件还没有产物时覆盖“未跑”；一旦有 index.html，
-    文件真值优先，避免历史遗留的 queued/baseline 把完成文档标成排队中。
-    """
-    raw = d.get("state") or ""
-    if raw == "完成":
-        return "已完成"
-    if raw == "无PDF":
-        return "无PDF"
-    if raw == "缺渠道":
-        return "部分异常"
-    if raw == "未完成":
-        return "未完成"
-    st = ingest_status or ""
-    return {
-        "bad": "无法打开",
-        "conflict": "同名冲突",
-        "duplicate": "重复文件",
-        "waiting_quota": "等待额度",
-        "waiting_account": "等待账号",
-        "waiting_pause": "已暂停",
-        "waiting_confirm": "待确认",
-        "queued": "排队中",
-        "pending": "等待自动处理",
-        "baseline": "未跑·历史",
-    }.get(st, "未跑")
-
-
-def state_rank(label):
-    return _STATE_RANK.get(label, 4)
 
 
 def load_history(fp=None):
     """gui_runs.jsonl → {doc: [记录...]}(按时间序); 文件损坏时跳过坏行。"""
-    hist = {}
     fp = fp or HIST_FP
+    hist = {}
     if not os.path.exists(fp):
         return hist
     for ln in io.open(fp, encoding="utf-8"):
@@ -243,19 +252,17 @@ MAX_PARALLEL = 8
 PREFS_FP = os.path.join(ROOT, ".gui_prefs.json")
 
 
-def load_prefs(fp=None):
+def load_prefs():
     try:
-        with io.open(fp or PREFS_FP, encoding="utf-8") as fh:
+        with io.open(PREFS_FP, encoding="utf-8") as fh:
             return json.load(fh) or {}
     except Exception:
         return {}
 
 
-def save_prefs(d, fp=None):
+def save_prefs(d):
     try:
-        fp = fp or PREFS_FP
-        os.makedirs(os.path.dirname(fp), exist_ok=True)
-        with io.open(fp, "w", encoding="utf-8") as fh:
+        with io.open(PREFS_FP, "w", encoding="utf-8") as fh:
             json.dump(d, fh, ensure_ascii=False, indent=1)
     except Exception:
         pass
@@ -279,77 +286,73 @@ class Runner(object):
     依赖校验; 全链预设等价于原 pipeline.main, 后链子集秒级完成。
     """
 
-    def __init__(self, zone, quota, log, parallel=None, paused=True, accounts=None):
-        self.zone = zone
-        self.quota = quota
-        self.accounts = accounts
+    def __init__(self, log, parallel=None, out_root=None, history_fp=None):
         self.log = log
-        self.q = queue.Queue()          # (task_id, doc, pdf, ids, clear, trigger, account_key)
+        self.out_root = out_root or OUT
+        self.history_fp = history_fp or HIST_FP
+        self.q = queue.Queue()          # (doc, pdf, ids, clear_tuple, trigger, generation)
         self.running = {}               # doc -> (trigger, started): 并发下"当前在跑"是一个集合
         self.queued = set()             # 运行中+排队中的 doc(去重)
         self.parallel = int(parallel or DEFAULT_PARALLEL)   # 同时跑几篇(可在界面调)
         self.lock = threading.Lock()
+        self._generation = 0
+        self._stop_requested = False
+        self._stop_cancelled = 0
+        self._timing_ocr = 0
+        self._timing_llm = 0
         self._hist_lock = threading.Lock()   # gui_runs.jsonl 追加: 并发下多线程同时写会交错
-        self.store = wb.TaskStore(zone.db)
-        self.store.mark_interrupted_running()
-        self.paused = bool(paused)
         threading.Thread(target=self._loop, daemon=True).start()
 
     # 热更新(2026-11-12 加的模块级 importlib.reload)已随"一篇一子进程"取消:
     # 每个任务都在新进程里跑, 天然 import 到磁盘上的最新代码, 不必再靠 mtime 猜。
     # 这里只留一条提醒 —— 代码改动在**下次任务**生效, 不影响正在跑的进程。
 
-    def submit(self, doc, pdf, ids, trigger="重跑", clear=(), account=None):
-        acct = account or self.zone.account
-        row, dup = self.store.enqueue(doc, pdf, ids, clear, trigger, account=acct)
-        if row is None:
-            self.log("[队列] %s 已有任务在跑/排队, 跳过重复提交" % doc)
-            return False
+    def submit(self, doc, pdf, ids, trigger="重跑", clear=()):
         with self.lock:
+            if self._stop_requested:
+                self.log("[停止] %s 未提交：正在等待当前任务跑完" % doc)
+                return False
+            if doc in self.queued:
+                self.log("[队列] %s 已有任务在跑/排队, 跳过重复提交" % doc)
+                return False
             self.queued.add(doc)
-        self.q.put((row["id"], doc, pdf, tuple(ids), tuple(clear), trigger, acct))
-        self.log("[队列] %s 已加入 (%s · %d 段 · 账号 %s)%s" % (
-            doc, trigger, len(ids), acct, " · 等待「继续」" if self.paused else ""))
+            self.q.put((doc, pdf, tuple(ids), tuple(clear), trigger, self._generation,
+                        self.out_root, self.history_fp))
+        self.log("[队列] %s 已加入 (%s · %d 段)" % (doc, trigger, len(ids)))
         return True
 
-    def _completed_since(self, r):
-        try:
-            started = time.mktime(time.strptime(r.get("started") or "", "%Y-%m-%d %H:%M:%S"))
-            fp = os.path.join(self.zone.out, r["doc"], "index.html")
-            return os.path.isfile(fp) and os.path.getmtime(fp) >= started
-        except Exception:
-            return False
-
-    def resume(self):
-        """把持久账本里的排队/中断任务重新放回内存队列。"""
-        rows = self.store.pending()
-        n = 0
-        for r in rows:
-            pid = wb.running_pid(r["doc"], self.zone.out)
-            if pid and wb.pid_alive(pid):
-                self.log("[继续] %s 仍有旧子进程 pid=%s 在跑，先不重复提交" % (r["doc"], pid))
-                continue
-            if r["status"] == "interrupted" and self._completed_since(r):
-                self.store.finish(r["id"], True, "旧子进程已完成")
-                self.log("[继续] %s 检测到旧子进程已完成，不重复跑" % r["doc"])
-                continue
-            if r["status"] == "interrupted":
-                self.store.requeue(r["id"])
+    def stop_after_current(self):
+        """取消未启动任务；已启动任务正常跑完。返回 (运行中篇数, 取消排队篇数)。"""
+        with self.lock:
+            if self._stop_requested:
+                return len(self.running), self._stop_cancelled
+            self._stop_requested = True
+            self._generation += 1
+            self._stop_cancelled = 0
+        while True:
+            try:
+                doc, _pdf, _ids, _clear, _trigger, _generation, _out, _hist = self.q.get_nowait()
+            except queue.Empty:
+                break
             with self.lock:
-                if r["doc"] in self.queued:
-                    continue
-                self.queued.add(r["doc"])
-            self.q.put((r["id"], r["doc"], r.get("pdf"), tuple(r.get("ids") or []),
-                        tuple(r.get("clear") or []), r.get("trigger") or "断点续跑",
-                        r.get("account") or self.zone.account))
-            n += 1
-        self.paused = False
-        if n:
-            self.log("[继续] %s 恢复 %d 个排队/中断任务" % (self.zone.label, n))
-        return n
+                self.queued.discard(doc)
+                self._stop_cancelled += 1
+            self.q.task_done()
+        with self.lock:
+            running = len(self.running)
+            cancelled = self._stop_cancelled
+            if not running:
+                self._stop_requested = False
+        self.log("[停止] 已取消排队 %d 篇；等待当前 %d 篇跑完" % (cancelled, running))
+        return running, cancelled
 
-    def pause(self):
-        self.paused = True
+    def is_stopping(self):
+        with self.lock:
+            return self._stop_requested
+
+    def timing_totals(self):
+        with self.lock:
+            return self._timing_ocr, self._timing_llm
 
     def set_parallel(self, n):
         """改并发数。只影响**之后**的调度: 已在跑的不动, 排队里的下一拍按新值放行。"""
@@ -367,59 +370,52 @@ class Runner(object):
         运行期改不了。这里由 _active 计数决定是否放行 —— 并发数变成可调参数而不是线程数。
         """
         while True:
-            while self.paused:
-                time.sleep(0.2)
             while self._active_count() >= self.parallel:
                 time.sleep(0.15)
-            task_id, doc, pdf, ids, clear, trigger, account = self.q.get()
-            self.store.mark_running(task_id)
+            doc, pdf, ids, clear, trigger, generation, out_root, history_fp = self.q.get()
+            with self.lock:
+                if generation != self._generation or self._stop_requested:
+                    self.queued.discard(doc)
+                    self._stop_cancelled += 1
+                    cancel = True
+                else:
+                    self.running[doc] = (trigger, time.time())
+                    cancel = False
+            if cancel:
+                self.q.task_done()
+                continue
             t = threading.Thread(target=self._task,
-                                 args=(task_id, doc, pdf, ids, clear, trigger, account),
-                                 daemon=True)
+                                 args=(doc, pdf, ids, clear, trigger, out_root, history_fp), daemon=True)
             t.start()
 
     def _active_count(self):
         with self.lock:
             return len(self.running)
 
-    def _task(self, task_id, doc, pdf, ids, clear, trigger, account=""):
-        ok, err = False, ""
+    def _task(self, doc, pdf, ids, clear, trigger, out_root, history_fp):
         try:
-            ok, err = self._run_one(doc, pdf, ids, clear, trigger, account)
+            self._run_one(doc, pdf, ids, clear, trigger, out_root, history_fp)
         except BaseException as e:   # 单任务异常不许杀死调度线程
-            err = str(e)[:200]
             self.log("[异常] %s 任务抛出: %s" % (doc, e))
         finally:
-            self.store.finish(task_id, ok, err)
             with self.lock:
                 self.queued.discard(doc)
                 self.running.pop(doc, None)
+                stopped = self._stop_requested and not self.running and self.q.qsize() == 0
+                if stopped:
+                    self._stop_requested = False
             self.q.task_done()
+            if stopped:
+                self.log("[停止] 当前任务已跑完，可以重新提交")
 
-    def _run_one(self, doc, pdf, ids, clear, trigger, account=""):
-        account = account or self.zone.account
-        token = ""
-        if self.accounts is not None:
-            rec = self.accounts.get(account)
-            token = (rec or {}).get("token") or ""
-            if "paddle" in ids and not token:
-                self.log("[账号] %s 缺少 Paddle token，拒绝提交 (账号 %s)" % (doc, account))
-                return False, "账号 %s 缺少 Paddle token" % account
-        try:
-            snap = wb.snapshot_doc(self.zone, doc, "%s · %s" % (trigger, ",".join(ids)))
-        except Exception as e:
-            self.log("[快照] %s 版本快照失败，拒绝覆盖: %s" % (doc, e))
-            return False, "版本快照失败: %s" % str(e)[:160]
-        if snap:
-            self.log("[快照] %s 已保存到 %s" % (doc, snap))
+    def _run_one(self, doc, pdf, ids, clear, trigger, out_root=None, history_fp=None):
+        out_root, history_fp = out_root or self.out_root, history_fp or self.history_fp
         for ch in clear:
             for sub in (ch, ch + "_api"):
-                d = os.path.join(self.zone.out, doc, "raw", sub)
+                d = os.path.join(out_root, doc, "raw", sub)
                 if os.path.isdir(d):
                     shutil.rmtree(d, ignore_errors=True)
             self.log("[重取] %s 渠道 %s 缓存已清" % (doc, ch))
-        with self.lock:
-            self.running[doc] = (trigger, time.time())
         t0 = time.time()
 
         # 一篇一子进程: 子进程里 stdout/stderr 全部经 queue 回流, 所以这里只需给日志加篇名,
@@ -428,44 +424,49 @@ class Runner(object):
             self.log("[%s] %s" % (doc, str(s)))
 
         res = {"ok": False, "results": {}, "error": ""}
-        job = {"doc": doc, "ids": list(ids), "pdf": pdf}
-        if token:
-            job["paddle_token"] = token
         try:
-            res = stages.run_one_child(job, log=_hook, out_root=self.zone.out,
-                                       ner_root=os.path.join(self.zone.ner, "fds_extract", "ner_lite"))
+            res = stages.run_one_child({"doc": doc, "ids": list(ids), "pdf": pdf},
+                                       log=_hook, out_root=out_root)
         except Exception as e:   # stages.run_one_child 内部已兜异常; 这里兜它自己(如进程起不来)
             res = {"ok": False, "results": {}, "error": str(e)[:200]}
         ok = bool(res.get("ok"))
+        stage_elapsed = {k: int(v.get("elapsed") or 0)
+                         for k, v in (res.get("results") or {}).items()}
+        ocr_s = stage_elapsed.get("acquire", 0)
+        llm_s = stage_elapsed.get("ner", 0)
+        with self.lock:
+            self._timing_ocr += ocr_s
+            self._timing_llm += llm_s
         rec = {"doc": doc, "trigger": trigger, "started": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t0)),
                "elapsed_s": int(time.time() - t0), "ok": ok, "err": res.get("error") or None,
-               "selected": list(ids), "parallel": self.parallel, "account": account,
+               "selected": list(ids), "parallel": self.parallel,
+               "ocr_s": ocr_s, "llm_s": llm_s, "stage_elapsed": stage_elapsed,
                "stages": {k: ("ok" if v.get("ok") else ("skip" if v.get("skipped") else "fail"))
                           for k, v in (res.get("results") or {}).items()},
-               "channels": {c: _ch_done(doc, c, self.zone.out) for c in CH}}
+               "channels": {c: _ch_done(doc, c, out_root) for c in CH}}
         with self._hist_lock:
-            append_history(rec, self.zone.hist)
+            append_history(rec, history_fp)
         # 不替用户补跑未勾选的阶段(2026-11-12 用户定: 耦合的地方不要一起重跑)。
         # 元数据/NER 变了而没勾 viewer, 只在日志里提醒一句, 由人决定要不要补一段。
         if "viewer" not in ids and any(i in ids for i in stages.META_IDS + ("ner",)):
             self.log("[提示] %s 元数据/实体已变但未勾选「对照查看器」段, HTML 仍是上一版" % doc)
-        self.log("[完成] %s %s (耗时 %ds · %d 段)%s" % (
-            doc, "成功" if ok else "失败", rec["elapsed_s"], len(ids),
+        self.log("[完成] %s %s (总耗时 %ds · OCR %ds · LLM %ds · %d 段)%s" % (
+            doc, "成功" if ok else "失败", rec["elapsed_s"], ocr_s, llm_s, len(ids),
             (" · " + rec["err"]) if rec["err"] else ""))
-        with self.lock:
-            self.running.pop(doc, None)
-        return ok, rec.get("err") or ""
 
     def status(self):
         with self.lock:
             docs = sorted(self.running)
+            stopping = self._stop_requested
+            cancelled = self._stop_cancelled
         n = self.q.qsize()
-        paused = "已暂停 · " if self.paused else ""
+        if stopping:
+            return "正在停止：等待当前 %d 篇跑完 · 已取消排队 %d 篇" % (len(docs), cancelled)
         if docs:
             head = ", ".join(docs[:3]) + (" …" if len(docs) > 3 else "")
-            return "%s正在跑 %d/%d 篇 (并发 %d): %s · 排队 %d" % (
-                paused, len(docs), self.parallel, self.parallel, head, n)
-        return "%s空闲 · 并发 %d · 排队 %d" % (paused, self.parallel, n)
+            return "正在跑 %d/%d 篇 (并发 %d): %s · 排队 %d" % (
+                len(docs), self.parallel, self.parallel, head, n)
+        return "空闲 · 并发 %d · 排队 %d" % (self.parallel, n)
 
     def is_busy(self):
         with self.lock:
@@ -484,142 +485,233 @@ class Runner(object):
         return (", ".join(docs[:3]) + (" …" if len(docs) > 3 else "")) if docs else ""
 
 
+API_CONFIG_SCHEMA = [
+    ("mineru_api", "MinerU 云端 API", [
+        ("token", "Token", "text"), ("model_version", "模型版本", ("pipeline", "vlm", "MinerU-HTML")),
+        ("language", "语言", "text"), ("is_ocr", "启用 OCR（默认关=非OCR）", "bool"),
+        ("enable_formula", "公式识别", "bool"), ("enable_table", "表格识别", "bool"),
+        ("timeout", "超时（秒）", "int"),
+    ]),
+    ("paddle_api", "PaddleOCR 云端 API", [
+        ("token", "Token", "text"), ("model", "模型", "text"),
+        ("base", "API 地址", "text"), ("timeout", "超时（秒）", "int"),
+    ]),
+    ("dots_api", "dots.ocr 云端 API", [
+        ("base", "实例地址", "text"), ("model", "模型", ("dots.mocr", "dots.mocr-svg")),
+        ("prompt", "Prompt 键", "text"), ("timeout", "超时（秒）", "int"),
+    ]),
+]
+
+
+class ApiConfigWindow(tk.Toplevel):
+    def __init__(self, app):
+        tk.Toplevel.__init__(self, app)
+        self.app = app
+        self.title("渠道 API 配置")
+        self.geometry("620x680")
+        self.transient(app)
+        import pipeline
+        cfg = pipeline.load_cfg()
+        self.vars = {}
+        body = ttk.Frame(self, padding=12)
+        body.pack(fill="both", expand=True)
+        for sec, title, fields in API_CONFIG_SCHEMA:
+            self.vars[sec] = {}
+            box = ttk.LabelFrame(body, text=title, padding=8)
+            box.pack(fill="x", pady=6)
+            for row, (key, label, kind) in enumerate(fields):
+                ttk.Label(box, text=label, width=24).grid(row=row, column=0, sticky="w", pady=3)
+                value = (cfg.get(sec) or {}).get(key)
+                if kind == "bool":
+                    var = tk.BooleanVar(value=bool(value))
+                    ttk.Checkbutton(box, variable=var).grid(row=row, column=1, sticky="w")
+                else:
+                    var = tk.StringVar(value="" if value is None else str(value))
+                    if isinstance(kind, tuple):
+                        widget = ttk.Combobox(box, textvariable=var, values=kind, state="readonly", width=28)
+                    else:
+                        widget = ttk.Entry(box, textvariable=var, width=31,
+                                           show="•" if key == "token" else "")
+                    widget.grid(row=row, column=1, sticky="ew", pady=3)
+                self.vars[sec][key] = var
+            box.columnconfigure(1, weight=1)
+        ttk.Label(body, text="保存至 channels.local.json；下一篇新任务生效，正在运行的文档不改变配置。",
+                  foreground="#4b5563", wraplength=570).pack(fill="x", pady=8)
+        actions = ttk.Frame(body)
+        actions.pack(fill="x", pady=8)
+        ttk.Button(actions, text="取消", command=self.destroy).pack(side="right", padx=4)
+        ttk.Button(actions, text="保存", command=self._save).pack(side="right", padx=4)
+
+    def _save(self):
+        updates = {sec: {key: var.get() for key, var in self.vars[sec].items()}
+                   for sec, _title, _fields in API_CONFIG_SCHEMA}
+        try:
+            import webapp
+            webapp._save_cfg(updates)
+        except Exception as e:
+            messagebox.showerror("保存失败", str(e), parent=self)
+            return
+        messagebox.showinfo("渠道 API 配置", "已保存，下一篇新任务生效。", parent=self)
+        self.destroy()
+
+
 class App(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         self.title("KCI 解析工作台")
-        self.geometry("1180x720")
-        self.minsize(900, 560)
+        self.geometry("980x640")
         self.q = queue.Queue()
-        self.zones = wb.make_zones(ROOT)
-        zid = os.environ.get("KCI_ACTIVE_ZONE", "A")
-        self.zone_id = zid if zid in self.zones else "A"
-        self.zone = self.zones[self.zone_id]
-        self._prefs = load_prefs(self.zone.prefs)
-        daily = int(self._prefs.get("paddle_daily_pages") or DEFAULT_DAILY_PAGES)
-        self.accounts = wb.AccountStore(os.path.join(ROOT, ".workbench", "accounts.json"),
-                                        DEFAULT_DAILY_PAGES)
-        tok = _local_paddle_token()
-        if tok:
-            self.accounts.bootstrap(tok, "本机账号", daily_pages=daily)
-        self.qbook = wb.QuotaBook(os.path.join(ROOT, ".workbench", "quota.json"), daily)
-        self.runners = {}
-        for z in self.zones.values():
-            p = load_prefs(z.prefs)
-            z.account = self.accounts.assignment(z.zid) or "primary"
-            rec = self.accounts.get(z.account) or {}
-            zq = self.qbook.account(z.account, rec.get("daily_pages") or DEFAULT_DAILY_PAGES)
-            self.runners[z.zid] = Runner(z, zq, self._log, parallel=p.get("parallel"),
-                                         paused=True, accounts=self.accounts)
-        self.runner = self.runners[self.zone_id]
-        self.quota = self.runner.quota
+        self._qc_queue = queue.Queue()
+        self._qc_results = {}
+        self._qc_generation = 0
+        self._qc_pending = []
+        self._qc_thread = None
+        self._running_view_key = None
+        self._selection_anchor = None
+        self._prefs = load_prefs()
+        self._workspace_paths = self._prefs.get("workspace_paths", {})
+        current = self._prefs.get("workspace", "main")
+        self.workspace = workspaces.custom_workspace(self._workspace_paths[current]) \
+            if current in self._workspace_paths else workspaces.get_workspace(ROOT, current)
+        self._notes = load_notes(self.workspace.notes)
+        self._runners = {}
+        self._log_views = {}
+        self.runner = self._runner_for(self.workspace)
         self._was_busy = False
         self._webapp_on = False
-        self._entity_cache = {}
-        self._page_cache = {}
-        self._last_unrun = None
-        self._audit_win = None
-        self._acct_win = None
-        self._paused = True
-        self._startup_pending = True
-        self._closing = False
-        # 每区独立 ingest 账本: 只认本区 uploads, 不让 A 的文件触发 B 的任务。
-        self._ingest_stores = {}
-        self._ingest_scanners = {}
-        for z in self.zones.values():
-            store = ingest.IngestStore(os.path.join(z.root, ".workbench", "ingest.json"))
-            self._ingest_stores[z.zid] = store
-            self._ingest_scanners[z.zid] = ingest.IngestScanner(store, z.up)
-        self._ingest_q = queue.Queue()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build()
-        self._ingest_thread = threading.Thread(target=self._ingest_loop, daemon=True)
-        self._ingest_thread.start()
         self.after(100, self._drain)
-        self.after(500, self.refresh)
-        self.after(700, self._startup_prompt)
-        self._log("就绪: 当前 %s; 拖 PDF 到该区 uploads; Ctrl/Shift 多选可批量。"
-                  "打开后先确认「继续」，再恢复上次排队/中断任务。" % self.zone.label)
+        self.after(50, self._drain_qc)
+        self.after(50, self.refresh)
+        self._log("就绪: 拖 PDF 到 uploads; Ctrl/Shift 多选可批量(默认 %d 篇并发, 顶栏可调)。"
+                  "「一键重跑」= 执行勾选的阶段(主区) / 右端箭头选阶段; "
+                  "「快速重跑(跳NER)」不烧 LLM。质检列只查必抽项齐全, 缺项报红。" % self.runner.parallel)
+
+    def _runner_for(self, workspace):
+        key = workspace.root
+        if key not in self._runners:
+            self._runners[key] = Runner(
+                lambda msg, root=key: self._log(msg, workspace_root=root),
+                parallel=self._prefs.get("parallel"), out_root=workspace.out,
+                history_fp=workspace.history)
+        return self._runners[key]
 
     # ---------- 界面 ----------
     def _build(self):
         top = ttk.Frame(self)
         top.pack(fill="x", padx=10, pady=8)
         ttk.Label(top, text="工作区").pack(side="left")
-        self.zone_var = tk.StringVar(value=self.zone.label)
-        self.zone_box = ttk.Combobox(top, textvariable=self.zone_var, width=12,
-                                     state="readonly",
-                                     values=[z.label for z in self.zones.values()])
-        self.zone_box.pack(side="left", padx=(4, 8))
-        self.zone_box.bind("<<ComboboxSelected>>", self._on_zone)
-        self.btn_resume = ttk.Button(top, text="继续", command=self._toggle_run)
-        self.btn_resume.pack(side="left", padx=(0, 6))
+        self.workspace_var = tk.StringVar(value=self.workspace.name)
+        self.workspace_box = ttk.Combobox(top, textvariable=self.workspace_var, width=10,
+                                          state="readonly", values=workspaces.list_workspaces(ROOT, self._workspace_paths))
+        self.workspace_box.pack(side="left", padx=(4, 2))
+        self.workspace_box.bind("<<ComboboxSelected>>", self._on_workspace)
+        ttk.Button(top, text="新建", command=self._new_workspace).pack(side="left", padx=(0, 6))
         ttk.Button(top, text="刷新", command=self.refresh).pack(side="left")
         ttk.Button(top, text="重启", command=self._restart).pack(side="left", padx=6)
-        ttk.Button(top, text="打开 uploads 目录",
-                   command=lambda: self._open(self.zone.up)).pack(side="left", padx=6)
-        ttk.Button(top, text="打开 out 目录",
-                   command=lambda: self._open(self.zone.out)).pack(side="left")
+        ttk.Button(top, text="打开 uploads 目录", command=lambda: self._open(self.workspace.uploads)).pack(side="left", padx=6)
+        ttk.Button(top, text="打开 out 目录", command=lambda: self._open(self.workspace.out)).pack(side="left")
+        tools = ttk.Frame(self)
+        tools.pack(fill="x", padx=10, pady=(0, 6))
         # 归档清单是全局视图(不依赖选中), 所以入口在顶栏而不是操作条
-        ttk.Button(top, text="已归档…", command=self._open_archive_list).pack(side="left", padx=6)
+        ttk.Button(tools, text="已归档…", command=self._open_archive_list).pack(side="left", padx=6)
         # 浏览器工作台(拖拽上传 + 三渠道并排调参)也收进这里: 用户只记"打开这个工作台"一个动作,
         # 不必再分辨该双击 start.bat 还是 启动GUI.bat(2026-11-13 入口收口)。
-        ttk.Button(top, text="浏览器工作台", command=self._open_webapp).pack(side="left")
+        ttk.Button(tools, text="浏览器工作台", command=self._open_webapp).pack(side="left")
+        ttk.Button(tools, text="渠道 API 配置", command=self._open_api_config).pack(side="left", padx=(8, 0))
         # 并发数: 这是"同时跑几篇", 不是"一篇跑多快"。调大只影响排队位置, 见 crossproc.py。
-        ttk.Label(top, text="并发").pack(side="left", padx=(12, 2))
+        ttk.Label(tools, text="并发").pack(side="left", padx=(12, 2))
         self.par_var = tk.StringVar(value=str(self.runner.parallel))
-        self.par_box = ttk.Combobox(top, textvariable=self.par_var, width=3, state="readonly",
+        self.par_box = ttk.Combobox(tools, textvariable=self.par_var, width=3, state="readonly",
                                     values=[str(i) for i in range(1, MAX_PARALLEL + 1)])
         self.par_box.pack(side="left")
         self.par_box.bind("<<ComboboxSelected>>", self._on_parallel)
-
-        # 账号单独一行: P2 起 Paddle 额度按账号计, 不能让 A/B 的 token 与页数混在一起。
-        acct = ttk.Frame(self)
-        acct.pack(fill="x", padx=10, pady=(0, 4))
-        ttk.Label(acct, text="Paddle 账号").pack(side="left")
-        self.acct_var = tk.StringVar(value="")
-        self.acct_box = ttk.Combobox(acct, textvariable=self.acct_var, width=24,
-                                     state="readonly", values=[])
-        self.acct_box.pack(side="left", padx=(4, 6))
-        self.acct_box.bind("<<ComboboxSelected>>", self._on_account)
-        ttk.Button(acct, text="账号与额度…", command=self._open_accounts).pack(side="left")
-        self.acct_hint = ttk.Label(acct, text="", foreground="#555")
-        self.acct_hint.pack(side="left", padx=12)
-        self.auto_lbl = ttk.Label(acct, text="● 自动监视 uploads", foreground="#2c7a4b")
-        self.auto_lbl.pack(side="right")
 
         # 状态栏单独占窗口底部一行: 并发跑 5 篇时它要报"哪几篇在跑", 挤在顶栏右侧会跟
         # 6 个按钮抢宽度(实测被压到 0 宽, 整条状态直接消失)。
         self.status_lbl = ttk.Label(self, text="", anchor="w")
         self.status_lbl.pack(side="bottom", fill="x", padx=12, pady=(0, 6))
+        self.conflict_lbl = tk.Label(self, text="", anchor="w", padx=8, pady=5,
+                                     bg="#fff4e5", fg="#b45309")
+        self.conflict_lbl.pack(fill="x", padx=10, pady=(0, 4))
+        self.conflict_lbl.pack_forget()
 
         mid = ttk.Panedwindow(self, orient="vertical")
         mid.pack(fill="both", expand=True, padx=10)
 
         # 文档表(多选: Ctrl/Shift 批量, 操作按钮对选中集生效)
         wrap = ttk.Frame(mid)
-        cols = ("state", "qc", "entity", "mineru", "dots", "paddle", "done_at", "runs")
-        self.tree = ttk.Treeview(wrap, columns=cols, show="tree headings", height=12,
+        viewbar = ttk.Frame(wrap)
+        viewbar.pack(fill="x", pady=(0, 4))
+        ttk.Label(viewbar, text="文档 ID").pack(side="left")
+        self.search_var = tk.StringVar()
+        search = ttk.Entry(viewbar, textvariable=self.search_var, width=18)
+        search.pack(side="left", padx=(4, 12))
+        self.search_var.trace_add("write", lambda *_args: self._apply_view())
+        ttk.Label(viewbar, text="状态").pack(side="left")
+        self.filter_var = tk.StringVar(value="全部")
+        filter_box = ttk.Combobox(viewbar, textvariable=self.filter_var, width=8, state="readonly",
+                                  values=("全部", "运行中", "异常", "未通过", "非正规", "特殊", "未跑", "未跑NER", "完成"))
+        filter_box.pack(side="left", padx=4)
+        filter_box.bind("<<ComboboxSelected>>", lambda _ev: self._apply_view())
+        ttk.Label(viewbar, text="语言").pack(side="left", padx=(8, 0))
+        self.lang_filter_var = tk.StringVar(value="全部")
+        lang_box = ttk.Combobox(viewbar, textvariable=self.lang_filter_var, width=7, state="readonly",
+                                values=("全部", "韩文", "中文", "英文", "混合", "未知"))
+        lang_box.pack(side="left", padx=4)
+        lang_box.bind("<<ComboboxSelected>>", lambda _ev: self._apply_view())
+        self.entity_view = tk.BooleanVar(value=False)
+        tk.Checkbutton(lang_box.master, text="实体视图", variable=self.entity_view,
+                       command=self._switch_view).pack(side="left", padx=(10, 0))
+        self.count_lbl = ttk.Label(viewbar, text="文档 0 篇", foreground="#4b5563")
+        self.count_lbl.pack(side="right", padx=4)
+        selection_box = ttk.Frame(viewbar)
+        selection_box.pack(side="right", padx=8)
+        self.sel_lbl = ttk.Label(selection_box, text="未选中")
+        self.sel_lbl.pack(side="left", padx=(0, 4))
+        self.btn_clear_sel = ttk.Button(selection_box, text="全选", command=self._toggle_select_all)
+        self.btn_clear_sel.pack(side="left")
+        table = ttk.Frame(wrap)
+        table.pack(fill="both", expand=True)
+        self.tree = ttk.Treeview(table, columns=(), show="tree headings", height=12,
                                  selectmode="extended")
-        self.tree.heading("#0", text="文档")
-        for c, w, t in (("state", 70, "状态"), ("qc", 280, "质检 · 必抽项"),
-                        ("entity", 58, "实体"),
-                        ("mineru", 58, "MinerU"), ("dots", 58, "dots"),
-                        ("paddle", 62, "Paddle"), ("done_at", 118, "上次完成"),
-                        ("runs", 86, "历史")):
-            self.tree.heading(c, text=t)
-            self.tree.column(c, width=w, anchor="center")
-        self.tree.column("#0", width=180)
-        self.tree.column("qc", anchor="w")   # 缺项名要能读, 左对齐; 其余列居中
+        # 列规格(列名, 基准宽, 表头, 对齐)——文档视图 9 列; 实体视图 4 列(entview.KINDS 顺序)
+        self._doc_colspec = (("state", 64, "状态", "center"), ("qc", 190, "质检 · 必抽项", "w"),
+                             ("language", 58, "语言", "center"), ("channels", 58, "渠道", "center"),
+                             ("ner", 54, "NER", "center"), ("timing", 104, "时间分析(OCR:LLM)", "center"),
+                             ("done_at", 100, "上次完成", "center"), ("runs", 64, "历史", "center"),
+                             ("note", 220, "备注", "w"))
+        # 实体视图列 = 14 必抽项字段 + 4 实体 kind(entview.COLUMNS 驱动, 字段在前实体在后)
+        self._ent_colspec = tuple((k, w, zh, "w") for k, zh, w in entview.COLUMNS)
+        self._set_columns(self._doc_colspec)
         self.tree.tag_configure("qc_bad", foreground="#b03030")
-        self.tree.pack(side="left", fill="both", expand=True)
-        sb = ttk.Scrollbar(wrap, orient="vertical", command=self.tree.yview)
+        self.tree.tag_configure("qc_nonregular", foreground="#2563eb")
+        self.tree.tag_configure("qc_novol", foreground="#7c3aed")   # 免卷期刊: 紫
+        self.tree.tag_configure("state_complete", foreground="#000000")
+        self.tree.tag_configure("state_running", foreground="#1d4ed8")
+        self.tree.tag_configure("state_unrun", foreground="#6b7280")
+        self.tree.tag_configure("state_warn", foreground="#b45309")
+        style = ttk.Style(self)
+        style.configure("Treeview", rowheight=28)
+        style.map("Treeview", background=[("selected", "#dbeafe")],
+                  foreground=[("selected", "#111827")])
+        table.rowconfigure(0, weight=1)
+        table.columnconfigure(0, weight=1)
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        sb = ttk.Scrollbar(table, orient="vertical", command=self.tree.yview)
+        self.tree_vscroll = sb
         self.tree.configure(yscrollcommand=sb.set)
-        sb.pack(side="right", fill="y")
+        sb.grid(row=0, column=1, sticky="ns")
+        self._column_base = {"#0": 150, "state": 64, "qc": 190, "language": 58,
+                             "channels": 58, "ner": 54, "timing": 104,
+                             "done_at": 100, "runs": 64, "note": 220}
+        wrap.bind("<Configure>", lambda _ev: self._fit_tree_columns())
         self.tree.bind("<<TreeviewSelect>>", lambda e: self._sync_buttons())
-        self.tree.bind("<Double-1>", lambda e: self._open_viewer())
+        self.tree.bind("<Button-1>", self._remember_selection_anchor, add=True)
+        self.tree.bind("<Shift-Button-1>", self._select_shift_range)
+        self.tree.bind("<Double-1>", self._on_double_click)
         self.tree.bind("<Button-3>", self._context_menu)
-        self.tree.bind("<Control-a>", self._select_all)
         mid.add(wrap, weight=3)
 
         # 操作条(对选中文档)
@@ -635,36 +727,84 @@ class App(tk.Tk):
         # 「快速重跑(跳NER)」仍是独立键: 它存在的目的就是不重复调 LLM。
         grp = ttk.Frame(act)
         grp.pack(side="left", padx=(4, 8))
-        self.btn_rerun = ttk.Button(grp, text="开始解析  ▾", command=self._on_rerun_click)
+        self.btn_rerun = ttk.Button(grp, text="一键重跑  ▾", command=self._on_rerun_click)
         self.btn_rerun.pack(side="left")
         self.btn_rerun.bind("<ButtonPress-1>", self._note_click_x)
         self.btn_quick = ttk.Button(grp, text="快速重跑(跳NER)", command=self._rerun_fast)
-        # 高级重跑入口收进「更多」；控件保留以便状态同步，但不再占第一层。
+        self.btn_quick.pack(side="left", padx=(4, 0))
         self.stage_menu = tk.Menu(self, tearoff=0, postcommand=self._build_stage_menu)
-        self.btn_gaps = ttk.Button(act, text="重跑缺口", command=self._rerun_gaps)
-        self.btn_retry = ttk.Button(act, text="重试缺失渠道", command=self._retry_missing)
-        self.more_menu = tk.Menu(self, tearoff=0, postcommand=self._build_more_menu)
-        self.btn_more = ttk.Menubutton(act, text="更多 ▾", menu=self.more_menu)
-        self.btn_more.pack(side="left", padx=4)
+        self.btn_stop = ttk.Button(act, text="停止", command=self._stop_batch, state="disabled")
+        self.btn_stop.pack(side="left", padx=(0, 4))
+        self.btn_retry = ttk.Button(act, text="重试全部缺失渠道", command=self._retry_missing)
         self.btn_view = ttk.Button(act, text="对照查看器", command=self._open_viewer)
-        self.btn_audit = ttk.Button(act, text="字段审计…", command=self._open_audit)
         self.btn_index = ttk.Button(act, text="结果总览", command=self._open_index)
         # 归档与"查看已归档"是两个独立键: 前者对选中集生效, 后者是全局清单(顶栏), 不合并
         self.btn_archive = ttk.Button(act, text="归档选中", command=self._archive_selected)
-        for b in (self.btn_view, self.btn_audit, self.btn_index, self.btn_archive):
+        for b in (self.btn_retry, self.btn_view, self.btn_index, self.btn_archive):
             b.pack(side="left", padx=4)
-        self.sel_lbl = ttk.Label(act, text="未选中")
-        self.sel_lbl.pack(side="left", padx=12)
         mid.add(act, weight=0)
 
         # 日志
         logw = ttk.Frame(mid)
+        logbar = ttk.Frame(logw)
+        logbar.pack(fill="x")
+        self.log_follow_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(logbar, text="自动滚动", variable=self.log_follow_var).pack(side="left")
+        ttk.Button(logbar, text="清空视图", command=self._clear_log_view).pack(side="left", padx=8)
         self.logtxt = scrolledtext.ScrolledText(logw, height=10, state="disabled", font=("Consolas", 9))
         self.logtxt.pack(fill="both", expand=True)
+        self.logtxt.bind("<MouseWheel>", self._on_log_scroll)
+        self.logtxt.bind("<Button-4>", self._on_log_scroll)
+        self.logtxt.bind("<Button-5>", self._on_log_scroll)
         mid.add(logw, weight=2)
 
-        self._sync_accounts()
         self.after(1000, self._tick_status)
+
+    def _save_log_view(self):
+        self._log_views[self.workspace.root] = (
+            self.logtxt.get("1.0", "end-1c"), self.logtxt.yview()[0])
+
+    def _restore_log_view(self):
+        text, top = self._log_views.get(self.workspace.root, ("", 0.0))
+        self.logtxt.configure(state="normal")
+        self.logtxt.delete("1.0", "end")
+        if text:
+            self.logtxt.insert("1.0", text)
+        self.logtxt.configure(state="disabled")
+        self.logtxt.yview_moveto(top)
+
+    def _on_workspace(self, _ev=None):
+        name = self.workspace_var.get()
+        if name == self.workspace.name:
+            return
+        self._save_log_view()
+        self.workspace = workspaces.custom_workspace(self._workspace_paths[name]).ensure() \
+            if name in self._workspace_paths else workspaces.get_workspace(ROOT, name).ensure()
+        self.runner = self._runner_for(self.workspace)
+        self._restore_log_view()
+        self._notes = load_notes(self.workspace.notes)
+        self._qc_results = {}
+        self._prefs["workspace"] = name
+        save_prefs(self._prefs)
+        self.refresh()
+        self._log("[工作区] 已切换到 %s" % name)
+
+    def _new_workspace(self):
+        path = filedialog.askdirectory(title="选择工作区文件夹", parent=self, mustexist=True)
+        if not path:
+            return
+        ws = workspaces.custom_workspace(path).ensure()
+        name = ws.name
+        if name == "main" or (name in workspaces.list_workspaces(ROOT)
+                              and name not in self._workspace_paths):
+            name = "workspace-" + str(len(self._workspace_paths) + 1)
+            ws.name = name
+        self._workspace_paths[name] = ws.root
+        self._prefs["workspace_paths"] = self._workspace_paths
+        save_prefs(self._prefs)
+        self.workspace_box.configure(values=workspaces.list_workspaces(ROOT, self._workspace_paths))
+        self.workspace_var.set(name)
+        self._on_workspace()
 
     def _on_parallel(self, _ev=None):
         try:
@@ -673,322 +813,7 @@ class App(tk.Tk):
             return
         self.par_var.set(str(n))
         self._prefs["parallel"] = n
-        save_prefs(self._prefs, self.zone.prefs)
-
-    def _account_items(self):
-        return self.accounts.list_accounts()
-
-    def _sync_accounts(self):
-        """刷新账号下拉; 选中项跟随当前工作区分配。"""
-        items = self._account_items()
-        vals = ["%s · %s" % (a["label"], a["key"]) for a in items]
-        self.acct_box["values"] = vals
-        key = self.zone.account
-        idx = next((i for i, a in enumerate(items) if a["key"] == key), -1)
-        if idx >= 0:
-            self.acct_var.set(vals[idx])
-        elif vals:
-            self.acct_var.set(vals[0])
-        self._refresh_account_hint()
-
-    def _refresh_account_hint(self):
-        key = self.zone.account
-        if not self.accounts.list_accounts():
-            self.acct_hint.configure(text="未配置 Paddle 账号；点「账号与额度…」新增")
-            return
-        s = self.runner.quota.summary()
-        zones = self.accounts.zones_of(key)
-        shared = "A/B 共用" if len(zones) > 1 else ("区 %s" % zones[0] if zones else "未分配")
-        self.acct_hint.configure(
-            text="%s · 今日 %d/%d 页 · 余 %d · %s" %
-                 (key, s["used"], s["limit"], s["remaining"], shared))
-
-    def _on_account(self, _ev=None):
-        items = self._account_items()
-        idx = self.acct_box.current()
-        if idx < 0 or idx >= len(items):
-            return
-        key = items[idx]["key"]
-        if key == self.zone.account:
-            return
-        self.accounts.assign(self.zone.zid, key)
-        rec = self.accounts.get(key) or {}
-        self.zone.account = key
-        self.runner.quota = self.qbook.account(key, rec.get("daily_pages") or DEFAULT_DAILY_PAGES)
-        self.quota = self.runner.quota
-        self._refresh_account_hint()
-        self._log("[账号] %s 改用 %s（新任务生效；已排队任务保留原账号）" %
-                  (self.zone.label, key))
-        rows = self._ingest_stores[self.zone_id].entries_by_status("waiting_account")
-        if rows and not self._paused:
-            self._handle_ingest(self.zone_id, [dict(r, status="pending") for r in rows])
-
-    def _open_accounts(self):
-        try:
-            if self._acct_win is not None and self._acct_win.winfo_exists():
-                self._acct_win.lift()
-                self._acct_win.focus_force()
-                return
-        except tk.TclError:
-            pass
-        try:
-            self._acct_win = AccountsWindow(self)
-        except tk.TclError:
-            self._acct_win = None
-
-    def _on_zone(self, _ev=None):
-        label = self.zone_var.get()
-        z = next((x for x in self.zones.values() if x.label == label), None)
-        if z is None:
-            return
-        self.zone = z
-        self.zone_id = z.zid
-        try:
-            if self._audit_win is not None and self._audit_win.winfo_exists():
-                self._audit_win.destroy()
-        except tk.TclError:
-            pass
-        self._audit_win = None
-        self.runner = self.runners[z.zid]
-        self.quota = self.runner.quota
-        self._prefs = load_prefs(z.prefs)
-        self.par_var.set(str(self.runner.parallel))
-        self._entity_cache = {}
-        self._sync_accounts()
-        self.refresh()
-        rows = self._ingest_stores[z.zid].entries_by_status("waiting_account")
-        if rows and not self._paused:
-            self._handle_ingest(z.zid, [dict(r, status="pending") for r in rows])
-        self._log("[工作区] 切换到 %s（%s）" % (z.label, z.out))
-
-    def _startup_prompt(self):
-        if os.environ.get("KCI_NO_STARTUP_PROMPT") == "1":
-            self._startup_pending = False
-            self._continue_all()
-            return
-        lines = []
-        total = 0
-        for z in self.zones.values():
-            c = self.runners[z.zid].store.counts()
-            pending = c.get("queued", 0) + c.get("interrupted", 0)
-            total += pending
-            if pending or c.get("running"):
-                lines.append("· %s：排队 %d，中断 %d，运行 %d" % (
-                    z.label, c.get("queued", 0), c.get("interrupted", 0),
-                    c.get("running", 0)))
-        seen = set()
-        for z in self.zones.values():
-            key = z.account
-            if key in seen:
-                continue
-            seen.add(key)
-            q = self.qbook.account(key).summary()
-            zones = self.accounts.zones_of(key)
-            lines.append("· Paddle 账号 %s（%s）：已用 %d / %d，剩余 %d" % (
-                key, "+".join(zones) or "-", q["used"], q["limit"], q["remaining"]))
-        if not total and not any(self.runners[z].running for z in self.runners):
-            body = "没有需要恢复的任务。\n\n点击「继续」后解锁批量执行。"
-        else:
-            body = "检测到上次未完成任务：\n\n%s\n\n点击「继续」恢复；选择「暂不继续」则只浏览，不启动新任务。" % "\n".join(lines)
-        go = self._ask_continue(body)
-        self._startup_pending = False
-        if go:
-            self._continue_all()
-        else:
-            self._paused = True
-            self.btn_resume.configure(text="继续")
-            self.auto_lbl.configure(text="● 自动监视已暂停", foreground="#8a6d3b")
-            self._sync_buttons()
-            self.status_lbl.configure(text="已暂停：任务已持久化，可稍后点「继续」恢复")
-
-    def _ask_continue(self, body):
-        """自绘启动闸门：按钮文案必须是「继续 / 暂不继续」，不用系统 OK/取消。"""
-        dlg = tk.Toplevel(self)
-        dlg.title("继续上次任务")
-        dlg.transient(self)
-        dlg.resizable(False, False)
-        dlg.grab_set()
-        ttk.Label(dlg, text=body, justify="left", wraplength=520).pack(
-            padx=18, pady=(16, 10), anchor="w")
-        bar = ttk.Frame(dlg)
-        bar.pack(fill="x", padx=18, pady=(0, 14))
-        choice = {"go": False}
-
-        def choose(go):
-            choice["go"] = bool(go)
-            dlg.destroy()
-
-        ttk.Button(bar, text="暂不继续", command=lambda: choose(False)).pack(side="right")
-        ttk.Button(bar, text="继续", command=lambda: choose(True)).pack(
-            side="right", padx=(0, 8))
-        dlg.protocol("WM_DELETE_WINDOW", lambda: choose(False))
-        dlg.update_idletasks()
-        x = self.winfo_rootx() + max(0, (self.winfo_width() - dlg.winfo_width()) // 2)
-        y = self.winfo_rooty() + max(0, (self.winfo_height() - dlg.winfo_height()) // 2)
-        dlg.geometry("+%d+%d" % (x, y))
-        dlg.wait_window()
-        return choice["go"]
-
-    def _continue_all(self):
-        for r in self.runners.values():
-            r.resume()
-        self._paused = False
-        self.btn_resume.configure(text="暂停")
-        self.auto_lbl.configure(text="● 自动监视 uploads", foreground="#2c7a4b")
-        self.refresh()
-        self._log("[继续] 已恢复两区持久任务")
-        # 暂停期间新到/待确认的文件，在继续后补一次处理（不自动重试等待额度/账号）。
-        for zid, store in self._ingest_stores.items():
-            rows = store.entries_by_status("waiting_pause", "waiting_confirm")
-            if rows:
-                self._handle_ingest(zid, [dict(r, status="pending") for r in rows])
-
-    def _toggle_run(self):
-        if any(r.paused for r in self.runners.values()):
-            self._continue_all()
-        else:
-            for r in self.runners.values():
-                r.pause()
-            self._paused = True
-            self.btn_resume.configure(text="继续")
-            self.auto_lbl.configure(text="● 自动监视已暂停", foreground="#8a6d3b")
-            self._sync_buttons()
-            self._log("[暂停] 不再放行新任务；正在跑的子进程会跑完")
-
-    # ---------- 自动导入(uploads 文件夹) ----------
-    def _ingest_loop(self):
-        """后台只做文件发现/SHA/页数，不碰 Tk；事件投回主线程。"""
-        while not self._closing:
-            for zid, scanner in list(self._ingest_scanners.items()):
-                if self._closing:
-                    break
-                try:
-                    events = scanner.scan()
-                except Exception as e:
-                    self._ingest_q.put(("error", zid, str(e)))
-                    continue
-                if events:
-                    self._ingest_q.put(("events", zid, events))
-            time.sleep(2)
-
-    def _drain_ingest(self):
-        for _ in range(30):
-            try:
-                kind, zid, payload = self._ingest_q.get_nowait()
-            except queue.Empty:
-                break
-            if kind == "error":
-                self._log("[自动导入·错误] 区 %s: %s" % (zid, payload))
-                continue
-            try:
-                self._handle_ingest(zid, payload)
-            except Exception as e:
-                self._log("[自动导入·处理失败] 区 %s: %s" % (zid, e))
-
-    def _handle_ingest(self, zid, events):
-        zone = self.zones.get(zid)
-        store = self._ingest_stores.get(zid)
-        runner = self.runners.get(zid)
-        if not zone or not store or not runner:
-            return
-        pending = []
-        for e in events or []:
-            st = e.get("status")
-            name = e.get("name") or ""
-            if st == "baseline":
-                if e.get("count"):
-                    self._log("[自动导入] 区 %s 首次建立基线 %d 篇；既有文件不自动跑。"
-                              % (zone.label, e["count"]))
-                continue
-            if st == "bad":
-                self._log("[自动导入·跳过] %s: %s" % (name, e.get("error") or "PDF 无法打开"))
-                continue
-            if st == "duplicate":
-                self._log("[自动导入·跳过] %s 与 %s 内容相同" %
-                          (name, e.get("duplicate_of") or "已有文件"))
-                continue
-            if st == "conflict":
-                self._log("[自动导入·冲突] %s 同名文件内容已变化；未自动覆盖" % name)
-                continue
-            if st == "pending" and name and e.get("pdf"):
-                pending.append(e)
-        if not pending:
-            return
-        if self._paused or self._startup_pending:
-            for e in pending:
-                store.set_entry(e["name"], status="waiting_pause")
-            self._log("[自动导入] 区 %s 发现 %d 篇新文件；当前暂停，继续后处理"
-                      % (zone.label, len(pending)))
-            self.refresh()
-            return
-        self._submit_ingest(zid, pending)
-
-    def _submit_ingest(self, zid, events):
-        zone = self.zones[zid]
-        runner = self.runners[zid]
-        store = self._ingest_stores[zid]
-        todo = []
-        for e in events:
-            doc = e.get("doc") or ""
-            name = e.get("name") or ""
-            if not doc or not os.path.isfile(e.get("pdf") or ""):
-                store.set_entry(name, status="bad", error="文件已移走")
-                continue
-            if runner.store.active_for(doc):
-                store.set_entry(name, status="queued")
-                self._log("[自动导入·跳过] %s 已在队列/运行" % doc)
-                continue
-            todo.append(e)
-        if not todo:
-            return
-        rec = self.accounts.get(zone.account) or {}
-        if not (rec.get("token") or "").strip():
-            for e in todo:
-                store.set_entry(e["name"], status="waiting_account")
-            self._log("[自动导入·等待账号] 区 %s 账号 %s 没有 Paddle token"
-                      % (zone.label, zone.account))
-            return
-        need = sum(int(e.get("pages") or 0) for e in todo)
-        if need > runner.quota.remaining():
-            for e in todo:
-                store.set_entry(e["name"], status="waiting_quota")
-            self._log("[自动导入·等待额度] 区 %s 需要 %d 页，账号 %s 今日余 %d 页"
-                      % (zone.label, need, zone.account, runner.quota.remaining()))
-            return
-        if len(todo) >= 50 or need > 5000:
-            if not messagebox.askokcancel(
-                    "自动处理确认",
-                    "区 %s 新到 %d 篇 PDF，预计 Paddle %d 页。\n\n"
-                    "超过单次自动处理阈值（50 篇或 5000 页），是否现在开始？\n"
-                    "选择「取消」会标记为「待确认」，不会自动跑。" % (
-                        zone.label, len(todo), need), parent=self):
-                for e in todo:
-                    store.set_entry(e["name"], status="waiting_confirm")
-                self._log("[自动导入] 区 %s 有 %d 篇待确认" % (zone.label, len(todo)))
-                return
-        reserved = []
-        for e in todo:
-            key = "%s/%s" % (zid, e["doc"])
-            if not runner.quota.reserve(key, int(e.get("pages") or 0)):
-                store.set_entry(e["name"], status="waiting_quota")
-                continue
-            reserved.append((e, key))
-        if not reserved:
-            self._log("[自动导入·等待额度] 区 %s 没有可预留的页数" % zone.label)
-            return
-        n = 0
-        for e, key in reserved:
-            ok = runner.submit(e["doc"], e["pdf"], list(stages.ORDER), "自动处理",
-                               account=zone.account)
-            if ok:
-                store.set_entry(e["name"], status="queued")
-                n += 1
-            else:
-                runner.quota.release(key)
-                store.set_entry(e["name"], status="waiting_confirm", error="提交失败")
-        if n:
-            self._log("[自动导入] 区 %s 已提交 %d 篇（全文流水线）" % (zone.label, n))
-            self.refresh()
+        save_prefs(self._prefs)
 
     # ---------- 阶段菜单 ----------
     _ARROW_W = 20          # 键右侧箭头热区宽度(px): 落在这一段内=开菜单, 其余=执行
@@ -1002,7 +827,7 @@ class App(tk.Tk):
         if x is not None and x >= self.btn_rerun.winfo_width() - self._ARROW_W:
             self._post_stage_menu()
         else:
-            self._smart_action()
+            self._run_selected()
 
     def _post_stage_menu(self):
         """菜单贴在这个键的右端下方(箭头正下方)。"""
@@ -1013,18 +838,6 @@ class App(tk.Tk):
         finally:
             self.stage_menu.grab_release()
 
-    def _build_more_menu(self):
-        m = self.more_menu
-        m.delete(0, "end")
-        m.add_command(label="快速重跑（跳过 NER）", command=self._rerun_fast)
-        m.add_command(label="只补缺失渠道", command=self._retry_missing)
-        m.add_command(label="只补渠道/实体缺口", command=self._rerun_gaps)
-        m.add_separator()
-        m.add_command(label="按菜单勾选阶段执行", command=self._run_selected)
-        m.add_command(label="字段 / 实体审计…", command=self._open_audit)
-        m.add_separator()
-        m.add_command(label="全选文档（Ctrl+A）", command=self._select_all)
-
     def _build_stage_menu(self):
         """每次弹出前重建: 依赖状态随当前文档产物变化, 不能只建一次。
 
@@ -1034,7 +847,7 @@ class App(tk.Tk):
         m.delete(0, "end")
         docs = self._selected() or ([self.tree.focus()] if self.tree.focus() else [])
         probe = docs[0] if docs else None
-        avail = stages.availability(probe, self.zone.out, self.zone.up) if probe else {}
+        avail = stages.availability(probe, self.workspace.out) if probe else {}
 
         pre = tk.Menu(m, tearoff=0)
         for name, ids in stages.PRESETS:
@@ -1080,237 +893,275 @@ class App(tk.Tk):
 
     # ---------- 数据 ----------
     def refresh(self):
-        self.docs = scan_docs(self.zone.up, self.zone.out, self.zone.arch)
-        self.hist = load_history(self.zone.hist)
+        self.docs = scan_docs(self.workspace.uploads, self.workspace.out,
+                              self.workspace.ner_root, include_archived=True,
+                              arch_root=self.workspace.archive)
+        self.hist = load_history(self.workspace.history)
         self._webapp_on = webapp_alive()
-        sels = [d for d in self._selected() if d in self.docs]   # 多选保留
+        if self._webapp_on:
+            self.conflict_lbl.configure(
+                text="警告：检测到 web 服务(端口%d)同时运行，请勿在两端解析同一篇文档" % self._webapp_on)
+            self.conflict_lbl.pack(fill="x", padx=10, pady=(0, 4))
+        else:
+            self.conflict_lbl.pack_forget()
+        self._qc_generation += 1
+        self._qc_pending = sorted(self.docs)
+        self._apply_view()
+        self._start_qc_loader()
+
+    def _display_state(self, doc):
+        if doc in self.runner.running:
+            return "运行中"
+        if doc in self.runner.queued:
+            return "排队"
+        h = self.hist.get(doc) or []
+        if h and not h[-1].get("ok"):
+            return "失败"
+        return self.docs[doc]["state"]
+
+    def _row_tag(self, doc, qr=None):
+        if qr and qr.get("level") == "bad":
+            return "qc_bad"
+        if qr and qr.get("level") == "novol":
+            return "qc_novol"
+        if qr and qr.get("level") == "nonregular":
+            return "qc_nonregular"
+        state = self._display_state(doc)
+        if state in ("运行中", "排队"):
+            return "state_running"
+        if state == "完成":
+            return "state_complete"
+        if state == "未跑":
+            return "state_unrun"
+        return "state_warn"
+
+    def _set_columns(self, colspec):
+        """列重配(实体视图切换): 重设列集合/表头/宽度, 同步 _column_base。"""
+        self.tree.configure(columns=tuple(c for c, _w, _t, _a in colspec))
+        self.tree.heading("#0", text="文档")
+        for c, w, t, a in colspec:
+            self.tree.heading(c, text=t)
+            self.tree.column(c, width=w, anchor=a)
+        self.tree.column("#0", width=150)
+        self._column_base = dict([("#0", 150)] + [(c, w) for c, w, _t, _a in colspec])
+
+    def _switch_view(self):
+        """一键切换: 文档视图(状态/质检/…) ↔ 实体视图(机构/基金/软件/数据集)。"""
+        if self.entity_view.get():
+            self._set_columns(self._ent_colspec)
+            # 切到实体视图时全量取一次实体矩阵; 之后 refresh 新增的篇目暂显示空格,
+            # 再切一次即刷新(NER 产物是 LLM 阶段产出, 不值得每次 refresh 全库重读)。
+            # 首次切换全库扫一次正文字数并落增量缓存(out/.view_body_chars.json), 之后秒开
+            self._ent_cache = entview.matrix(sorted(self.docs), self.workspace.out,
+                                             self.workspace.ner_root)
+        else:
+            self._set_columns(self._doc_colspec)
+        self._fit_tree_columns()
+        self._apply_view()
+
+    def _fit_tree_columns(self):
+        available = max(240, self.tree.master.winfo_width() - self.tree_vscroll.winfo_reqwidth() - 4)
+        ratio = min(1.0, available / float(sum(self._column_base.values())))
+        for col, width in self._column_base.items():
+            self.tree.column(col, width=max(30, int(width * ratio)))
+
+    def _apply_view(self):
+        sels = set(self.tree.selection())
         self.tree.delete(*self.tree.get_children())
-        ings = self._ingest_stores[self.zone_id].statuses()
-        rows = []
-        for doc, d in self.docs.items():
-            state = display_state(d, ings.get(doc, ""))
-            if d["state"] == "未跑":
-                if doc in self.runner.running:
-                    state = "运行中"
-                elif doc in self.runner.queued:
-                    state = "排队中"
+        query = self.search_var.get().strip().lower()
+        mode = self.filter_var.get()
+        lang_mode = self.lang_filter_var.get()
+        for doc in sorted(self.docs):
+            if query and query not in doc.lower():
+                continue
+            state = self._display_state(doc)
+            qr = self._qc_results.get(doc)
+            if lang_mode != "全部" and (qr or {}).get("language", "未知") != lang_mode:
+                continue
+            if mode == "运行中" and state not in ("运行中", "排队"):
+                continue
+            if mode == "异常" and not (state in ("失败", "缺渠道", "未完成", "无PDF")
+                                       or (qr and qr.get("level") == "bad")):
+                continue
+            if mode == "未通过" and not (qr and qr.get("level") == "bad"):
+                continue
+            if mode == "非正规" and not (qr and qr.get("level") == "nonregular"):
+                continue
+            if mode == "特殊" and not (qr and qr.get("level") == "novol"):
+                continue
+            if mode == "未跑" and state != "未跑":
+                continue
+            if mode == "未跑NER" and self.docs[doc].get("ner"):
+                continue
+            if mode == "完成" and state != "完成":
+                continue
+            d = self.docs[doc]
             h = self.hist.get(doc, [])
             runs = "%d 次%s" % (len(h), "(末次失败)" if (h and not h[-1]["ok"]) else "")
-            # 变量名不用 qc: 会把模块 qc 遮蔽掉, 后面再想调 qc.clear_cache 就炸在这里
-            qr = qc_of(doc, out_dir=self.zone.out, ner_root=self.zone.ner) \
-                if d["state"] != "未跑" else {"label": "-", "level": "", "issues": []}
-            est = wb.entity_summary(doc, self.zone)[0] if d["state"] != "未跑" else "—"
-            tags = ("qc_bad",) if qr["level"] == "bad" else ()
-            sort_at = d.get("done_at") or (
-                os.path.getmtime(d["pdf"]) if d.get("pdf") else 0)
-            rows.append((state_rank(state), -sort_at, doc, d, state, qr, est, tags, runs))
-        # 未跑/待处理最前；同组新文件优先。排序只在显示层做，不改扫描真值。
-        for _, _, doc, d, state, qr, est, tags, runs in sorted(rows):
-            self.tree.insert("", "end", iid=doc, text=doc, tags=tags, values=(
-                state,
-                qr["label"],
-                est,
-                "✔" if d["ch"]["mineru"] else "—",
-                "✔" if d["ch"]["dots"] else "—",
-                "✔" if d["ch"]["paddle"] else "—",
-                time.strftime("%m-%d %H:%M", time.localtime(d["done_at"])) if d["done_at"] else "-",
-                runs))
-        if sels:
-            self.tree.selection_set(sels)
-        unrun = sum(1 for d in self.docs.values() if d.get("state") == "未跑")
-        if unrun and unrun != self._last_unrun:
-            self._log("[扫描] 当前区有 %d 篇 PDF 未跑；新拖入文件会自动处理，"
-                      "历史文件请选中后点「开始解析」（Ctrl+A 全选）。" % unrun)
-        self._last_unrun = unrun
+            if d["state"] == "未跑":
+                qr = {"label": "-", "level": "", "issues": []}
+            if self.entity_view.get():
+                _cells = (self._ent_cache or {}).get(doc) or {}
+                _vals = tuple(_cells.get(k, "") for k, _zh, _w in entview.COLUMNS)
+            else:
+                _vals = (
+                    state,
+                    qc_display(qr) if qr else "质检中",
+                    "-" if d["state"] == "未跑" else (qr or {}).get("language", "检查中"),
+                    channel_display(d),
+                    "已跑" if d.get("ner") else "未跑",
+                    timing_display(h[-1] if h else None),
+                    time.strftime("%m-%d %H:%M", time.localtime(d["done_at"])) if d["done_at"] else "-",
+                    runs,
+                    self._notes.get(doc, ""))
+            self.tree.insert("", "end", iid=doc, text=doc, tags=(self._row_tag(doc, qr),), values=_vals)
+        visible = [d for d in sels if self.tree.exists(d)]
+        if visible:
+            self.tree.selection_set(visible)
+        self.count_lbl.configure(text="文档 %d / %d 篇" % (len(self.tree.get_children()), len(self.docs)))
         self._sync_buttons()
+
+    def _start_qc_loader(self):
+        if not self._qc_pending or (self._qc_thread and self._qc_thread.is_alive()):
+            return
+        generation = self._qc_generation
+        pending = list(self._qc_pending)
+        self._qc_thread = threading.Thread(target=self._qc_load, args=(generation, pending), daemon=True)
+        self._qc_thread.start()
+
+    def _qc_load(self, generation, pending):
+        for doc in pending:
+            if generation != self._qc_generation:
+                self._qc_queue.put((generation, None, None))
+                return
+            state = (self.docs.get(doc) or {}).get("state")
+            qr = qc_of(doc, out_dir=self.workspace.out, ner_root=self.workspace.ner_root) \
+                if state != "未跑" else {"label": "-", "level": "", "issues": []}
+            self._qc_queue.put((generation, doc, qr))
+        self._qc_queue.put((generation, None, None))
+
+    def _drain_qc(self):
+        restart = False
+        got = False   # dirty 门闩(2026-11-18): 本轮确实收到新质检结果才重绘视图——
+                      # 此前挂在筛选档时每 50ms 重建近千行表格 20 次/秒, 多数轮次空转。
+        try:
+            for _ in range(30):
+                generation, doc, qr = self._qc_queue.get_nowait()
+                if generation != self._qc_generation:
+                    if doc is None:
+                        self._qc_thread = None
+                        restart = True
+                    continue
+                if doc is None:
+                    self._qc_pending = []
+                    continue
+                self._qc_results[doc] = qr
+                got = True
+                if doc in self.docs and self.tree.exists(doc):
+                    values = list(self.tree.item(doc, "values"))
+                    if not self.entity_view.get():
+                        values[1] = qc_display(qr)
+                        values[2] = qr.get("language", "未知")
+                    if len(values) >= 9:
+                        values[8] = self._notes.get(doc, "")
+                    self.tree.item(doc, values=values, tags=(self._row_tag(doc, qr),))
+        except queue.Empty:
+            pass
+        if got and (self.filter_var.get() in ("异常", "未通过", "非正规", "特殊")
+                    or self.lang_filter_var.get() != "全部"):
+            self._apply_view()
+        if restart:
+            self._start_qc_loader()
+        self.after(50, self._drain_qc)
+
+    def _remember_selection_anchor(self, ev):
+        doc = self.tree.identify_row(ev.y)
+        if doc:
+            self._selection_anchor = doc
+
+    def _select_shift_range(self, ev):
+        target = self.tree.identify_row(ev.y)
+        if not target:
+            return "break"
+        docs = list(self.tree.get_children())
+        anchor = self._selection_anchor or self.tree.focus()
+        if anchor not in docs:
+            anchor = self._selected()[0] if self._selected() else docs[0]
+        i, j = docs.index(anchor), docs.index(target)
+        self.tree.selection_set(docs[min(i, j):max(i, j) + 1])
+        self.tree.focus(target)
+        return "break"
 
     def _selected(self):
         return list(self.tree.selection())
 
-    def _select_all(self, event=None):
-        self.tree.selection_set(self.tree.get_children())
-        self._sync_buttons()
-        return "break"
-
     def _sync_buttons(self):
         docs = self._selected()
         has = bool(docs)
-        runnable = bool(self._paused is False) and any(
-            self.docs.get(d, {}).get("pdf") for d in docs)
-        retryable = bool(self._paused is False) and any(
-            self.docs.get(d, {}).get("pdf") and self.docs[d]["miss"] for d in docs)
-        self.btn_rerun.configure(state="normal" if runnable else "disabled")
-        self.btn_more.configure(state="normal" if has else "disabled")
+        runnable = any(self.docs.get(d, {}).get("pdf") for d in docs)
+        retry_count = sum(bool(d.get("pdf") and d.get("miss")) for d in self.docs.values())
+        self.btn_rerun.configure(state="normal" if runnable else "disabled",
+                                 text="一键重跑（%d） ▾" % len(docs) if docs else "一键重跑 ▾")
         self.btn_quick.configure(state="normal" if runnable else "disabled")
-        self.btn_gaps.configure(state="normal" if runnable else "disabled")
-        self.btn_retry.configure(state="normal" if retryable else "disabled")
+        self.btn_retry.configure(state="normal" if retry_count else "disabled",
+                                 text="重试全部缺失渠道（%d篇）" % retry_count)
         self.btn_view.configure(state="normal" if has else "disabled")
-        self.btn_audit.configure(state="normal" if has else "disabled")
         self.btn_index.configure(state="normal" if has else "disabled")
         self.btn_archive.configure(state="normal" if has else "disabled")
+        _visible = list(self.tree.get_children())
+        _full = bool(_visible) and set(self.tree.selection()) >= set(_visible)
+        self.btn_clear_sel.configure(state="normal" if _visible else "disabled",
+                                     text="清除选择" if _full else "全选")
+        self.btn_stop.configure(state="normal" if self.runner.is_busy()
+                                and not self.runner.is_stopping() else "disabled")
         n = len(self._checked_stages()) if hasattr(self, "stage_vars") else 0
         if has:
-            self.sel_lbl.configure(text="已选 %d 篇: %s ｜ 菜单勾选 %d 段" % (
-                len(docs), ", ".join(docs[:3]) + (" …" if len(docs) > 3 else ""), n))
+            self.sel_lbl.configure(text="已选 %d 篇 ｜ 菜单勾选 %d 段" % (len(docs), n))
         else:
             self.sel_lbl.configure(text="未选中")
 
     # ---------- 动作(对选中集批量) ----------
-    def _pages(self, doc):
-        if doc not in self._page_cache:
-            d = self.docs.get(doc) or {}
-            self._page_cache[doc] = wb.page_count(d.get("pdf"))
-        return self._page_cache[doc]
+    def _toggle_select_all(self):
+        """全选/清除 二合一(2026-11-17): 对**当前筛选出的**全部文档,
+        未全选 → 一键全选; 已全选 → 清除。按钮文字随状态切换。"""
+        visible = list(self.tree.get_children())
+        if not visible:
+            return
+        if set(self.tree.selection()) >= set(visible):
+            self.tree.selection_remove(self.tree.selection())
+        else:
+            self.tree.selection_set(visible)
+        self._sync_buttons()
 
-    def _reserve_quota(self, docs, ids):
-        """按 PDF 页数预留 Paddle 日额度；缺 Paddle 的文档才算。"""
-        if "paddle" not in ids:
-            return True
-        rec = self.accounts.get(self.zone.account) or {}
-        if not (rec.get("token") or "").strip():
-            messagebox.showwarning(
-                "未配置 Paddle token",
-                "当前区使用账号 %s，但没有 Paddle token。\n\n"
-                "请点「账号与额度…」补齐 token；本次不预留页数、不提交任务。" %
-                self.zone.account, parent=self)
-            return False
-        todo = []
-        need = 0
-        for doc in docs:
-            d = self.docs.get(doc) or {}
-            if d.get("ch", {}).get("paddle"):
-                continue
-            pages = self._pages(doc)
-            if not pages:
-                messagebox.showwarning(
-                    "无法读取页数",
-                    "无法读取 %s 的 PDF 页数，不能做 Paddle 页配额预留，已取消本次提交。" % doc,
-                    parent=self)
-                return False
-            todo.append((doc, pages))
-            need += pages
-        if need > self.quota.remaining():
-            messagebox.showwarning(
-                "Paddle 配额不足",
-                "本次预计需要 Paddle %d 页，账号 %s 今日剩余 %d 页。\n\n"
-                "请缩小选中范围，或在「账号与额度…」中调整该账号日额度。" % (
-                    need, self.zone.account, self.quota.remaining()), parent=self)
-            return False
-        for doc, pages in todo:
-            key = "%s/%s" % (self.zone.zid, doc)
-            if not self.quota.reserve(key, pages):
-                messagebox.showwarning("Paddle 配额不足", "预留 %s 的 %d 页失败。" % (doc, pages),
-                                       parent=self)
-                return False
-        return True
+    def _stop_batch(self):
+        self.runner.stop_after_current()
+        self._sync_buttons()
 
     def _run_stages(self, ids, trigger=None):
         """按给定阶段子集批量提交(预设/自定义走同一入口)。"""
-        if self._paused:
-            messagebox.showinfo("尚未继续", "请先点顶部「继续」解锁执行；当前仅可浏览。", parent=self)
-            return
         ids = [i for i in stages.ORDER if i in set(ids)]   # 规范顺序 + 去重
         if not ids:
             self._log("[阶段] 未选择任何阶段")
             return
-        docs = [d for d in self._selected() if self.docs.get(d, {}).get("pdf")]
-        busy = [d for d in docs if self.runner.store.active_for(d)]
-        docs = [d for d in docs if d not in busy]
-        if busy:
-            self._log("[批量] 跳过 %d 篇(已在队列/运行): %s" % (
-                len(busy), ", ".join(busy[:5])))
-        if not docs:
-            if not busy:
-                messagebox.showinfo(
-                    "未选择文档",
-                    "请先在表格中选中要解析的 PDF（Ctrl+A 全选），再点「开始解析」。",
-                    parent=self)
-                self._log("[批量] 未选择文档；未提交任务")
-            return
-        if not self._reserve_quota(docs, ids):
-            return
+        self.runner.out_root = self.workspace.out
+        self.runner.history_fp = self.workspace.history
         n = 0
-        for doc in docs:
-            pdf = self.docs[doc]["pdf"]
+        skipped = []
+        for doc in self._selected():
+            pdf = self.docs.get(doc, {}).get("pdf")
+            if not pdf:
+                skipped.append(doc)
+                continue
             if self.runner.submit(doc, pdf, ids, trigger or ("执行选中 %d 段" % len(ids))):
                 n += 1
         if n:
             self._log("[批量] 已提交 %d 篇 · %d 段: %s" % (
                 n, len(ids), "→".join(stages.BY_ID[i][2] for i in ids)))
+        if skipped:
+            self._log("[批量] 跳过 %d 篇(无 PDF 源文件): %s" % (len(skipped), ", ".join(skipped[:5])))
 
-    def _rerun_gaps(self):
-        """只重跑缺渠道 + 实体未查/失败的文档。"""
-        if self._paused:
-            messagebox.showinfo("尚未继续", "请先点顶部「继续」解锁执行；当前仅可浏览。", parent=self)
-            return
-        docs = [d for d in self._selected() if self.docs.get(d, {}).get("pdf")]
-        if not docs:
-            messagebox.showinfo(
-                "未选择文档",
-                "请先选中要补缺口的 PDF（Ctrl+A 全选），再点「重跑缺口」。",
-                parent=self)
-            return
-        todo = []
-        for doc in docs:
-            d = self.docs[doc]
-            est = wb.entity_statuses(doc, self.zone)
-            ent_bad = any(v["status"] in ("not_checked", "extraction_failed")
-                          for v in est.values())
-            if not d["miss"] and not ent_bad:
-                continue
-            ids = list(stages.ORDER) if d["miss"] else ["ner"]
-            todo.append((doc, ids, tuple(d["miss"])))
-        busy = [doc for doc, _, _ in todo if self.runner.store.active_for(doc)]
-        if busy:
-            todo = [t for t in todo if t[0] not in busy]
-            self._log("[缺口] 跳过 %d 篇(已在队列/运行): %s" % (
-                len(busy), ", ".join(busy[:5])))
-        if not todo:
-            messagebox.showinfo("没有缺口", "选中文档的渠道和实体状态都没有需要重跑的缺口。",
-                                parent=self)
-            return
-        pages = sum(self._pages(doc) for doc, ids, _ in todo if "paddle" in ids
-                    and not self.docs[doc]["ch"]["paddle"])
-        msg = "将重跑 %d 篇：\n\n" % len(todo)
-        msg += "· 缺渠道 %d 篇\n· 仅实体缺口 %d 篇\n· 预计 Paddle %d 页（剩余 %d 页）" % (
-            sum(1 for _, ids, _ in todo if len(ids) > 1),
-            sum(1 for _, ids, _ in todo if len(ids) == 1),
-            pages, self.quota.remaining())
-        if not messagebox.askokcancel("重跑缺口", msg, parent=self):
-            return
-        if not self._reserve_quota([doc for doc, ids, _ in todo if "paddle" in ids],
-                                   ["paddle"]):
-            return
-        n = 0
-        for doc, ids, clear in todo:
-            if self.runner.submit(doc, self.docs[doc]["pdf"], ids,
-                                  "重跑缺口:" + ("缺渠道" if clear else "实体"), clear=clear):
-                n += 1
-        self._log("[缺口] 已提交 %d 篇" % n)
-
-    def _smart_action(self):
-        """一个主按钮: 未跑=全链开始；有缺口=补缺；已完成=打开结果。
-
-        高级能力没有删除，只是从第一层收进「更多」或阶段箭头，避免六个近义按钮
-        让用户先猜该点哪个。
-        """
-        docs = [d for d in self._selected() if self.docs.get(d, {}).get("pdf")]
-        if not docs:
-            messagebox.showinfo(
-                "未选择文档",
-                "请先在表格中选中 PDF（Ctrl+A 全选），再点「开始解析」。",
-                parent=self)
-            self._log("[开始解析] 未选择文档；未提交任务")
-            return
-        states = [self.docs[d]["state"] for d in docs]
-        if all(s in ("未跑", "未完成") for s in states):
-            self._run_stages(list(stages.ORDER), "开始解析")
-        elif all(self.docs[d]["miss"] for d in docs):
-            self._retry_missing()
-        elif all(s == "完成" for s in states):
-            self._open_index()
-        else:
-            self._run_stages(self._checked_stages())
+    def _run_selected(self):
+        self._run_stages(self._checked_stages())
 
 
     def _rerun_fast(self):
@@ -1323,35 +1174,68 @@ class App(tk.Tk):
         self._run_stages(ids, "快速重跑(跳NER)")
 
     def _retry_missing(self):
-        if self._paused:
-            messagebox.showinfo("尚未继续", "请先点顶部「继续」解锁执行；当前仅可浏览。", parent=self)
+        jobs = [(doc, self.docs[doc]) for doc in sorted(self.docs)
+                if self.docs[doc].get("pdf") and self.docs[doc].get("miss")]
+        if not jobs:
+            self._log("[批量] 当前没有缺失渠道的文档")
             return
-        docs = [d for d in self._selected()
-                if self.docs.get(d, {}).get("pdf") and self.docs[d]["miss"]]
-        busy = [d for d in docs if self.runner.store.active_for(d)]
-        docs = [d for d in docs if d not in busy]
-        if busy:
-            self._log("[重试] 跳过 %d 篇(已在队列/运行): %s" % (
-                len(busy), ", ".join(busy[:5])))
-        if not docs:
-            if not busy:
-                messagebox.showinfo(
-                    "未选择文档",
-                    "请先选中缺少渠道的 PDF（Ctrl+A 全选），再点「重试缺失渠道」。",
-                    parent=self)
-            return
-        if not self._reserve_quota(docs, ["paddle"]):
+        counts = {c: sum(c in d["miss"] for _doc, d in jobs) for c in CH}
+        msg = ("将重试 %d 篇文档的缺失渠道：\n\nMinerU %d 篇 ｜ dots %d 篇 ｜ Paddle %d 篇\n\n"
+               "只清除缺失渠道的 raw 缓存并重新调用 API；已有渠道继续复用。\n"
+               "本次不执行 NER，不产生该阶段的 LLM 用时。\n确定继续吗？"
+               % (len(jobs), counts["mineru"], counts["dots"], counts["paddle"]))
+        if not messagebox.askokcancel("确认重试全部缺失渠道", msg, parent=self):
             return
         n = 0
-        for doc in docs:
-            d = self.docs[doc]
-            # 清掉缺失渠道的 raw/ 缓存后跑全链: 已有渠道走缓存, 只补缺失那路
-            if self.runner.submit(doc, d["pdf"], stages.ORDER,
+        ids = [sid for sid in stages.ORDER if sid != "ner"]
+        self.runner.out_root = self.workspace.out
+        self.runner.history_fp = self.workspace.history
+        for doc, d in jobs:
+            if self.runner.submit(doc, d["pdf"], ids,
                                   "重试缺失:" + "/".join(d["miss"]), clear=tuple(d["miss"])):
                 n += 1
         if n:
             self._log("[批量] 重试缺失渠道已提交 %d 篇" % n)
 
+
+    def _on_double_click(self, ev):
+        if not self.entity_view.get() and self.tree.identify_column(ev.x) == "#10":
+            self._edit_note()
+        else:
+            self._open_viewer()
+
+    def _edit_note(self):
+        doc = self.tree.focus() or (self._selected()[0] if self._selected() else None)
+        if not doc:
+            return
+        win = tk.Toplevel(self)
+        win.title("备注 — %s" % doc)
+        win.geometry("560x260")
+        win.transient(self)
+        text = tk.Text(win, wrap="word", font=("Microsoft YaHei", 10))
+        text.pack(fill="both", expand=True, padx=10, pady=(10, 4))
+        text.insert("1.0", self._notes.get(doc, ""))
+        text.focus_set()
+        actions = ttk.Frame(win)
+        actions.pack(fill="x", padx=10, pady=8)
+        ttk.Button(actions, text="取消", command=win.destroy).pack(side="right", padx=4)
+        ttk.Button(actions, text="保存", command=lambda: self._save_note(
+            doc, text.get("1.0", "end-1c"), win)).pack(side="right", padx=4)
+
+    def _save_note(self, doc, value, win=None):
+        value = value.strip()
+        if value:
+            self._notes[doc] = value
+        else:
+            self._notes.pop(doc, None)
+        try:
+            save_notes(self._notes, self.workspace.notes)
+        except Exception as e:
+            messagebox.showerror("备注保存失败", str(e), parent=self)
+            return
+        self._apply_view()
+        if win is not None:
+            win.destroy()
 
     def _context_menu(self, ev):
         iid = self.tree.identify_row(ev.y)
@@ -1360,12 +1244,11 @@ class App(tk.Tk):
         if not iid:
             return
         m = tk.Menu(self, tearoff=0)
-        m.add_command(label="字段 / 实体审计…", command=self._open_audit)
-        m.add_separator()
+        m.add_command(label="编辑备注…", command=self._edit_note)
         m.add_command(label="打开对照查看器", command=self._open_viewer)
-        m.add_command(label="打开结果总览", command=lambda: self._open(os.path.join(self.zone.out, iid, "index.html"))
-                      if os.path.exists(os.path.join(self.zone.out, iid, "index.html")) else None)
-        m.add_command(label="打开产物目录", command=lambda: self._open(os.path.join(self.zone.out, iid)))
+        m.add_command(label="打开结果总览", command=lambda: self._open(os.path.join(self.workspace.out, iid, "index.html"))
+                      if os.path.exists(os.path.join(self.workspace.out, iid, "index.html")) else None)
+        m.add_command(label="打开产物目录", command=lambda: self._open(os.path.join(self.workspace.out, iid)))
         m.add_command(label="归档选中…", command=self._archive_selected)
         m.add_separator()
         m.add_command(label="复制文档 ID", command=lambda: (self.clipboard_clear(),
@@ -1382,34 +1265,17 @@ class App(tk.Tk):
         finally:
             m.grab_release()
 
-    def _audit_alive(self):
-        try:
-            return self._audit_win is not None and self._audit_win.winfo_exists()
-        except tk.TclError:
-            return False
-
-    def _open_audit(self):
-        doc = self.tree.focus() or (self._selected()[0] if self._selected() else None)
-        if not doc:
-            return
-        if self._audit_alive() and self._audit_win.zone is self.zone:
-            self._audit_win.set_doc(doc)
-            self._audit_win.lift()
-            self._audit_win.focus_force()
-            return
-        self._audit_win = AuditWindow(self, self.zone, doc)
-
     def _open_viewer(self):
         doc = self.tree.focus() or (self._selected()[0] if self._selected() else None)
         if not doc:
             return
-        fp = os.path.join(self.zone.out, doc, "viewer_compare.html")
+        fp = os.path.join(self.workspace.out, doc, "viewer_compare.html")
         if os.path.exists(fp):
             self._open(fp)
 
     def _open_index(self):
         for doc in self._selected():
-            fp = os.path.join(self.zone.out, doc, "index.html")
+            fp = os.path.join(self.workspace.out, doc, "index.html")
             if os.path.exists(fp):
                 self._open(fp)
 
@@ -1431,7 +1297,7 @@ class App(tk.Tk):
             return
         rows, bad = [], []
         for d in docs:
-            q = qc_of(d, out_dir=self.zone.out, ner_root=self.zone.ner)
+            q = qc_of(d)
             if q["issues"]:
                 bad.append(d)
                 rows.append("· %s    ✘ 缺 %s" % (d, "/".join(q["issues"])))
@@ -1447,8 +1313,9 @@ class App(tk.Tk):
         if not messagebox.askokcancel("确认归档", msg, parent=self):
             return
         try:
-            r = archive.archive_docs(docs, out_root=self.zone.out,
-                                     up_root=self.zone.up, arch_root=self.zone.arch)
+            r = archive.archive_docs(docs, out_root=self.workspace.out,
+                                     up_root=self.workspace.uploads, arch_root=self.workspace.archive,
+                                     meta_note=self._notes)
         except Exception as e:
             messagebox.showerror("归档失败", str(e), parent=self)
             return
@@ -1468,9 +1335,15 @@ class App(tk.Tk):
         self.refresh()
 
     def _open_archive_list(self):
-        ArchiveWindow(self, self.zone)
+        ArchiveWindow(self)
+
+    def _open_api_config(self):
+        ApiConfigWindow(self)
 
     def _open_webapp(self):
+        if not self.workspace.is_main:
+            messagebox.showinfo("实验区独立运行", "实验区请使用当前 GUI，不共用正式区的 Web 上传服务。", parent=self)
+            return
         """浏览器工作台的唯一入口。已在跑就开浏览器; 没跑就起一个(新控制台窗口)。
 
         两者都会监视 uploads, 同时解析同一篇会写坏产物(13563526 实证), 所以 GUI 有任务在跑时
@@ -1478,57 +1351,131 @@ class App(tk.Tk):
         """
         import subprocess
         import sys
-        if webapp_alive():
-            messagebox.showwarning(
-                "旧浏览器工作台正在运行",
-                "检测到 8765 端口的旧浏览器工作台。\n"
-                "它会和 GUI 同时监视 uploads，并可能自动补跑循环。\n"
-                "请先在任务管理器结束 webapp.py，再使用 GUI 的“对照查看器/结果总览”。",
-                parent=self)
-            self._log("[web] 检测到旧 webapp 在运行，已拒绝并行打开；请先结束 webapp.py")
+        import webbrowser
+        _wport = webapp_alive()
+        if _wport:
+            webbrowser.open("http://127.0.0.1:%d" % _wport)
+            self._log("[web] 已在运行(端口%d)，已打开浏览器 · 注意别与 GUI 同时解析同一篇" % _wport)
             return
-        if not messagebox.askyesno(
-                "浏览器工作台（旧入口）",
-                "浏览器工作台是旧入口，会自动监视 uploads 并补跑缺失渠道；\n"
-                "与 GUI 同时运行会争抢同一篇文档，历史上已出现补跑死循环。\n\n"
-                "建议只用桌面版。仍要单独启动旧浏览器工作台吗？",
-                icon="warning", default=messagebox.NO, parent=self):
+        if self.runner.is_busy() and not messagebox.askokcancel(
+                "GUI 正在跑任务",
+                "浏览器工作台同样会监视 uploads；两处同时解析同一篇会写坏产物。\n仍要启动吗？",
+                parent=self):
             return
         subprocess.Popen([sys.executable, os.path.join(ROOT, "webapp.py")],
                          creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
-        self._log("[web] 已启动旧浏览器工作台(新窗口)，稍候打开 http://127.0.0.1:8765")
+        self._log("[web] 已启动浏览器工作台(新窗口)，稍候自动打开 http://127.0.0.1:8765")
 
     def _restart(self):
-        """一键重启: 拉新进程替自己, 以加载 gui.py 等外壳改动(热更新只覆盖流水线模块)。
-        新老进程交接端口互斥有空窗——新进程 bind 自带重试(_acquire_instance_sock)。"""
-        if any(r.is_busy() for r in self.runners.values()):
+        """一键重启: 确保"只有一个 GUI"地换新进程, 以加载 gui.py 等外壳改动。
+
+        2026-11-17 修复"越重启越多"——旧实现先 Popen 新进程再 destroy 自己窗口,
+        但窗口关闭 ≠ 进程退出: Runner 的 daemon 线程 + 在跑的 daemon=False 子进程
+        (stages.run_batch) 会让进程吊着, 端口迟迟不放; 新进程抢不到就打印"已在运行"
+        后自行退出, 于是旧进程还在、新进程没了。反复点就叠出多个 GUI 进程, 名额被
+        占满 → 任务卡住。
+
+        现在反过来做: ①停任务、②终止子进程、③真正释放端口/名额、④拉新进程、
+        ⑤确认新进程接管后本进程 os._exit 硬退出(不走 mainloop 的自然退出)。
+        """
+        if getattr(self, "_restarting", False):
+            self._log("[重启] 正在重启中, 忽略重复点击")
+            return
+        if any(r.is_busy() for r in self._runners.values()):
             if not messagebox.askyesno("重启", "有任务正在运行/排队。\n"
-                                                "正在跑的会在后台跑完(子进程独立)，排队任务已持久化，重启后可继续。\n确定要重启吗?"):
+                                                "重启会终止这些任务(含后台子进程)，然后开一个干净的新工作台。\n确定要重启吗?"):
                 return
+        self._restarting = True
+        self._log("[重启] 停止任务并终止子进程…")
+        # ① 取消排队 + 递增 generation; 不写假失败记录(进程随即退出, 产物由新进程重扫)
+        for r in self._runners.values():
+            r.stop_after_current()
+        # ② 终止本进程起的全部子进程(daemon=False, 否则会拖住本进程退出、占着名额)
+        kids = self._terminate_children()
+        # ③ 释放单实例端口与自己的名额: 让新进程立刻接管, 不误删别的进程(如 webapp)占的槽
+        sock = getattr(self, "_instance_sock", None)
+        if sock is not None:
+            try:
+                sock.close()
+            except Exception:
+                pass
+            self._instance_sock = None
+        freed = self._free_own_slots(kids)
+        self._log("[重启] 已终止 %d 个子进程, 释放 %d 个自己的名额" % (len(kids), freed))
+        # ④ 拉新进程
         import subprocess, sys
-        env = os.environ.copy()
-        env["KCI_ACTIVE_ZONE"] = self.zone_id
         try:
             subprocess.Popen([sys.executable, os.path.abspath(__file__)],
-                             close_fds=True, env=env,
+                             close_fds=True,
                              creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
                              | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
         except Exception as e:
+            self._restarting = False
             messagebox.showerror("重启失败", str(e))
             return
-        self._log("[重启] 新进程已拉起, 本进程退出(端口随退出释放, 新进程重试接管)")
-        self.after(300, self.destroy)   # 让日志先刷出去再退
+        self._log("[重启] 新进程已拉起, 本进程立即退出(不等待, 避免与新版并存)")
+        # ⑤ 硬退出: 不 destroy 窗口后靠 mainloop 自然退——那样 daemon 线程/子进程
+        #    会吊住进程, 出现"两个 GUI 并存"。os._exit 保证本进程即刻消失。
+        self.after(200, os._exit, 0)
+
+    @staticmethod
+    def _terminate_children():
+        """终止本进程起的全部 multiprocessing 子进程, 返回其 pid 列表。"""
+        import multiprocessing as mp
+        kids = list(mp.active_children())
+        pids = [p.pid for p in kids if getattr(p, "pid", None)]
+        for p in kids:
+            try:
+                p.terminate()
+            except Exception:
+                pass
+        for p in kids:
+            try:
+                p.join(timeout=1.5)
+            except Exception:
+                pass
+        return pids
+
+    @staticmethod
+    def _free_own_slots(child_pids):
+        """只清 pid 属于本进程/本进程子进程的名额文件, 不动其他进程(如 webapp)占的槽。
+
+        槽文件首字段是 pid(见 crossproc.Slots._try)。子进程被 terminate 时不会走
+        __exit__, 槽会残留到 ttl 过期 —— 重启必须当场清掉, 否则新界面的重跑要等。
+        """
+        mine = set(child_pids or ()) | {os.getpid()}
+        n = 0
+        try:
+            import crossproc
+            for name in os.listdir(crossproc.LOCK_ROOT):
+                d = os.path.join(crossproc.LOCK_ROOT, name)
+                if not os.path.isdir(d):
+                    continue
+                for f in os.listdir(d):
+                    if not f.startswith("slot_"):
+                        continue
+                    fp = os.path.join(d, f)
+                    try:
+                        with io.open(fp, encoding="utf-8") as fh:
+                            pid = int(fh.read().split()[0])
+                    except Exception:
+                        continue
+                    if pid in mine:
+                        try:
+                            os.remove(fp)
+                            n += 1
+                        except OSError:
+                            pass
+        except Exception:
+            pass
+        return n
 
     def _on_close(self):
-        self._closing = True
-        busy = [r for r in self.runners.values() if r.is_busy()]
-        if busy:
-            n = sum(r._active_count() for r in busy)
+        if any(r.is_busy() for r in self._runners.values()):
+            n = sum(r._active_count() for r in self._runners.values())
             if not messagebox.askyesno("任务仍在运行",
-                                       "两区共有 %d 篇正在跑，会在后台继续完成（子进程独立）。\n"
-                                       "排队任务已写入持久账本，重新打开后可点「继续」恢复。\n\n"
-                                       "确定要关闭吗?" % n):
-                self._closing = False
+                                       "正在跑的 %d 篇会在后台继续跑完（一篇一个子进程，不随窗口退出）。\n"
+                                       "排队中的任务会丢失。\n\n确定要关闭吗?" % n):
                 return
         self.destroy()
 
@@ -1540,51 +1487,60 @@ class App(tk.Tk):
             import webbrowser
             webbrowser.open("file://" + path)
 
+    def destroy(self):
+        self._qc_generation += 1
+        super().destroy()
+
     # ---------- 日志/状态 ----------
-    def _log(self, s):
-        self.q.put(s)
+    def _log(self, s, workspace_root=None):
+        root = workspace_root or self.workspace.root
+        line = time.strftime("%H:%M:%S ") + s + "\n"
+        if root == self.workspace.root:
+            self.q.put((root, line))
+        else:
+            text, top = self._log_views.get(root, ("", 0.0))
+            self._log_views[root] = ((text + line)[-500000:], top)
+
+    def _on_log_scroll(self, _ev=None):
+        self.after_idle(self._sync_log_follow)
+
+    def _sync_log_follow(self):
+        self.log_follow_var.set(self.logtxt.yview()[1] >= 0.995)
+
+    def _clear_log_view(self):
+        self.logtxt.configure(state="normal")
+        self.logtxt.delete("1.0", "end")
+        self.logtxt.configure(state="disabled")
 
     def _drain(self):
         try:
             n = 0
             while n < 300:   # 单次回调限量: 日志洪峰不许把 UI 线程钉死
-                s = self.q.get_nowait()
+                root, s = self.q.get_nowait()
                 n += 1
+                if root != self.workspace.root:
+                    text, top = self._log_views.get(root, ("", 0.0))
+                    self._log_views[root] = ((text + s)[-500000:], top)
+                    continue
                 self.logtxt.configure(state="normal")
-                self.logtxt.insert("end", time.strftime("%H:%M:%S ") + s + "\n")
+                self.logtxt.insert("end", s)
                 # 日志上限: 只保留最后 ~3000 行, 防长会话内存膨胀
                 tail = self.logtxt.index("end-1c")
                 if tail and int(tail.split(".")[0]) > 3000:
                     self.logtxt.delete("1.0", "2000.0")
-                self.logtxt.see("end")
+                if self.log_follow_var.get():
+                    self.logtxt.see("end")
                 self.logtxt.configure(state="disabled")
         except queue.Empty:
             pass
-        self._drain_ingest()
         self.after(100, self._drain)
 
     def _tick_status(self):
-        q = self.quota.summary()
-        txt = "%s · 账号 %s · Paddle %d/%d 页（余 %d）· %s" % (
-            self.runner.status(), self.zone.account, q["used"], q["limit"], q["remaining"],
-            "自动监视停" if self._paused else "自动监视中")
-        self._refresh_account_hint()
-        waiting = 0
-        for store in self._ingest_stores.values():
-            waiting += len(store.entries_by_status(
-                "pending", "queued", "waiting_quota", "waiting_account",
-                "waiting_pause", "waiting_confirm"))
-        if self._paused:
-            self.auto_lbl.configure(text="● 自动监视已暂停", foreground="#8a6d3b")
-        else:
-            self.auto_lbl.configure(
-                text="● 自动监视 uploads" + (" · 待处理 %d" % waiting if waiting else ""),
-                foreground="#2c7a4b")
-        other = [r for zid, r in self.runners.items() if zid != self.zone_id and r.is_busy()]
-        if other:
-            txt += " · 另一区运行中 %d 篇" % sum(r._active_count() for r in other)
+        txt = self.runner.status()
+        ocr_total, llm_total = self.runner.timing_totals()
+        txt += " ｜ 启动累计 OCR %s · LLM %s" % (fmt_duration(ocr_total), fmt_duration(llm_total))
         if self._webapp_on:
-            txt = "⚠ 检测到 web 服务(8765)也在运行, 勿与 GUI 同时解析同一篇 · " + txt
+            txt = "⚠ 检测到 web 服务(端口%s)也在运行, 勿与 GUI 同时解析同一篇 · " % self._webapp_on + txt
         self.status_lbl.configure(text=txt)
         busy = self.runner.is_busy()
         if busy:
@@ -1598,404 +1554,12 @@ class App(tk.Tk):
             self.refresh()
         else:
             self._was_busy = busy
+        running_key = (tuple(sorted(self.runner.running)), tuple(sorted(self.runner.queued)))
+        if running_key != self._running_view_key:
+            self._running_view_key = running_key
+            self._apply_view()
+        self._sync_buttons()
         self.after(1000, self._tick_status)
-
-
-class AccountsWindow(tk.Toplevel):
-    """Paddle 账号库: token 只显示掩码，日额度按账号分别记账。"""
-
-    COLS = (("key", 92, "账号"), ("label", 120, "名称"), ("mask", 130, "Token"),
-            ("limit", 82, "日额度"), ("used", 72, "今日已用"),
-            ("remain", 72, "剩余"), ("zones", 80, "使用区"))
-
-    def __init__(self, app):
-        tk.Toplevel.__init__(self, app)
-        self.app = app
-        self.store = app.accounts
-        self.book = app.qbook
-        self.items = []
-        self.editing = None
-        self.title("Paddle 账号与日额度")
-        self.geometry("820x560")
-        self.minsize(760, 480)
-        self.transient(app)
-        self._build()
-        self.refresh()
-
-    def _build(self):
-        top = ttk.Frame(self)
-        top.pack(fill="x", padx=12, pady=(12, 4))
-        ttk.Label(top, text="账号库", font=("Microsoft YaHei UI", 11, "bold")).pack(side="left")
-        ttk.Label(top, text="Token 存于 .workbench/accounts.json（不入库），界面只显示首尾。",
-                  foreground="#666").pack(side="left", padx=10)
-
-        wrap = ttk.Frame(self)
-        wrap.pack(fill="both", expand=True, padx=12)
-        self.tree = ttk.Treeview(wrap, columns=[c[0] for c in self.COLS],
-                                 show="headings", height=9, selectmode="browse")
-        for c, w, t in self.COLS:
-            self.tree.heading(c, text=t)
-            self.tree.column(c, width=w, anchor="center" if c not in ("label", "mask") else "w")
-        self.tree.pack(side="left", fill="both", expand=True)
-        sb = ttk.Scrollbar(wrap, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=sb.set)
-        sb.pack(side="right", fill="y")
-        self.tree.bind("<<TreeviewSelect>>", lambda e: self._on_select())
-
-        form = ttk.LabelFrame(self, text="编辑 / 新增")
-        form.pack(fill="x", padx=12, pady=8)
-        r1 = ttk.Frame(form)
-        r1.pack(fill="x", padx=8, pady=(6, 3))
-        ttk.Label(r1, text="账号 key").pack(side="left")
-        self.key_var = tk.StringVar()
-        self.key_entry = ttk.Entry(r1, textvariable=self.key_var, width=13)
-        self.key_entry.pack(side="left", padx=(4, 10))
-        ttk.Label(r1, text="名称").pack(side="left")
-        self.label_var = tk.StringVar()
-        ttk.Entry(r1, textvariable=self.label_var, width=16).pack(side="left", padx=(4, 10))
-        ttk.Label(r1, text="日额度").pack(side="left", padx=(4, 0))
-        self.daily_var = tk.StringVar(value=str(DEFAULT_DAILY_PAGES))
-        ttk.Entry(r1, textvariable=self.daily_var, width=10).pack(side="left", padx=4)
-
-        r2 = ttk.Frame(form)
-        r2.pack(fill="x", padx=8, pady=3)
-        ttk.Label(r2, text="Paddle token").pack(side="left")
-        self.token_var = tk.StringVar()
-        self.token_entry = ttk.Entry(r2, textvariable=self.token_var, width=46, show="*")
-        self.token_entry.pack(side="left", padx=(4, 6))
-        ttk.Button(r2, text="读取本机配置", command=self._read_local).pack(side="left")
-        ttk.Label(r2, text="编辑时留空 = 保留原 token", foreground="#666").pack(side="left", padx=8)
-
-        bar = ttk.Frame(form)
-        bar.pack(fill="x", padx=8, pady=(4, 8))
-        ttk.Button(bar, text="新增", command=self._new).pack(side="left")
-        ttk.Button(bar, text="保存", command=self._save).pack(side="left", padx=6)
-        ttk.Button(bar, text="删除", command=self._delete).pack(side="left")
-        ttk.Button(bar, text="刷新", command=self.refresh).pack(side="left", padx=(18, 0))
-        ttk.Button(bar, text="关闭", command=self.destroy).pack(side="right")
-        self.note = ttk.Label(self, text="日额度单位为 PDF 页。一个账号可同时分配给 A/B 两区；共用时日额度也共用。"
-                              "本地只记本工作台的预占，AI Studio 按登录账号和模型标签统计，历史调用不回填。",
-                              foreground="#555", wraplength=780, justify="left")
-        self.note.pack(fill="x", padx=14, pady=(0, 8))
-
-    def refresh(self):
-        self.items = self.store.list_accounts()
-        self.tree.delete(*self.tree.get_children())
-        for a in self.items:
-            q = self.book.account(a["key"], a["daily_pages"]).summary()
-            self.tree.insert("", "end", iid=a["key"], values=(
-                a["key"], a["label"], a["token_mask"], q["limit"],
-                q["used"], q["remaining"], ",".join(self.store.zones_of(a["key"])) or "-"))
-        if self.editing and self.editing in self.tree.get_children():
-            self.tree.selection_set(self.editing)
-
-    def _on_select(self):
-        sel = self.tree.selection()
-        if not sel:
-            return
-        key = sel[0]
-        a = self.store.get(key) or {}
-        self.editing = key
-        self.key_var.set(key)
-        self.key_entry.configure(state="disabled")
-        self.label_var.set(a.get("label") or key)
-        self.daily_var.set(str(a.get("daily_pages") or DEFAULT_DAILY_PAGES))
-        self.token_var.set("")
-
-    def _new(self):
-        self.editing = None
-        self.key_entry.configure(state="normal")
-        self.key_var.set("")
-        self.label_var.set("")
-        self.daily_var.set(str(DEFAULT_DAILY_PAGES))
-        self.token_var.set("")
-        self.key_entry.focus_set()
-
-    def _read_local(self):
-        tok = _local_paddle_token()
-        if tok:
-            self.token_var.set(tok)
-        else:
-            messagebox.showinfo("本机配置", "没有找到 Paddle token。", parent=self)
-
-    def _save(self):
-        key = (self.key_var.get() or "").strip()
-        label = (self.label_var.get() or "").strip() or key
-        tok = (self.token_var.get() or "").strip()
-        try:
-            daily = int(self.daily_var.get())
-        except ValueError:
-            messagebox.showwarning("参数错误", "日额度必须是整数页数。", parent=self)
-            return
-        if daily < 1 or daily > 200000:
-            messagebox.showwarning("参数错误", "日额度应在 1–200000 页之间。", parent=self)
-            return
-        if not re.match(r"^[A-Za-z0-9_-]{1,32}$", key):
-            messagebox.showwarning("参数错误", "账号 key 只能用字母/数字/下划线/短横线。",
-                                   parent=self)
-            return
-        if self.editing is None:
-            if not tok:
-                messagebox.showwarning("缺少 token", "新账号必须填写 Paddle token。", parent=self)
-                return
-            self.store.upsert(key, label, tok, daily)
-            self.book.account(key, daily).set_limit(daily)
-            self.app._log("[账号] 新增 %s（日额度 %d 页）" % (key, daily))
-        else:
-            if key != self.editing:
-                messagebox.showwarning("不可改 key", "账号 key 建好后不可改；请新增账号。",
-                                       parent=self)
-                return
-            self.store.upsert(key, label, tok or None, daily)
-            self.book.set_limit(key, daily)
-            self.app._log("[账号] 更新 %s（日额度 %d 页%s）" %
-                          (key, daily, "，token 已更新" if tok else ""))
-        self.editing = key
-        self.key_entry.configure(state="disabled")
-        self.token_var.set("")
-        self.refresh()
-        self.app._sync_accounts()
-
-    def _delete(self):
-        sel = self.tree.selection()
-        if not sel:
-            messagebox.showinfo("删除账号", "先选中一个账号。", parent=self)
-            return
-        key = sel[0]
-        busy = []
-        for zid, runner in self.app.runners.items():
-            if key in runner.store.accounts_in_use():
-                busy.append(zid)
-        if busy:
-            messagebox.showwarning(
-                "不能删除", "账号 %s 仍有排队/运行任务（工作区 %s）；先处理这些任务。" %
-                (key, "/".join(sorted(busy))), parent=self)
-            return
-        if not messagebox.askyesno("删除账号", "删除账号 %s？" % key, parent=self):
-            return
-        ok, msg = self.store.remove(key)
-        if not ok:
-            messagebox.showwarning("不能删除", msg, parent=self)
-            return
-        self.app._log("[账号] 删除 %s" % key)
-        self.editing = None
-        self._new()
-        self.refresh()
-        self.app._sync_accounts()
-
-
-class AuditWindow(tk.Toplevel):
-    """字段 / 实体审计: 16 个字段的状态、值与证据。
-
-    这里刻意不做“自动补全”或“猜一个值”：空值只写「未查」，除非有审计证据。
-    这样用户看到的红/黄/绿与最终能否交付是同一套口径。
-    """
-
-    FCOLS = (("field", 130, "字段"), ("status", 82, "状态"),
-             ("group", 62, "组"), ("value", 520, "值 / 摘要"))
-    ECOLS = (("kind", 100, "实体"), ("status", 82, "状态"),
-             ("count", 58, "数量"), ("reason", 560, "依据"))
-
-    COLORS = {
-        "present": "#1a7f37",
-        "absent_confirmed": "#1a7f37",
-        "not_checked": "#b26a00",
-        "uncertain": "#7a4fb0",
-        "extraction_failed": "#b03030",
-        "not_applicable": "#666666",
-    }
-
-    def __init__(self, app, zone, doc):
-        tk.Toplevel.__init__(self, app)
-        self.app = app
-        self.zone = zone
-        self.doc = doc
-        self.rows = []
-        self.title("字段 / 实体审计 · %s" % doc)
-        self.geometry("1080x650")
-        self.minsize(880, 520)
-        self.transient(app)
-        self._build()
-        self.set_doc(doc)
-
-    def _build(self):
-        head = ttk.Frame(self)
-        head.pack(fill="x", padx=12, pady=(10, 4))
-        self.head = ttk.Label(head, text="", font=("Microsoft YaHei UI", 11, "bold"))
-        self.head.pack(side="left")
-        self.counts = ttk.Label(head, text="")
-        self.counts.pack(side="right")
-
-        nb = ttk.Notebook(self)
-        nb.pack(fill="both", expand=True, padx=12, pady=4)
-
-        # 字段页
-        ftab = ttk.Frame(nb)
-        nb.add(ftab, text="字段（13）")
-        fp = ttk.Panedwindow(ftab, orient="horizontal")
-        fp.pack(fill="both", expand=True)
-        fl = ttk.Frame(fp)
-        self.ftree = ttk.Treeview(fl, columns=tuple(c[0] for c in self.FCOLS),
-                                  show="headings", selectmode="browse", height=15)
-        for cid, w, txt in self.FCOLS:
-            self.ftree.heading(cid, text=txt)
-            self.ftree.column(cid, width=w, anchor="w" if cid in ("field", "value") else "center")
-        for st, color in self.COLORS.items():
-            self.ftree.tag_configure(st, foreground=color)
-        self.ftree.pack(side="left", fill="both", expand=True)
-        fsb = ttk.Scrollbar(fl, orient="vertical", command=self.ftree.yview)
-        self.ftree.configure(yscrollcommand=fsb.set)
-        fsb.pack(side="right", fill="y")
-        self.ftree.bind("<<TreeviewSelect>>", lambda e: self._show_field())
-        fp.add(fl, weight=3)
-        self.fdetail = scrolledtext.ScrolledText(fp, width=46, height=15, wrap="word",
-                                                 font=("Microsoft YaHei UI", 9),
-                                                 state="disabled")
-        fp.add(self.fdetail, weight=2)
-
-        # 实体页
-        etab = ttk.Frame(nb)
-        nb.add(etab, text="实体（3 类）")
-        ep = ttk.Panedwindow(etab, orient="horizontal")
-        ep.pack(fill="both", expand=True)
-        el = ttk.Frame(ep)
-        self.etree = ttk.Treeview(el, columns=tuple(c[0] for c in self.ECOLS),
-                                  show="headings", selectmode="browse", height=8)
-        for cid, w, txt in self.ECOLS:
-            self.etree.heading(cid, text=txt)
-            self.etree.column(cid, width=w, anchor="w" if cid in ("kind", "reason") else "center")
-        for st, color in self.COLORS.items():
-            self.etree.tag_configure(st, foreground=color)
-        self.etree.pack(side="left", fill="both", expand=True)
-        esb = ttk.Scrollbar(el, orient="vertical", command=self.etree.yview)
-        self.etree.configure(yscrollcommand=esb.set)
-        esb.pack(side="right", fill="y")
-        self.etree.bind("<<TreeviewSelect>>", lambda e: self._show_entity())
-        ep.add(el, weight=3)
-        self.edetail = scrolledtext.ScrolledText(ep, width=46, height=8, wrap="word",
-                                                 font=("Microsoft YaHei UI", 9),
-                                                 state="disabled")
-        ep.add(self.edetail, weight=2)
-
-        bar = ttk.Frame(self)
-        bar.pack(fill="x", padx=12, pady=(2, 4))
-        ttk.Button(bar, text="打开 metadata.json", command=lambda: self._open(
-            fa.metadata_path(self.doc, self.zone))).pack(side="left")
-        ttk.Button(bar, text="打开 metadata_audit", command=lambda: self._open(
-            fa.audit_path(self.doc, self.zone))).pack(side="left", padx=6)
-        ttk.Button(bar, text="打开 NER 目录", command=lambda: self._open(
-            os.path.dirname(wb.entity_paths(self.doc, self.zone)[0]))).pack(side="left")
-        ttk.Button(bar, text="刷新", command=self.refresh).pack(side="left", padx=6)
-        ttk.Button(bar, text="关闭", command=self.destroy).pack(side="right")
-        ttk.Label(self, text="空值 ≠ 缺失；「确认无」必须有逐页/审计证据。缺值默认「未查」，"
-                             "不会自动当作不存在。",
-                  foreground="#666").pack(fill="x", padx=12, pady=(0, 8))
-
-    def set_doc(self, doc):
-        self.doc = doc
-        self.title("字段 / 实体审计 · %s · %s" % (doc, self.zone.label))
-        self.head.configure(text=doc)
-        self.refresh()
-
-    def refresh(self):
-        try:
-            self.rows = fa.field_statuses(self.doc, self.zone)
-            s = fa.summary(self.doc, self.zone)
-        except Exception as e:
-            messagebox.showerror("审计失败", str(e), parent=self)
-            return
-        self.counts.configure(
-            text="核心 %d/%d 齐 · 待核 %d · 实体 %s" % (
-                s["core_present"], s["core_total"], s["needs_audit"],
-                "/".join(fa.STATUS_LABEL.get(s["entities"].get(k), "?")
-                         for k in wb.ENTITY_KINDS)))
-        fsel = self.ftree.selection()
-        esel = self.etree.selection()
-        self.ftree.delete(*self.ftree.get_children())
-        self.etree.delete(*self.etree.get_children())
-        for r in self.rows:
-            if r["group"] == "entity":
-                self.etree.insert("", "end", iid=r["id"], tags=(r["status"],),
-                                  values=("%s（%s）" % (r["label"], r["id"]),
-                                          r["status_label"],
-                                          r["value"].count("；") + 1 if r["value"] else 0,
-                                          r["reason"]))
-            else:
-                self.ftree.insert("", "end", iid=r["id"], tags=(r["status"],),
-                                  values=(r["label"], r["status_label"], r["group_label"],
-                                          r["value"] or "—"))
-        if fsel and self.ftree.exists(fsel[0]):
-            self.ftree.selection_set(fsel[0])
-        elif self.ftree.get_children():
-            self.ftree.selection_set(self.ftree.get_children()[0])
-        if esel and self.etree.exists(esel[0]):
-            self.etree.selection_set(esel[0])
-        elif self.etree.get_children():
-            self.etree.selection_set(self.etree.get_children()[0])
-        self._show_field()
-        self._show_entity()
-
-    def _row(self, iid):
-        return next((r for r in self.rows if r["id"] == iid), None)
-
-    @staticmethod
-    def _put(widget, text):
-        widget.configure(state="normal")
-        widget.delete("1.0", "end")
-        widget.insert("1.0", text)
-        widget.configure(state="disabled")
-
-    def _show_field(self):
-        sel = self.ftree.selection()
-        r = self._row(sel[0]) if sel else None
-        if not r:
-            self._put(self.fdetail, "")
-            return
-        lines = ["状态: %s (%s)" % (r["status_label"], r["status"]),
-                 "组: %s" % r["group_label"],
-                 "值: %s" % (r["value"] or "（空）"),
-                 "依据: %s" % (r["reason"] or "—"),
-                 "置信度: %s / %s" % (r["confidence"].get("level") or "—",
-                                      r["confidence"].get("source") or "—")]
-        if r["basis"]:
-            lines.append("抽取依据: %s" % r["basis"])
-        if r["flag"]:
-            lines.append("标记: %s" % r["flag"])
-        neg = r.get("negative") or {}
-        if neg:
-            lines += ["", "负证据:", "  检查页: %s" % neg.get("pages_checked", ""),
-                      "  查询: %s" % neg.get("queries", ""),
-                      "  方法: %s" % neg.get("method", ""),
-                      "  结果: %s" % neg.get("result", ""),
-                      "  置信: %s" % neg.get("confidence", "")]
-        lines += ["", "证据文件:", r["evidence"] or "—"]
-        self._put(self.fdetail, "\n".join(lines))
-
-    def _show_entity(self):
-        sel = self.etree.selection()
-        r = self._row(sel[0]) if sel else None
-        if not r:
-            self._put(self.edetail, "")
-            return
-        lines = ["状态: %s (%s)" % (r["status_label"], r["status"]),
-                 "数量: %d" % (r["value"].count("；") + 1 if r["value"] else 0),
-                 "记录: %s" % (r["value"] or "—"),
-                 "依据: %s" % (r["reason"] or "—")]
-        neg = r.get("negative") or {}
-        if neg:
-            lines += ["", "负证据:", "  检查页: %s" % neg.get("pages_checked", ""),
-                      "  查询: %s" % neg.get("queries", ""),
-                      "  方法: %s" % neg.get("method", ""),
-                      "  结果: %s" % neg.get("result", ""),
-                      "  置信: %s" % neg.get("confidence", "")]
-        lines += ["", "证据文件:", r["evidence"] or "—"]
-        self._put(self.edetail, "\n".join(lines))
-
-    def _open(self, fp):
-        if os.path.exists(fp):
-            app_open(fp)
-        else:
-            messagebox.showinfo("文件不存在", fp, parent=self)
 
 
 class ArchiveWindow(tk.Toplevel):
@@ -2005,14 +1569,13 @@ class ArchiveWindow(tk.Toplevel):
     都与工作台不同, 混在同一张表里会让"归档"看起来只是打了个标(用户 2026-11-13 要求能查看)。
     """
 
-    COLS = (("title", 380, "标题"), ("journal", 150, "刊名"), ("year", 56, "年"),
-            ("qc", 130, "质检"), ("when", 130, "归档时间"))
+    COLS = (("title", 330, "标题"), ("journal", 130, "刊名"), ("year", 56, "年"),
+            ("qc", 130, "质检"), ("when", 130, "归档时间"), ("note", 180, "备注"))
 
-    def __init__(self, app, zone):
+    def __init__(self, app):
         tk.Toplevel.__init__(self, app)
         self.app = app
-        self.zone = zone
-        self.title("已归档文献 · %s" % zone.label)
+        self.title("已归档文献")
         self.geometry("1020x540")
         self.transient(app)
         self.items = []
@@ -2030,8 +1593,7 @@ class ArchiveWindow(tk.Toplevel):
         ttk.Button(bar, text="清空", command=lambda: (self.qvar.set(""), self.refresh())).pack(side="left")
         self.cnt = ttk.Label(bar, text="")
         self.cnt.pack(side="left", padx=12)
-        ttk.Button(bar, text="打开归档目录",
-                   command=lambda: app_open(self.zone.arch)).pack(side="right")
+        ttk.Button(bar, text="打开归档目录", command=lambda: app_open(self.app.workspace.archive)).pack(side="right")
 
         wrap = ttk.Frame(self)
         wrap.pack(fill="both", expand=True, padx=10)
@@ -2043,6 +1605,9 @@ class ArchiveWindow(tk.Toplevel):
             anchor = "w" if cid in ("doc", "title", "journal", "qc") else "center"
             self.tree.column(cid, width=w, anchor=anchor)
         self.tree.tag_configure("qc_bad", foreground="#b03030")
+        self._archive_column_base = {"doc": 110}
+        self._archive_column_base.update({c[0]: c[1] for c in self.COLS})
+        wrap.bind("<Configure>", lambda _ev: self._fit_columns())
         self.tree.pack(side="left", fill="both", expand=True)
         sb = ttk.Scrollbar(wrap, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
@@ -2058,9 +1623,16 @@ class ArchiveWindow(tk.Toplevel):
         self.hint = ttk.Label(act, text="双击一行 = 打开产物")
         self.hint.pack(side="left", padx=12)
 
+    def _fit_columns(self):
+        available = max(400, self.tree.master.winfo_width() - 24)
+        total = float(sum(self._archive_column_base.values()))
+        ratio = available / total
+        for name, width in self._archive_column_base.items():
+            self.tree.column(name, width=max(48, int(width * ratio)))
+
     def refresh(self):
         try:
-            self.items = archive.list_items(arch_root=self.zone.arch,
+            self.items = archive.list_items(arch_root=self.app.workspace.archive,
                                             q=self.qvar.get().strip())
         except ValueError as e:
             messagebox.showerror("归档索引损坏", str(e), parent=self)
@@ -2072,7 +1644,8 @@ class ArchiveWindow(tk.Toplevel):
             self.tree.insert("", "end", iid=it["doc"], tags=("qc_bad",) if miss else (),
                              values=(it.get("doc"), it.get("title") or "",
                                      it.get("journal") or "", it.get("year") or "",
-                                     qtxt, (it.get("archived_at") or "").replace("T", " ")[:16]))
+                                     qtxt, (it.get("archived_at") or "").replace("T", " ")[:16],
+                                     it.get("note") or ""))
         n_bad = sum(1 for it in self.items if it.get("qc_issues"))
         self.cnt.configure(text="共 %d 篇%s" % (
             len(self.items), "，其中 %d 篇有缺项" % n_bad if n_bad else ""))
@@ -2085,8 +1658,8 @@ class ArchiveWindow(tk.Toplevel):
         if not docs:
             return
         for doc in docs:
-            it = archive.item_of(doc, arch_root=self.zone.arch) or {}
-            base = os.path.join(self.zone.arch, doc, "out")
+            it = archive.item_of(doc, self.app.workspace.archive) or {}
+            base = os.path.join(self.app.workspace.archive, doc, "out")
             for name in ("index.html", "viewer_compare.html"):
                 fp = os.path.join(base, name)
                 if os.path.isfile(fp):
@@ -2106,10 +1679,15 @@ class ArchiveWindow(tk.Toplevel):
             return
         msgs = []
         for doc in docs:
-            ok, msg = archive.restore_doc(doc, out_root=self.zone.out,
-                                          up_root=self.zone.up, arch_root=self.zone.arch)
+            it = archive.item_of(doc, self.app.workspace.archive) or {}
+            ok, msg = archive.restore_doc(doc, out_root=self.app.workspace.out,
+                                          up_root=self.app.workspace.uploads,
+                                          arch_root=self.app.workspace.archive, keep_note=True)
             msgs.append(("✔ " if ok else "✘ ") + doc + ": " + msg)
             if ok:
+                if it.get("note"):
+                    self.app._notes[doc] = it["note"]
+                    save_notes(self.app._notes, self.app.workspace.notes)
                 qc.clear_cache(doc)
         messagebox.showinfo("恢复结果", "\n".join(msgs), parent=self)
         self.refresh()
@@ -2148,12 +1726,13 @@ def app_open(path):
 
 
 def main():
-    wb.make_zones(ROOT)      # A 保留旧目录; B 自动建 zones/zone_b
+    os.makedirs(UP, exist_ok=True)
     sock = _acquire_instance_sock()
     if sock is None:
         print("GUI 已在运行(见任务栏另一个窗口), 请勿重复启动。")
         return
     app = App()
+    app._instance_sock = sock   # 重启时由 App._restart 提前 close, 交接端口给新进程
     app.mainloop()   # sock 随进程存活, 退出即释放端口
 
 

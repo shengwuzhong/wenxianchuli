@@ -118,14 +118,25 @@ def _load_fresh_unified(udir, t0):
     return upages, True
 
 
+def _cached_channel_dir(out, ch):
+    """只查缓存(不调 API), 命中返回缓存目录, 否则 None。"""
+    cached = os.path.join(out, "raw", ch + "_api")
+    if ch == "mineru":
+        if any(x.endswith("_content_list_v2.json") for _, _, fs in os.walk(cached) for x in fs):
+            return cached
+    elif os.path.exists(os.path.join(cached, "page_0.json")):
+        return cached
+    return None
+
+
 def fetch_channels(doc, pdf, out, chans_in, echo=None):
     """② 渠道获取(独立可跑, stages.py 与 main 共用一份实现)。
 
     返回 (chans, SRC_KIND)。chans_in 里已给的渠道(命令行/inbox 指定)原样保留不再获取;
     其余走 API/缓存/inbox 兜底。产物只落 out/raw/<ch>(_api), 无 PDF 就无法重取。
 
-    MinerU 默认只走云端 API；`mineru.desktop_enabled=true` 时才启用 CDP 桌面版兜底。
-    桌面驱动的成功依赖窗口焦点与 App 版本，默认关闭，避免并发调度时卡住。
+    MinerU 只走云端 API(2026-11-13 移除桌面版 CDP 驱动): API 失败就是这一路失败,
+    不再回落到驱动本地 App。桌面驱动的成功依赖窗口焦点/App 版本, 失败方式是卡住。
     """
     log_ = echo or log
     chans = dict(chans_in)
@@ -139,6 +150,19 @@ def fetch_channels(doc, pdf, out, chans_in, echo=None):
         if v and not chans.get(k):
             chans[k] = v; SRC_KIND[k] = "auto命令"
 
+    # 缓存预检: 三路缓存齐全时不抢 ocr_api 名额, 也不调 API。
+    for ch in ("mineru", "dots", "paddle"):
+        if chans.get(ch):
+            continue
+        hit = _cached_channel_dir(out, ch)
+        if hit:
+            chans[ch] = hit
+            SRC_KIND[ch] = "API缓存"
+            log_("② 渠道[%s] 复用缓存(预检, 不占名额): %s" % (ch, hit))
+    if all(chans.get(c) for c in ("mineru", "dots", "paddle")):
+        log_("② 三路缓存齐全, 跳过 ocr_api 名额(无需调 API)")
+        return chans, SRC_KIND
+
     # 三路获取并行跑(ThreadPoolExecutor), 主线程收结果: 三家 API 互不阻塞
     from concurrent.futures import ThreadPoolExecutor
     # 篇级名额: 首跑要真的向三家服务端发起 OCR(分钟级轮询), 5 篇同时上就是 15 条长连接,
@@ -147,24 +171,10 @@ def fetch_channels(doc, pdf, out, chans_in, echo=None):
     import crossproc as _xp
     _api_n = int(os.environ.get("KCI_API_PARALLEL") or 3)
 
-    def _mineru_cdp():
-        if not (CFG.get("mineru") or {}).get("desktop_enabled", False):
-            return None
-        try:
-            import mineru_drive
-            mu_dir = mineru_drive.drive(pdf)   # CDP 驱动桌面版: 启动 -> 上传 -> 等解析
-            if mu_dir and os.path.isdir(mu_dir):
-                log_("② 渠道[mineru] 经 CDP 驱动 App 获取 -> %s" % mu_dir)
-                SRC_KIND["mineru"] = "CDP"
-                return mu_dir
-        except Exception as e:
-            log_("② mineru CDP 驱动失败(可手动跑 App 走归仓): %s" % e)
-        return None
-
     def _resolve_mineru():
         if not (CFG.get("mineru_api") or {}).get("enabled", True):
-            SRC_KIND["mineru"] = "API禁用(转CDP)"
-            return _mineru_cdp()
+            SRC_KIND["mineru"] = "API禁用"
+            return None
         cached = os.path.join(out, "raw", "mineru_api")
         if any(x.endswith("_content_list_v2.json") for _, _, fs in os.walk(cached) for x in fs):
             log_("② 渠道[mineru] 复用缓存: %s" % cached)   # 强制重跑请删除 raw\mineru_api
@@ -177,8 +187,8 @@ def fetch_channels(doc, pdf, out, chans_in, echo=None):
                 SRC_KIND["mineru"] = "API新获取"
                 return api_dir
         except Exception as e:
-            log_("② mineru 云端 API 失败, 尝试 CDP 兜底: %s" % e)
-        return _mineru_cdp()
+            log_("② mineru 云端 API 失败(该路留空, 不回落桌面版): %s" % e)
+        return None
     def _resolve_dots():
         if not (CFG.get("dots_api") or {}).get("enabled", True):
             return None
@@ -403,6 +413,7 @@ def main(argv=None):
     # 放一篇新 PDF 即全自动产出全部产物; webapp 拖入走同一 main, 一处接线两端生效。
     # 各步失败只记日志不阻断; ner_lite 烧 LLM token, 开关 channels.json llm.ner_lite_auto(默认开)+KCI_LLM_KEY。
     _out_root = os.path.dirname(os.path.abspath(out))
+    _chain_fails = []
     try:
         from metapy import (m3_doc, refs_doc, frefs_doc, front_doc,
                             abstract_doc, issue_doc, cspan_doc)
@@ -413,8 +424,10 @@ def main(argv=None):
                 _fn(doc, _out_root)
                 log(u"⑥ 元数据 %s 完成" % _name)
             except Exception as e:
+                _chain_fails.append(_name)
                 log(u"⑥ 元数据 %s 失败(不阻断): %s" % (_name, str(e)[:120]))
     except Exception as e:
+        _chain_fails.append(u"metadata")
         log(u"⑥ 元数据链导入失败(不阻断): %s" % str(e)[:120])
     try:
         from metapy.vertical_meta import apply_doc as apply_vertical
@@ -422,6 +435,7 @@ def main(argv=None):
         if _vinfo and _vinfo.get("vertical"):
             log(u"⑥ 竖排题名: %s" % (_vinfo.get("title") or "-")[:60])
     except Exception as e:
+        _chain_fails.append(u"vertical_meta")
         log(u"⑥ 竖排题名失败(不阻断): %s" % str(e)[:120])
         # 保留栈，避免 9/30 那种 IndexError 只剩一句“list index out of range”。
         log(u"⑥ 竖排题名 traceback:\n%s" % traceback.format_exc())
@@ -430,6 +444,7 @@ def main(argv=None):
         normalize_doc(doc, _out_root)
         log(u"⑥ 元数据 normalize 完成")
     except Exception as e:
+        _chain_fails.append(u"normalize")
         log(u"⑥ 元数据 normalize 失败(不阻断): %s" % str(e)[:120])
     _llm_cfg = (load_cfg().get("llm") or {})
     # KCI_SKIP_NER=1: 本次调用跳过 ner 阶段(GUI "快速重跑" 用; 元数据/查看器照出, 只是不烧 LLM)
@@ -438,12 +453,14 @@ def main(argv=None):
         try:
             import ner_lite as _nl
             _model = _nl.make_model(_llm_cfg)
-            _product, _audit = _nl.run_doc(doc, _model, echo=lambda s: log(u"  ner_lite| %s" % s))
-            _nl.write_outputs(doc, _product, _audit)
+            _product, _audit = _nl.run_doc(doc, _model, echo=lambda s: log(u"  ner_lite| %s" % s),
+                                           out_root=_out_root)
+            _nl.write_outputs(doc, _product, _audit, dst=_out_root)
             log(u"⑥ ner_lite: 提名 %d 准入 %d 记录 %d" % (
                 _audit["counts"]["nominations"], _audit["counts"]["admitted"],
                 _audit["counts"]["records"]))
         except Exception as e:
+            _chain_fails.append(u"ner")
             log(u"⑥ ner_lite 失败(不阻断): %s" % str(e)[:150])
     else:
         log(u"⑥ ner_lite 跳过(ner_lite_auto 关 / KCI_LLM_KEY 缺 / 本次跳 NER)")
@@ -452,7 +469,18 @@ def main(argv=None):
         rebuild_viewer(doc, _out_root)
         log(u"⑥ 终版对照查看器已重建(元数据带+实体面板)")
     except Exception as e:
+        _chain_fails.append(u"viewer")
         log(u"⑥ 终版查看器重建失败(不阻断): %s" % str(e)[:120])
+    if _chain_fails:
+        try:
+            _mfp = os.path.join(_out_root, doc, "metadata.json")
+            _m = json.load(io.open(_mfp, encoding="utf-8")) if os.path.exists(_mfp) else {}
+            _m["chain_failures"] = _chain_fails
+            io.open(_mfp, "w", encoding="utf-8").write(
+                json.dumps(_m, ensure_ascii=False, indent=1))
+            log(u"⑥ 阶段失败汇总(本条不得标 done): %s" % u",".join(_chain_fails))
+        except Exception:
+            pass
 
     write_index(doc, out, report, cmp_fp, sizes, os.path.basename(a.pdf))
     log("⑤ 完成 ->", out)
