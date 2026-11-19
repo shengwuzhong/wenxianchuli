@@ -1,0 +1,358 @@
+{
+ "schema_version": 1,
+ "generated_at": "2026-11-19T12:25:00",
+ "corpus": "year_random40_plus_curated",
+ "note": "23 of 40 deterministic-random docs had a manually verified page-header/footer publication year; 17 are unknown. 10 curated ja_gold docs added. Unknown docs are recorded with year=null and excluded from exact-match denominator.",
+ "docs": [
+  {
+   "doc": "70_2_70_68",
+   "zone": "A",
+   "year": 2019,
+   "source": "random_page_header",
+   "evidence": "日本家政学会誌 Vol. 70 No. 2 68~77 (2019)"
+  },
+  {
+   "doc": "6_Supplement1_6_15",
+   "zone": "B",
+   "year": 2024,
+   "source": "random_page_header",
+   "evidence": "JSPEN2024 — 第39回日本臨床栄養代謝学会学術集会 15"
+  },
+  {
+   "doc": "84_1_84_59",
+   "zone": "A",
+   "year": 2015,
+   "source": "random_page_header",
+   "evidence": "溶接学会誌 第84巻 (2015) 第1号"
+  },
+  {
+   "doc": "73_5_73_2017_JSRT_73.5.411",
+   "zone": "B",
+   "year": 2017,
+   "source": "random_page_header",
+   "evidence": "Vol. 73 No. 5 May 2017"
+  },
+  {
+   "doc": "2024_34_2024_1",
+   "zone": "B",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "208_3_208_3_261",
+   "zone": "A",
+   "year": 2006,
+   "source": "random_page_header",
+   "evidence": "MMP-Tohoku J. Exp. Med., 2006, 208, 261-266"
+  },
+  {
+   "doc": "07_東大国文学論集_2017_長島弘明",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "26_2_26_2_156",
+   "zone": "A",
+   "year": 2006,
+   "source": "random_page_header",
+   "evidence": "2006 年 6 月 30 日"
+  },
+  {
+   "doc": "130_0_130_247",
+   "zone": "B",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "62_2_62_60",
+   "zone": "B",
+   "year": 2013,
+   "source": "random_page_header",
+   "evidence": "「材料」(Journal of the Society of Materials Science, Japan), Vol. 62, No. 2, pp. 60-67, Feb. 2013 論 文"
+  },
+  {
+   "doc": "62.2.4_0_62.2.4_743_2",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "48S1_0_48S1_E-68_2",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "11_1_",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "3",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "2018_65_2018_26",
+   "zone": "B",
+   "year": 2018,
+   "source": "random_page_header",
+   "evidence": "Annual Report of the Kanto-Tosan Plant Protection Society, No. 65 2018"
+  },
+  {
+   "doc": "111_1076_111_KJ00004980243",
+   "zone": "A",
+   "year": 2008,
+   "source": "random_page_header",
+   "evidence": "日本機械学会誌 2008. 7 Vol. 111 No. 1076"
+  },
+  {
+   "doc": "56_4_56_243",
+   "zone": "B",
+   "year": 2017,
+   "source": "random_page_header",
+   "evidence": "計測と制御 第 56 巻 第 4 号 2017 年 4 月号"
+  },
+  {
+   "doc": "48_4_48_4_61",
+   "zone": "B",
+   "year": 2008,
+   "source": "random_page_header",
+   "evidence": "歯科放射線 2008; 48(4): 61-67"
+  },
+  {
+   "doc": "2015.7_0_2015.7__30pm1-B-6",
+   "zone": "A",
+   "year": 2015,
+   "source": "random_page_header",
+   "evidence": "日本機械学会第7回マイクロ・ナノ工学シンポジウム講演論文集 (2015.10.28-30, 新潟) Copyright ©2015 一般社団法人 日本機械学会"
+  },
+  {
+   "doc": "82_2_82_CJ-66-0148",
+   "zone": "B",
+   "year": 2018,
+   "source": "random_page_header",
+   "evidence": "Circ J 2018; 82: 299–301 doi:10.1253/circj.CJ-66-0148"
+  },
+  {
+   "doc": "30_2_30_183",
+   "zone": "A",
+   "year": 2021,
+   "source": "random_page_header",
+   "evidence": "日乳癌検診学会誌(J.Jpn.Assoc.Breast Cancer Screen.) 2021, 30(2) SEP : 185"
+  },
+  {
+   "doc": "09_平家部会論集_1992_千草聡",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "2018_0_2018_49",
+   "zone": "B",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "72.2_0_72.2_2647",
+   "zone": "A",
+   "year": 2017,
+   "source": "random_page_header",
+   "evidence": "日本物理学会 2017年秋季大会 概要集"
+  },
+  {
+   "doc": "7_0_7_2405074",
+   "zone": "A",
+   "year": 2012,
+   "source": "random_page_header",
+   "evidence": "Volume 7, 2405074 (2012)"
+  },
+  {
+   "doc": "42_103",
+   "zone": "A",
+   "year": 2025,
+   "source": "random_page_header",
+   "evidence": "診断病理 2025, 42 (2)"
+  },
+  {
+   "doc": "34_3_34_2015.003",
+   "zone": "A",
+   "year": 2015,
+   "source": "random_page_header",
+   "evidence": "マーケティングジャーナル Vol.34 No.3 (2015) http://www.j-mac.or.jp"
+  },
+  {
+   "doc": "11_2_11_KJ00004315381",
+   "zone": "B",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "104_6_104_Contents",
+   "zone": "B",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "11_1_11_31",
+   "zone": "A",
+   "year": 2024,
+   "source": "random_page_header",
+   "evidence": "日本転倒予防学会誌 Vol.11: 31-38 2024"
+  },
+  {
+   "doc": "03_文藝言語研究_2009_石塚修",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "240_0_240_78",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "23_0_23_249_2",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "7",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "11_3_11_3_97",
+   "zone": "A",
+   "year": 2006,
+   "source": "random_page_header",
+   "evidence": "[Environmental Health and Preventive Medicine 11, 97–101, May 2006]"
+  },
+  {
+   "doc": "2012.1_0_2012.1_1805",
+   "zone": "A",
+   "year": 2012,
+   "source": "random_page_header",
+   "evidence": "第 59 回応用物理学関係連合講演会 講演予稿集 (2012 春 早稲田大学)"
+  },
+  {
+   "doc": "38_0_38_78",
+   "zone": "A",
+   "year": 2018,
+   "source": "random_page_header",
+   "evidence": "入会林野研究 No.38 (2018)"
+  },
+  {
+   "doc": "51_3+4_51_3+4_21",
+   "zone": "A",
+   "year": 2007,
+   "source": "random_page_header",
+   "evidence": "J Electrophoresis 2007 ; 51 : 21"
+  },
+  {
+   "doc": "02_文藝言語研究_2011_清登典子",
+   "zone": "A",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "65_2_65_cover1",
+   "zone": "B",
+   "year": null,
+   "source": "unknown",
+   "evidence": ""
+  },
+  {
+   "doc": "2025_1",
+   "zone": "A",
+   "year": 2025,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  },
+  {
+   "doc": "40_10569",
+   "zone": "A",
+   "year": 2018,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  },
+  {
+   "doc": "40_10588",
+   "zone": "A",
+   "year": 2018,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  },
+  {
+   "doc": "42_185",
+   "zone": "A",
+   "year": 2025,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  },
+  {
+   "doc": "42_93",
+   "zone": "A",
+   "year": 2025,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  },
+  {
+   "doc": "43_10814",
+   "zone": "A",
+   "year": 2021,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  },
+  {
+   "doc": "52_230302",
+   "zone": "A",
+   "year": 2023,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  },
+  {
+   "doc": "52_230725",
+   "zone": "A",
+   "year": 2023,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  },
+  {
+   "doc": "5_55",
+   "zone": "A",
+   "year": 2020,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  },
+  {
+   "doc": "9_1",
+   "zone": "A",
+   "year": 2024,
+   "source": "curated_ja_gold",
+   "evidence": "eval/ja_gold.json"
+  }
+ ]
+}

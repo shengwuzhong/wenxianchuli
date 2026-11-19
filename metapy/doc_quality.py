@@ -486,6 +486,24 @@ def filename_meta(doc_dir):
     return {"journal": journal, "year": year}
 
 
+_YEAR_PREFIX = re.compile(r"^((?:19|20)\d{2})(?:[._-]|[A-Za-z](?=[._-]|$)|$)")
+
+
+def filename_year(doc_dir):
+    """Publication year from a leading `2016.91_...` / `2025S_...` token.
+
+    This is deliberately separate from :func:`filename_meta`: a numeric
+    journal directory often has no journal hint but still starts with the
+    publication year.  It is a low-confidence fallback, never gold.
+    """
+    name = os.path.basename(os.path.normpath(doc_dir))
+    m = _YEAR_PREFIX.match(name)
+    if not m:
+        return None
+    year = int(m.group(1))
+    return year if 1900 <= year <= 2100 else None
+
+
 def _bad_journal(v):
     s = str(v or "").strip()
     if not s or len(s) < 2:
@@ -672,6 +690,17 @@ def repair_metadata(meta, doc_dir):
             out["year"] = {
                 "value": int(fn["year"]),
                 "confidence": {"level": "low", "source": "filename_fallback"},
+                "fallback": True,
+            }
+            flags.discard("year_missing")
+            flags.add("year_from_filename")
+            info["changed"] = True
+    if not _value(out.get("year")):
+        y = filename_year(doc_dir)
+        if y:
+            out["year"] = {
+                "value": y,
+                "confidence": {"level": "low", "source": "filename_prefix"},
                 "fallback": True,
             }
             flags.discard("year_missing")

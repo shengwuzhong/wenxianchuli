@@ -73,6 +73,14 @@ class FilenameFallbackTest(unittest.TestCase):
             self.assertIn("journal_from_filename", meta["quality"]["flags"])
             self.assertIn("year_from_filename", meta["quality"]["flags"])
 
+    def test_year_from_numeric_prefix_without_journal_hint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dd = _doc(tmp, "本文", "2016.91_0_2016.91_246")
+            meta, _ = doc_quality.repair_metadata({}, dd)
+            self.assertEqual(meta["year"]["value"], 2016)
+            self.assertEqual(meta["year"]["confidence"]["source"], "filename_prefix")
+            self.assertIn("year_from_filename", meta["quality"]["flags"])
+
     def test_real_journal_not_overwritten(self):
         with tempfile.TemporaryDirectory() as tmp:
             dd = _doc(tmp, "本文", "01_文藝言語研究_1984_犬井善壽")

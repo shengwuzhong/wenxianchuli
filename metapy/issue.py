@@ -207,6 +207,40 @@ def _add(cand_pages, value, page):
         cand_pages[value].append(page)
 
 
+def _header_year(s, kind):
+    """页眉/页脚/首页顶端的出版年候选。
+
+    只接收版面结构行, 不接收正文块, 避免把参考文献里的 1983/2005 当出版年。
+    页眉页脚常写成 `「比較民俗研究」 23. 2009/3` / `地域調査報告 7, 1985`;
+    首页顶端仍要求更明确的出版信号, 防止摘要里的年份混入。
+    """
+    if kind not in ("header", "footer"):
+        return []
+    t = (s or "").strip()
+    if not t or len(_fold(t)) > 100:
+        return []
+    # 整行是四年范围(如“International Decade of Soils 2015-2024”),
+    # 行内年份是活动/覆盖区间, 不应当作出版年; 宁可漏, 不误填。
+    if re.search(r"(?:19|20)\d{2}\s*[-–—]\s*(?:19|20)\d{2}", t):
+        return []
+    ys = []
+    for m in _YEAR.finditer(t):
+        y = int(m.group(1))
+        if y not in YEAR_OK:
+            continue
+        # 2015-2024 / 2015–2024 是年份范围(如“国际土壤年”), 不是出版年。
+        if re.match(r"\s*[-–—]\s*(?:19|20)\d{2}", t[m.end():]):
+            continue
+        if re.search(r"(?:19|20)\d{2}\s*[-–—]\s*$", t[:m.start()]):
+            continue
+        # 修订/受理/截止日期不是出版年。
+        ctx = t[max(0, m.start() - 12):m.end() + 12]
+        if re.search(r"改定|改訂|修正|訂正|受付|受理|締切|期限", ctx):
+            continue
+        ys.append(y)
+    return ys
+
+
 def extract(source, n_pages, excluded_folds):
     """核心抽取(纯函数, selftest 直接喂构造行)。
     source: [(page, uid, line)]; excluded_folds: 本篇标题/作者的折叠集合(守卫);
@@ -214,10 +248,15 @@ def extract(source, n_pages, excluded_folds):
     journal, journal_en = {}, {}
     journal_doi = {}
     year, vol_kwan, vol_vol, vol_jip, issue, pages_pp, pages_bare = {}, {}, {}, {}, {}, {}, {}
+    year_hdr = {}
     tongkwan, bmc_art = [], []
-    for page, uid, s in source:
+    for row in source:
+        page, uid, s = row[0], row[1], row[2]
+        kind = row[3] if len(row) > 3 else ""
         if len(_fold(s)) > 130:
             continue   # 正文粘入的误标长行
+        for y in _header_year(s, kind):
+            _add(year_hdr, y, page)
         got = _jname_from_line(s)
         if got:
             ko, en = got
@@ -338,6 +377,14 @@ def extract(source, n_pages, excluded_folds):
         return "high" if len(sup) >= 2 else ("mid" if sup else "low")
 
     y_w, y_sup = _vote(year, 0)
+    y_src = "regex"
+    if year_hdr:
+        h_w, h_sup = _vote(year_hdr, 0)
+        # 页眉/页脚的出版年优先于正文里的收稿年/引用年。
+        # 例: 材料 Vol.62 No.2 (Feb.2013) 页脚有 "Received June 11, 2012"，
+        # regex 先命中 2012；页眉 2013 才是出版年。
+        if h_w is not None:
+            y_w, y_sup, y_src = h_w, h_sup, "header"
     vol_w, vol_sup = None, []
     for grp in (vol_kwan, vol_vol, vol_jip):   # 권 > Vol > 집
         if grp:
@@ -357,7 +404,7 @@ def extract(source, n_pages, excluded_folds):
     res = {
         "journal": {"value": j_w, "confidence": {"level": _lvl(j_sup), "source": j_src}},
         "journal_en": {"value": j_en_w, "confidence": {"level": _lvl(j_en_sup), "source": "regex"}},
-        "year": {"value": y_w, "confidence": {"level": _lvl(y_sup), "source": "regex"}},
+        "year": {"value": y_w, "confidence": {"level": _lvl(y_sup), "source": y_src}},
         "volume": {"value": vol_w, "confidence": {"level": _lvl(vol_sup), "source": "regex"}},
         "issue": {"value": i_w, "confidence": {"level": _lvl(i_sup), "source": "regex"}},
         "pages": {"value": ("%d-%d" % pg_w) if pg_w else None,
@@ -368,6 +415,7 @@ def extract(source, n_pages, excluded_folds):
              "journal_doi_candidates": {k: sorted(v) for k, v in journal_doi.items()},
              "issue_dropped_same_as_volume": i_dropped,
              "year_candidates": {str(k): sorted(v) for k, v in year.items()},
+             "year_header_candidates": {str(k): sorted(v) for k, v in year_hdr.items()},
              "volume_candidates": dict(
                  [("kwan:%d" % k, sorted(v)) for k, v in vol_kwan.items()]
                  + [("vol:%d" % k, sorted(v)) for k, v in vol_vol.items()]
@@ -472,9 +520,17 @@ def issue_doc(doc, out_root):
         for u in j["unified"]:
             t = u["main_text"] or ""
             if u["type"] in STRUCT_TYPES or (p == 0 and u["box"][1] < 0.12 * j["h"]):
+                if u["type"] == "Page-header":
+                    kind = "header"
+                elif u["type"] == "Page-footer":
+                    kind = "footer"
+                elif p == 0 and u["box"][1] < 0.12 * j["h"]:
+                    kind = "top"
+                else:
+                    kind = "text"
                 for ln in t.split("\n"):
                     if ln.strip():
-                        source.append((p, u["uid"], ln.strip()))
+                        source.append((p, u["uid"], ln.strip(), kind))
     excluded = set()
     for k in ("title", "title_en"):
         v = (meta.get(k) or {}).get("value")

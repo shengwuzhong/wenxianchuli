@@ -6,6 +6,7 @@ inbox/
 zones/
 .workbench/
 versions/
+_backups/
 examples/demo/
 *.log
 
