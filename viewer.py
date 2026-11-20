@@ -140,7 +140,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .lg{display:inline-block;margin-left:14px;font-size:12px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px;vertical-align:-1px}
 .fullmd{padding:14px 18px;font-size:14px;line-height:1.9;max-width:1100px;margin:0 auto;background:#fff;min-height:600px}
 </style></head><body>
-<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>
+<header><a class="back" href="index.html">‹ 对照总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
 </header>
 @@BODY@@
@@ -172,8 +172,8 @@ def _blk_html(t):
     return e.replace("\n", "<br/>").replace("\ufffd", '<span class="bad">\ufffd</span>')
 
 
-_CMP_DOT = {"mineru": "m", "dots": "d", "paddle": "p"}
-_CMP_CN = {"mineru": "MinerU", "dots": "dots.ocr", "paddle": "PaddleOCR"}
+_CMP_DOT = {"mineru": "m", "dots": "d", "paddle": "p", "pdf_text": "t"}
+_CMP_CN = {"mineru": "MinerU", "dots": "dots.ocr", "paddle": "PaddleOCR", "pdf_text": "PDF 文本层"}
 
 def _cmp_preview(t, limit=240):
     """遮罩内的块文本预览: 表格块渲染清洗后的真表格(深色遮罩样式), 纯文本走 _blk_html(公式/sub/sup)。"""
@@ -366,7 +366,7 @@ nav a{color:#9ca3af;margin:0 4px;text-decoration:none;font-size:14px}nav a:hover
 .wrap{max-width:1960px;margin:0 auto;padding:14px}
 section{margin:20px 0}h2{font-size:15px;color:#374151;border-left:4px solid #2563eb;padding-left:8px}
 .stat{color:#6b7280;font-weight:normal;font-size:12px;margin-left:10px}
-.grid{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr;gap:10px}
+.grid{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr;gap:10px}.grid.onech{grid-template-columns:1.15fr 2.2fr}
 .pane.meta{grid-column:1/-1}   /* 元数据横带: 原第5格(窄列折行+右侧死白)改整行贯穿 */
 .pane.meta.ov .ptitle{background:#7c3aed}   /* 第1页总览横带: 紫头与普通横带(灰头)区分 */
 .mfw{font-size:12px;padding:6px 8px}
@@ -497,7 +497,7 @@ details.mfd summary{cursor:pointer;color:#6b7280;font-size:11px}
 .mbadge.bad{background:#fee2e2;color:#dc2626}
 .pane{background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
 .ptitle{font-size:12px;padding:5px 10px;border-bottom:1px solid #e5e7eb;color:#fff;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ptitle.src{background:#374151}.ptitle.mineru{background:#2563eb}.ptitle.dots{background:#d97706}.ptitle.paddle{background:#059669}
+.ptitle.src{background:#374151}.ptitle.mineru{background:#2563eb}.ptitle.dots{background:#d97706}.ptitle.paddle{background:#059669}.ptitle.pdf_text{background:#475569}
 .imgw{position:relative}
 .imgw img{width:100%;display:block}
 .imgw svg{position:absolute;left:0;top:0;width:100%;height:100%}
@@ -565,7 +565,7 @@ svg.picr{width:100%;height:auto;display:block;border:1px solid #e5e7eb;border-ra
 .dot.m{background:#60a5fa}.dot.d{background:#fbbf24}.dot.p{background:#34d399}
 .lg{display:inline-block;margin-left:14px;font-size:12px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px;vertical-align:-1px}
 </style></head><body>
-<header><a class="back" href="index.html">‹ 三渠道总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>
+<header><a class="back" href="index.html">‹ 对照总览</a><b>@@TITLE@@</b><nav>跳页：@@NAV@@</nav>
 <span class="lg"><i style="background:#2563eb"></i>标题 <i style="background:#6b7280"></i>正文 <i style="background:#d97706"></i>脚注 <i style="background:#7c3aed"></i>图片 <i style="background:#0891b2"></i>图注 <i style="background:#059669"></i>表格 <i style="background:#fff;border:1px dashed #dc2626"></i>页眉页脚页码 <i style="background:#fee2e2;border:1px solid #dc2626"></i>空块</span>
 </header>
 <button id="citetoggle" type="button" title="打开/关闭全文档引文索引">引文索引</button>
@@ -2052,7 +2052,8 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
         ' decoding="async" alt="第 %d 页"><span class="tn">%d</span></a>'
         % (i, i, i + 1, i, i + 1, i + 1) for i in range(n))
     secs, data, groups_json = [], {}, {}
-    chs = ("mineru", "dots", "paddle")
+    chs = tuple(k for k in ("mineru", "dots", "paddle", "pdf_text")
+                if per_ch.get(k) is not None)
     lay_any = False
     for p in range(n):
         W, H = sizes[p]
@@ -2173,7 +2174,7 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
                     % ("unified 复检项(虚线=共识框)" if unified_pages is not None else "差异分析",
                        p, W, H, "".join(rects) + (lay_svg or ""), "".join(eyes)))
         ch_cells = "".join('<div class="pane ch"><div class="ptitle %s">%s</div>%s<div class="pmask"></div></div>'
-                           % (ch, {"mineru": "MinerU", "dots": "dots.ocr", "paddle": "PaddleOCR"}[ch], col_html[ch]) for ch in chs)
+                           % (ch, _CMP_CN.get(ch, ch), col_html[ch]) for ch in chs)
         ov_cell = ""
         if meta is not None:
             if p == 0:
@@ -2184,7 +2185,8 @@ def build_compare_viewer(out_fp, title, sizes, per_ch, src_dirs=None, unified_pa
             flag += ' <a class="bad jump" data-t="ffd_%s" title="跳到本页首个含错误字符的块">FFFD×%d</a>' % (first_ffd, nffd)
         if nemp:
             flag += ' <a class="empf jump" data-t="emp_%s" title="跳到本页首个空块">空块×%d</a>' % (first_emp, nemp)
-        secs.append('<section id="p%d"><h2>第 %d 页%s <span class="stat" id="st_p%d"></span></h2>%s<div class="grid">%s%s%s</div></section>' % (p, p + 1, flag, p, lay_strip, ov_cell, img_cell, ch_cells))
+        gcls = "grid onech" if len(chs) == 1 else "grid"
+        secs.append('<section id="p%d"><h2>第 %d 页%s <span class="stat" id="st_p%d"></span></h2>%s<div class="%s">%s%s%s</div></section>' % (p, p + 1, flag, p, lay_strip, gcls, ov_cell, img_cell, ch_cells))
     v = COMPARE_TMPL.replace("@@TITLE@@", title).replace("@@NAV@@", nav)
     v = v.replace("@@CITEDATA@@", _cite_index_json(meta))
     v = v.replace("@@REVIEWDATA@@", _review_index_json(meta))
