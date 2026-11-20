@@ -1563,6 +1563,32 @@ class JapaneseMetadataTest(unittest.TestCase):
         self.assertFalse(ensure_keywords(m2))
         self.assertEqual(m2["keywords"], ["既存"])
 
+    def test_auto_keywords_skipped_for_non_japanese(self):
+        """法/俄等非日文文献不得补日文关键词: Sudachi 会把 France/history 输出成
+        片假名规范形(フランス/ヒストリー), 写入后会让 viewer 把整篇误判为日文。"""
+        from metapy.ja_keywords import ensure_keywords
+        fr = {"title": {"value": "Se former à la grammaire en français langue étrangère"},
+              "abstract": {"value": "Cet article est une réflexion sur la formation."},
+              "keywords": []}
+        self.assertFalse(ensure_keywords(fr))
+        self.assertFalse(fr.get("keywords"))
+        ru = {"title": {"value": "КЛАДБИЩЕНСКАЯ ЛИНГВИСТИКА"},
+              "abstract": {"value": "В статье рассматривается."},
+              "keywords": []}
+        self.assertFalse(ensure_keywords(ru))
+
+    def test_meta_is_ja_ignores_auto_keywords(self):
+        """auto 关键词曾把 fr01/ru01 自证成日文, 面板整体切成「日文标题 · 標題」。"""
+        from viewer import _meta_is_ja, _meta_labels
+        fr = {"title": {"value": "Jan Goes Université d’Artois, France"},
+              "keywords": ["ゲース", "フランス"], "keywords_source": "auto"}
+        self.assertFalse(_meta_is_ja(fr))
+        self.assertEqual(_meta_labels(False)["abstract"], "摘要")
+        ja = {"title": {"value": "アプタマー技術による疾患プロテオミクス"}}
+        self.assertTrue(_meta_is_ja(ja))
+        # 汉字题名只带 1-2 个假名的日文文献也要判对
+        self.assertTrue(_meta_is_ja({"title": {"value": "健常高齢者の認知機能"}}))
+
     def test_reference_split(self):
         from metapy.ref_split import normalize_ref
         r = {"raw": "2) Yoshimura S, Toyoda K, Ohara T, et al: Takotsubo cardiomyopathy in acute ischemic stroke. Ann Neurol 64: 547-554, 2008",

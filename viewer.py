@@ -1400,21 +1400,44 @@ _JP_SECTION_WORDS = (u"はじめに", u"おわりに", u"対象と方法", u"対
 
 def _meta_is_ja(meta):
     """日文文献判定(只决定面板文案/警告是否启用): 题录/摘要/关键词/机构里出现仮名即视为日文。
-    韩文(谚文)/中文(纯汉字)文献不会命中, 面板保持原有行为。"""
+    韩文(谚文)/中文(纯汉字)文献不会命中, 面板保持原有行为。
+
+    2026-11-20: keywords_source == "auto" 的自动词不计入——ja_keywords 用日文分词
+    会给非日文文献产出片假名规范形(フランス/ヒストリー), 若把它当证据, 法语/俄语
+    文献会被自证成日文(ru01/fr01 实证)。
+    另: 题名出现假名即判日文(汉字题名常只带 1-2 个假名, 靠阈值 3 会漏判)。"""
     from metapy.common import _JP_KANA_RE
+    if _JP_KANA_RE.search(str((meta.get("title") or {}).get("value") or "")):
+        return True
     parts = []
-    for k in ("title", "title_en", "journal", "journal_en", "abstract", "abstract_en"):
+    for k in ("title_en", "journal", "journal_en", "abstract", "abstract_en"):
         parts.append(str((meta.get(k) or {}).get("value") or ""))
-    parts.extend(str(x) for x in (meta.get("keywords") or []) + (meta.get("keywords_en") or []))
+    if meta.get("keywords_source") != "auto":
+        parts.extend(str(x) for x in (meta.get("keywords") or []))
+    parts.extend(str(x) for x in (meta.get("keywords_en") or []))
     parts.extend(str(x) for x in (meta.get("affiliations") or []))
     for a in meta.get("authors") or []:
         parts.append(str(a.get("name") or ""))
     return len(_JP_KANA_RE.findall("".join(parts))) >= 3
 
 
-def _meta_labels(ja):
-    """字段标签: 非日文只给中文原标签; 日文给“中文 · 日文”双语。"""
-    return {k: (v[1] if ja else v[0]) for k, v in _META_LABELS.items()}
+def _meta_is_ko(meta):
+    """韩文文献判定: 题录/摘要/关键词出现谚文即视为韩文(仅用于选择中文标签文案)。"""
+    parts = []
+    for k in ("title", "title_en", "journal", "journal_en", "abstract", "abstract_en"):
+        parts.append(str((meta.get(k) or {}).get("value") or ""))
+    parts.extend(str(x) for x in (meta.get("keywords") or []))
+    body = "".join(parts)
+    return sum(1 for c in body if "\uac00" <= c <= "\ud7af") >= 3
+
+
+def _meta_labels(ja, ko=False):
+    """字段标签: 非日文只给中文原标签; 日文给“中文 · 日文”双语。
+    ko=False 时把「摘要(韩)」降为中性「摘要」——法/俄/英文献原先会顶着“韩”字样。"""
+    L = {k: (v[1] if ja else v[0]) for k, v in _META_LABELS.items()}
+    if not ja and not ko:
+        L["abstract"] = u"摘要"
+    return L
 
 
 def _meta_warnings(meta, ja):
@@ -1471,7 +1494,7 @@ def _meta_cell(meta, pno, audit=None, choices=None):
     if not meta:
         return ""
     ja = _meta_is_ja(meta)
-    L = _meta_labels(ja)
+    L = _meta_labels(ja, (not ja) and _meta_is_ko(meta))
     W = _meta_warnings(meta, ja)
     lab_ref = u"本页参考文献 · 文献" if ja else u"本页文献"
     lab_ftn = u"本页脚注 · 脚注" if ja else u"本页脚注"
@@ -1709,7 +1732,7 @@ def _meta_overview(meta, audit=None):
     if not meta:
         return ""
     ja = _meta_is_ja(meta)
-    L = _meta_labels(ja)
+    L = _meta_labels(ja, (not ja) and _meta_is_ko(meta))
     W = _meta_warnings(meta, ja)
     esc = lambda s: html.escape(str(s if s is not None else ""), quote=False)
 
