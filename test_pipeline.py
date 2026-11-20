@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import io
 import json
 import os
@@ -1588,6 +1588,32 @@ class JapaneseMetadataTest(unittest.TestCase):
         self.assertTrue(_meta_is_ja(ja))
         # 汉字题名只带 1-2 个假名的日文文献也要判对
         self.assertTrue(_meta_is_ja({"title": {"value": "健常高齢者の認知機能"}}))
+
+    def test_meta_is_ja_ignores_author_affiliation_journal(self):
+        """日本期刊上的英文论文: 作者/机构/刊名是日文, 但正文是英文, 不应显示日文标签。"""
+        from viewer import _meta_is_ja
+        en = {"title": {"value": "A Development of the High-capacity Data Transmission System"},
+              "abstract": {"value": "This paper discusses a partner robot."},
+              "authors": [{"name": "山田 太郎"}],
+              "affiliations": ["東京大学 大学院"],
+              "journal": {"value": "日本機械学会論文集"}}
+        self.assertFalse(_meta_is_ja(en))
+        # 真日文正文仍然判对
+        ja = {"title": {"value": "源氏物語"},
+              "abstract": {"value": "本稿では源氏物語の方法意識を考察する。"},
+              "keywords": []}
+        self.assertTrue(_meta_is_ja(ja))
+
+    def test_meta_is_ja_pure_kanji_title_without_abstract_is_known_limit(self):
+        """纯汉字题名 + 无摘要仍判否；这是已知边界, 不把作者/机构偷换成正文证据。"""
+        from viewer import _meta_is_ja
+        self.assertFalse(_meta_is_ja({"title": {"value": "源氏物語"}, "abstract": {"value": ""}}))
+
+    def test_meta_is_ko_keeps_korean_label(self):
+        from viewer import _meta_is_ko, _meta_labels
+        ko = {"title": {"value": "한국어 제목"}, "abstract": {"value": "한국어 초록"}}
+        self.assertTrue(_meta_is_ko(ko))
+        self.assertEqual(_meta_labels(False, True)["abstract"], "摘要(韩)")
 
     def test_reference_split(self):
         from metapy.ref_split import normalize_ref

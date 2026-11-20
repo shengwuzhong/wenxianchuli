@@ -1399,25 +1399,26 @@ _JP_SECTION_WORDS = (u"はじめに", u"おわりに", u"対象と方法", u"対
 
 
 def _meta_is_ja(meta):
-    """日文文献判定(只决定面板文案/警告是否启用): 题录/摘要/关键词/机构里出现仮名即视为日文。
+    """日文正文判定(只决定面板文案/警告是否启用): 标题/摘要/关键词出现假名即视为日文。
     韩文(谚文)/中文(纯汉字)文献不会命中, 面板保持原有行为。
 
     2026-11-20: keywords_source == "auto" 的自动词不计入——ja_keywords 用日文分词
     会给非日文文献产出片假名规范形(フランス/ヒストリー), 若把它当证据, 法语/俄语
     文献会被自证成日文(ru01/fr01 实证)。
-    另: 题名出现假名即判日文(汉字题名常只带 1-2 个假名, 靠阈值 3 会漏判)。"""
+
+    同日: 作者名、机构名、期刊名不再作为正文语言证据。日本期刊上的英文论文
+    常带日文作者/机构/刊名, 若计入会让整篇英文论文显示成“日文标题/日文摘要”。
+    正文语言只取标题、摘要和作者关键词; 纯汉字日文题名且无摘要时仍会漏判,
+    这是已知边界, 由 `looks_japanese`/数据层语言字段后续补强。"""
     from metapy.common import _JP_KANA_RE
     if _JP_KANA_RE.search(str((meta.get("title") or {}).get("value") or "")):
         return True
     parts = []
-    for k in ("title_en", "journal", "journal_en", "abstract", "abstract_en"):
+    for k in ("title_en", "abstract", "abstract_en"):
         parts.append(str((meta.get(k) or {}).get("value") or ""))
     if meta.get("keywords_source") != "auto":
         parts.extend(str(x) for x in (meta.get("keywords") or []))
     parts.extend(str(x) for x in (meta.get("keywords_en") or []))
-    parts.extend(str(x) for x in (meta.get("affiliations") or []))
-    for a in meta.get("authors") or []:
-        parts.append(str(a.get("name") or ""))
     return len(_JP_KANA_RE.findall("".join(parts))) >= 3
 
 
@@ -1426,7 +1427,8 @@ def _meta_is_ko(meta):
     parts = []
     for k in ("title", "title_en", "journal", "journal_en", "abstract", "abstract_en"):
         parts.append(str((meta.get(k) or {}).get("value") or ""))
-    parts.extend(str(x) for x in (meta.get("keywords") or []))
+    if meta.get("keywords_source") != "auto":
+        parts.extend(str(x) for x in (meta.get("keywords") or []))
     body = "".join(parts)
     return sum(1 for c in body if "\uac00" <= c <= "\ud7af") >= 3
 
