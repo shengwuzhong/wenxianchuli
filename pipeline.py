@@ -246,6 +246,16 @@ def fetch_channels(doc, pdf, out, chans_in, echo=None):
     return chans, SRC_KIND
 
 
+def ner_root_for_out(out):
+    """HTML/NER 产物根：与 out/<doc> 同级的 out_llm_trial。
+
+    不能在调用 write_outputs 时传 ``out`` 本身；否则 _leaf 会在
+    ``out/fds_extract/ner_lite`` 下落盘，GUI/QC/entview 看不到。
+    """
+    zone_out = os.path.dirname(os.path.abspath(out))
+    return os.path.join(os.path.dirname(zone_out), "out_llm_trial")
+
+
 def write_index(doc, out, report, cmp_fp, sizes, pdf_name):
     """⑤ 结果总览 index.html(独立可跑: 数据来自 report, 由调用方给)。
 
@@ -413,6 +423,7 @@ def main(argv=None):
     # 放一篇新 PDF 即全自动产出全部产物; webapp 拖入走同一 main, 一处接线两端生效。
     # 各步失败只记日志不阻断; ner_lite 烧 LLM token, 开关 channels.json llm.ner_lite_auto(默认开)+KCI_LLM_KEY。
     _out_root = os.path.dirname(os.path.abspath(out))
+    _ner_root = ner_root_for_out(out)
     _chain_fails = []
     try:
         from metapy import (m3_doc, refs_doc, frefs_doc, front_doc,
@@ -455,7 +466,7 @@ def main(argv=None):
             _model = _nl.make_model(_llm_cfg)
             _product, _audit = _nl.run_doc(doc, _model, echo=lambda s: log(u"  ner_lite| %s" % s),
                                            out_root=_out_root)
-            _nl.write_outputs(doc, _product, _audit, dst=_out_root)
+            _nl.write_outputs(doc, _product, _audit, dst=_ner_root)
             log(u"⑥ ner_lite: 提名 %d 准入 %d 记录 %d" % (
                 _audit["counts"]["nominations"], _audit["counts"]["admitted"],
                 _audit["counts"]["records"]))

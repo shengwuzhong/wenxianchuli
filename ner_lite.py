@@ -436,9 +436,30 @@ def lint_audit(audit, recs):
 
 # ---------- 输出 ----------
 
+def _leaf(base):
+    """产物根归一: 调用方有的传区根(…/out_llm_trial)、有的传叶子(…/fds_extract/ner_lite)。
+
+    2026-11-20 修: stages._st_ner 传的是区根, 而这里把 dst 当最终目录用, 于是产物落到
+    out_llm_trial/<doc>/ —— 而 ARTIFACTS["ner"] / gui._ner_done / entview 一律只认
+    <根>/fds_extract/ner_lite/<doc>/ner_lite.json, 结果"跑成功但永远显示未跑"(204 篇踩坑)。
+    叶子直传时幂等不改, 区根时补齐两级。
+    """
+    base = os.path.normpath(base or DST)
+    if os.path.basename(base) == "ner_lite" and \
+            os.path.basename(os.path.dirname(base)) == "fds_extract":
+        return base
+    if os.path.basename(base) == "fds_extract":
+        return os.path.join(base, "ner_lite")
+    return os.path.join(base, "fds_extract", "ner_lite")
+
+
 def write_outputs(doc, product, audit, root=None, dst=None):
-    """root/dst 可覆盖产物根(工作台按区隔离); 不传则保持历史全局 DST。"""
-    d = os.path.join(root or dst or DST, doc)
+    """root/dst 可覆盖产物根(工作台按区隔离); 不传则保持历史全局 DST。
+
+    root/dst 既可以是区根(out_llm_trial), 也可以是叶子(fds_extract/ner_lite), 由 _leaf 归
+    一到唯一落点, 保证与 ARTIFACTS["ner"]/gui._ner_done 的判据同源。
+    """
+    d = os.path.join(_leaf(root or dst), doc)
     if not os.path.isdir(d):
         os.makedirs(d)
     fp = os.path.join(d, "ner_lite.json")
@@ -553,6 +574,19 @@ def selfcheck():
     assert f == "ABCD" and kept == [0, 1, 3, 4]
     assert is_biblio_footnote(u"30) Arbuckle, AMOS manuel, SPSS Inc., 1997, p.201.")
     assert not is_biblio_footnote(u"* 이 논문은 한국연구재단의 지원을 받았다(NRF-2023).")
+    # 9) 产物落点: 区根与叶子两种传法必须归一到同一层, 否则 GUI 判据永远看不到产物
+    import shutil
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="nerlite_")
+    try:
+        d1 = write_outputs("mockdoc", product, audit, dst=tmp)
+        d2 = write_outputs("mockdoc", product, audit,
+                           dst=os.path.join(tmp, "fds_extract", "ner_lite"))
+        assert d1 == d2, (d1, d2)
+        assert os.path.isfile(os.path.join(d1, "ner_lite.json")), d1
+        assert os.path.basename(os.path.dirname(d1)) == "ner_lite", d1
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     print("selfcheck OK:", json.dumps(audit["counts"], ensure_ascii=False))
     return 0
 
