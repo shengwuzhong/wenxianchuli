@@ -3,7 +3,7 @@
  "title": "按正文而非作者机构判定语言",
  "priority": "P1",
  "owner": "deepseek",
- "status": "claimed",
+ "status": "review",
  "depends_on": [],
  "allowed_files": [
   "viewer.py",
@@ -30,5 +30,5 @@
  ],
  "handoff_to": "",
  "created_at": "2026-11-20T03:10:55+00:00",
- "updated_at": "2026-11-20T03:10:55+00:00"
+ "updated_at": "2026-11-20T03:11:55+00:00"
 }

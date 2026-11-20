@@ -1,0 +1,36 @@
+{
+ "id": "T-20261119-M3",
+ "title": "Add guarded column grouping to metapy/m3.py for vertical layouts",
+ "priority": "P1",
+ "owner": "deepseek",
+ "status": "blocked",
+ "depends_on": [],
+ "allowed_files": [
+  "metapy/m3.py",
+  "test_m3_cols.py"
+ ],
+ "forbidden": [
+  "metapy/m3.py",
+  "out/",
+  "uploads/",
+  "inbox/",
+  "out_llm_trial/",
+  "channels.local.json",
+  "_server.lock",
+  ".workbuddy/",
+  "__pycache__/"
+ ],
+ "allow_frozen": [
+  "m3.py"
+ ],
+ "branch": "agent/deepseek/T-20261119-M3",
+ "base_commit": "main",
+ "acceptance": [
+  "synthetic column tests pass",
+  "vertical gold regression no worse",
+  "rollback tag"
+ ],
+ "handoff_to": "",
+ "created_at": "2026-11-19T07:13:00+00:00",
+ "updated_at": "2026-11-19T07:18:46+00:00"
+}
